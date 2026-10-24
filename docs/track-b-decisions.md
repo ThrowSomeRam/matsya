@@ -120,7 +120,7 @@ complete-through date would fix it). The low bin is still under-predicted.
 
 ### Questions for Track A (contracts v0.1)
 
-1. **censored_at for open labels.** The fixtures stamp it with the as_of date. A payment
+1. **censored_at for open labels** (proposal: the watermark rule below). The fixtures stamp it with the as_of date. A payment
    value-dated before as_of but reported after it is invisible at as_of, so the last days
    before as_of count as unpaid when they were not. This biases p down slightly near the
    cut (the reason for the old 3-day lag). Can censored_at be the date through which the
@@ -154,6 +154,59 @@ complete-through date would fix it). The low bin is still under-predicted.
 10. **forecast.shock_state (additive).** It holds z and z_sd at the last week only. Replaying a
     shock path also needs the AR(1) rho and q per sector; propose nullable `rho` and `q`
     columns.
+
+## Ledger-complete-through watermark and live replay (2026-10-24)
+
+**Watermark rule (proposed to Track A as the answer to question 1).** Per account, let L be
+the largest reporting lag seen so far, max(known_at date - value_date) over the account's
+known transactions. At a fetch at time T the ledger is taken as complete through
+W = date(T) - L: every transaction value-dated on or before W is assumed to be known. With
+several accounts, the tenant's W is the earliest. Each fetch re-stamps every open invoice
+label with censored_at = W (known_at = T) and writes the bank-reported balance for date(T).
+It needs no new column: Track B reads W back as the latest censored_at of open labels
+(`io.adapters.ledger_complete_through`).
+
+Track B cuts payment-timing labels at W and starts open-invoice survival at W
+(survival_through_day = W - as_of). Labels must be cut at W, not as_of: open labels are
+censored at W, so a later cut for paid ones counts recent payments without their unpaid
+weeks. A test caught this (sector lateness residuals drifted to a mean of -0.12).
+`timing_labels` says so in its docstring. The generator uses the same rule, so a direct cut
+and a replay agree. On the default worlds L is 2 to 3 days, so W behaves like the old fixed
+lag, but it is measured from data instead of hardcoded.
+
+Not fixed by W: a payment value-dated before as_of but reported after it is in the
+bank-reported balance while its invoice still looks open, so it is counted twice.
+
+**Replay** (`synth/replay.py`). From one world, as_of steps forward a day at a time. Each
+step reveals the contract rows with known_at in (previous as_of, as_of], including the
+fetch's re-stamps, and appends them to the running tables. It also emits `ops.events` rows
+(new_credit, new_invoice), so the real event path can replace the loop. Then it runs the
+normal adapters and `run_tenant`. Each day's forecast is kept and scored against what
+happened. `--paths demo` is 2,000 paths, about 3 s per step; `benchmark` is 10,000. Tests:
+no step's tables hold a row known after its as_of; rerunning a day, or the whole replay,
+is identical; the last step equals a direct run on `contract_tables_at(truth, as_of)`. Snapshot
+IDs now hash the as-of view the components read, so two table histories that read the same
+give the same run record.
+
+**First learning-curve run: one world, one future, 30 daily steps from 1 Apr 2026, 2,000
+paths.** n = 30 (step, date) pairs per horizon, but the steps share one realised path and
+overlap, so this is closer to one observation than 30. It is a demo of the benchmark, not a
+result.
+
+| horizon (days) | n | mean error (Rs) | MAE (Rs) | flat-baseline MAE (Rs) | 50% band coverage | 90% band coverage |
+|---|---|---|---|---|---|---|
+| 1 | 30 | +2,26,579 | 3,40,705 | 2,89,355 | 0.23 | 0.87 |
+| 7 | 30 | +2,44,984 | 7,29,947 | 8,92,669 | 0.53 | 0.77 |
+| 14 | 30 | -1,37,022 | 5,49,513 | 10,53,074 | 0.80 | 0.97 |
+| 30 | 30 | -10,71,677 | 11,80,292 | 25,48,646 | 0.50 | 0.93 |
+| 60 | 30 | -1,12,495 | 11,24,811 | 27,50,077 | 0.53 | 1.00 |
+| 90 | 30 | +34,04,811 | 34,04,811 | 9,94,955 | 0.00 | 0.50 |
+
+The model beats carrying the balance forward at 7 to 60 days and loses at 1 and 90 days on
+this path. Tracked buyer (most invoices, true weeks to pay once due 6.6): the 90% range of
+1/p moves from 4.6-7.1 to 5.0-7.3 weeks as paid labels grow from 74 to 78, and contains the
+truth throughout. The real benchmark needs many worlds and futures at 10,000 paths, with
+steps scored independently.
 
 ## Requests to Track A
 

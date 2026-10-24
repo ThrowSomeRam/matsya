@@ -32,7 +32,7 @@ def test_sector_residuals_track_planted_shock():
     cfg = WorldConfig(shock_sigma=0.6, n_buyers=12, order_mean_per_week=20.0, pre_due_phase=False)
     tables, truth = generate_world(cfg, past_seed=3, future_seed=0)
     obs = track_b_inputs(tables, cfg.as_of)
-    tm = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], cfg.as_of_date, run_id="s")
+    tm = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], obs["complete_through"], run_id="s")
     means = {b: (float(p.p_early.mean()), float(p.p.mean()), float(p.pi.mean())) for b, p in tm.posteriors.items()}
     sector_of = dict(zip(obs["buyers"]["buyer_id"], obs["buyers"]["sector"]))
     res = lateness_residuals(tm.labels, means, sector_of, cfg.as_of_date)

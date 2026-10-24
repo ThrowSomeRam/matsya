@@ -5,6 +5,10 @@ Input is the adapter's timing view of labels.invoice_outcomes as known at as_of
 A label is censored when censored_at is set (open at as_of, or a TReDS discount),
 with paid_date then null.
 
+Pass the ledger-complete-through watermark as `as_of` (io.adapters.ledger_complete_through),
+not the fetch time: open labels are censored there, so cutting paid labels later would
+count recent payments without the matching unpaid weeks and bias p up.
+
 Two rules keep the conjugate likelihood exact:
   - age c = full weeks from issue to the censoring date, min(censored_at, as_of);
   - a payment in the current, partly observed week (k = c + 1 with c measured to

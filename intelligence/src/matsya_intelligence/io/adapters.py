@@ -12,6 +12,9 @@ Rules applied here (docs/track-b-decisions.md, contract positions):
 - Terms: terms_source unknown -> terms and MSMED deadline 45 days (constant
   msmed_act.section_15.unknown_terms_default_days); default_15d -> 15 days;
   written_agreement and document_terms -> the stated terms, deadline capped at 45.
+- Watermark: payment-timing labels and engine survival are cut at the ledger-complete-
+  through date (ledger_complete_through), not at as_of, so payments value-dated before
+  as_of but not yet reported do not read as unpaid weeks.
 - Sector: tables.effective_sector precedence, exchange > cin_nic > owner > unknown.
 - Unknown enum values map to a fallback rather than fail (enums are additive only).
 """
@@ -113,6 +116,16 @@ def outcomes(tables: dict[str, pl.DataFrame], as_of: date | datetime) -> pl.Data
     ).select(list(OUTCOME_IN)).cast(OUTCOME_IN).sort("issue_date", "invoice_id")
 
 
+def ledger_complete_through(tables: dict[str, pl.DataFrame], as_of: date | datetime) -> date:
+    """The ledger-complete-through watermark, read back from the labels: open labels are
+    re-stamped at each fetch with censored_at = watermark, so it is their latest censored_at.
+    With no open label (or no watermark from Track A yet), as_of itself."""
+    d = as_of.date() if isinstance(as_of, datetime) else as_of
+    out = as_of_read(tables["labels.invoice_outcomes"], ["tenant_id", "invoice_id"], as_of)
+    w = out.filter(pl.col("paid_date").is_null())["censored_at"].max()
+    return min(w, d) if w is not None else d
+
+
 def buyers(tables: dict[str, pl.DataFrame], tenant_id: str) -> pl.DataFrame:
     tb = tables["ref.tenant_buyers"].filter(pl.col("tenant_id") == tenant_id)
     b = tables["ref.buyers"].join(tb.select("buyer_id", "owner_sector"), on="buyer_id")
@@ -135,6 +148,7 @@ def track_b_inputs(tables: dict[str, pl.DataFrame], as_of: date | datetime, gst_
         "invoice_outcomes": outcomes(tables, as_of),
         "buyers": buyers(tables, tenant),
         "opening_balance": {"date": bal_date, "closing_paise": bal, "balance_source": src},
+        "complete_through": ledger_complete_through(tables, as_of),
     }
 
 

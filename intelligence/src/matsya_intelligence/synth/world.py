@@ -18,7 +18,7 @@ their invoice is issued after as_of.
 import calendar
 import hashlib
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from functools import cache
 from pathlib import Path
@@ -84,6 +84,7 @@ class Truth:
     transactions: pl.DataFrame  # every txn incl. future, Txn columns + category + rail + process
     balances: pl.DataFrame  # daily closing from all txns
     obligations: pl.DataFrame  # every scheduled outflow, Obligation schema
+    buyer_records: list[dict] = field(default_factory=list)  # full buyer draws (PAN, GSTIN, name), for re-cuts
 
 
 def _logit(p: float) -> float:
@@ -533,8 +534,33 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         sector_shocks=shocks, weekly_orders=pl.DataFrame(weekly), buyers=buyers_truth,
         invoices=inv_truth, payments=pay_df, purchases=purchases_df, transactions=all_txns,
         balances=_balances(all_txns, c, opening, end), obligations=obligations_df,
+        buyer_records=[{k: v for k, v in b.items()} for b in buyers],
     )
     return observed, truth
+
+
+def contract_tables_at(truth: Truth, cut: datetime) -> dict[str, pl.DataFrame]:
+    """The contract tables Track A would hold at time cut, for any cut inside the world.
+
+    generate_world's observed tables are contract_tables_at(truth, config.as_of).
+    """
+    return _contract_tables(truth.config, truth.transactions, truth.payments, truth.invoices, truth.buyer_records,
+                            truth.opening_balance_paise, cut)
+
+
+def complete_through(known_txns: pl.DataFrame, cut: datetime) -> date:
+    """Per-account "ledger complete through" watermark (the rule proposed to Track A).
+
+    L = the largest reporting lag seen so far, max(known_at date - value_date) over the
+    account's known transactions; the ledger is taken as complete through cut date - L.
+    A transaction value-dated on or before the watermark is assumed to be known by cut.
+    With several accounts, the tenant's watermark is the earliest one.
+    """
+    if known_txns.is_empty():
+        return cut.date()
+    lag = known_txns.group_by("account_id").agg(
+        (pl.col("known_at").dt.date() - pl.col("value_date")).dt.total_days().max().alias("lag"))
+    return min(cut.date() - timedelta(days=int(l)) for l in lag["lag"])
 
 
 def _utc_midnight(d: date) -> datetime:
@@ -542,15 +568,19 @@ def _utc_midnight(d: date) -> datetime:
 
 
 def _contract_tables(c: WorldConfig, all_txns: pl.DataFrame, pay_df: pl.DataFrame, inv_truth: pl.DataFrame,
-                     buyers: list[dict], opening: int) -> dict[str, pl.DataFrame]:
-    """The tables Track A would hold at c.as_of, in contract shape: only rows with known_at <= as_of.
+                     buyers: list[dict], opening: int, cut: datetime | None = None) -> dict[str, pl.DataFrame]:
+    """The tables Track A would hold at cut (default c.as_of), in contract shape: rows with known_at <= cut.
 
     Append-only versions: an invoice and its label get a row when issued (known at midnight UTC
     on the issue date, before any credit for it), one per observed payment (known when its credit is), and open labels
-    are re-stamped at as_of with censored_at = as_of (as in the contract fixtures).
+    are re-stamped at cut with censored_at = the ledger-complete-through watermark
+    (complete_through). The bank-reported balance at cut is the true closing balance of
+    cut's date, from every transaction value-dated by then, reported or not.
     """
-    t0 = c.as_of_date
-    obs_txns = all_txns.filter(pl.col("known_at") <= c.as_of)
+    cut = cut or c.as_of
+    t0 = cut.date()
+    obs_txns = all_txns.filter(pl.col("known_at") <= cut)
+    watermark = complete_through(obs_txns, cut)
     known_at = dict(zip(obs_txns["txn_uid"], obs_txns["known_at"]))
     pays = pay_df.filter(pl.col("txn_uid").is_in(list(known_at))).with_columns(
         pl.col("txn_uid").replace_strict(known_at, return_dtype=pl.Datetime("us", "UTC")).alias("known_at")
@@ -601,21 +631,22 @@ def _contract_tables(c: WorldConfig, all_txns: pl.DataFrame, pay_df: pl.DataFram
                       "settlement_kind": ("treds_discount" if treds else "buyer") if paid else None,
                       "censored_at": p["value_date"] if treds else (None if paid else k.date()), "known_at": k}
             out_rows.append(latest)
-        if latest["paid_date"] is None and latest["known_at"] < c.as_of:
-            out_rows.append({**latest, "censored_at": t0, "known_at": c.as_of})
+        if latest["paid_date"] is None and latest["known_at"] < cut:
+            out_rows.append({**latest, "censored_at": watermark, "known_at": cut})
 
     bal = _balances(obs_txns, c, opening, t0)
     ka = obs_txns.sort("value_date").group_by("value_date", maintain_order=True).agg(pl.col("known_at").max())
     bal = bal.join(ka.rename({"value_date": "date"}), on="date", how="left").sort("date").with_columns(
         pl.col("known_at").cum_max().fill_null(_utc_midnight(c.start - timedelta(days=1))))
     bal = bal.with_columns(  # keep (date, known_at) unique against the bank-reported row below
-        pl.when(pl.col("known_at") == c.as_of).then(pl.col("known_at") - timedelta(microseconds=1))
+        pl.when(pl.col("known_at") == cut).then(pl.col("known_at") - timedelta(microseconds=1))
         .otherwise(pl.col("known_at")).alias("known_at"),
         pl.lit("reconstructed").alias("balance_source"))
     if c.bank_reported_balance:
         bank = pl.DataFrame({"tenant_id": [c.tenant_id], "account_id": [c.account_id], "date": [t0],
-                             "closing_paise": [c.as_of_balance_paise], "continuity_ok": [None],
-                             "balance_source": ["bank_reported"], "known_at": [c.as_of]})
+                             "closing_paise": [opening + int(all_txns.filter(pl.col("value_date") <= t0)
+                                                             ["amount_paise"].sum())],
+                             "continuity_ok": [None], "balance_source": ["bank_reported"], "known_at": [cut]})
         bal = pl.concat([bal.select(bank.columns), bank.cast(bal.select(bank.columns).schema)])
 
     def frame(table: str, rows) -> pl.DataFrame:

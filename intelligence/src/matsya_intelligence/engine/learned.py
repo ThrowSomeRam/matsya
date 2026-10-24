@@ -3,8 +3,9 @@
 Input is contract tables (generator worlds or Track A's, see io.source); the
 adapters (io.adapters) turn them into each component's inputs. The opening
 balance is the latest ledger.balances row known by as_of (bank_reported when
-the AA summary balance is the latest), and open invoices are known unpaid
-through as_of itself, because labels are as-of reads (known_at <= as_of).
+the AA summary balance is the latest). Labels and open-invoice survival are cut
+at the ledger-complete-through watermark. Snapshot IDs hash the as-of view the
+components read, so two table histories with the same view give the same run.
 
 Payment-timing model -> posterior draws and open invoices; sales forecaster ->
 future invoices and purchases (with a persistent demand level per path);
@@ -110,7 +111,8 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
     buyer_ids = buyers["buyer_id"].to_list()
     bidx = {b: i for i, b in enumerate(buyer_ids)}
 
-    tm = fit_timing(out, inv, buyers, as_of, run_id=run_id, type_defaults=timing_priors, hierarchical=timing_hierarchical)
+    through = obs["complete_through"]  # labels and survival are cut at the watermark
+    tm = fit_timing(out, inv, buyers, through, run_id=run_id, type_defaults=timing_priors, hierarchical=timing_hierarchical)
     timing = TimingDraws(p_early=[tm.posteriors[b].p_early for b in buyer_ids],
                          p=[tm.posteriors[b].p for b in buyer_ids], pi=[tm.posteriors[b].pi for b in buyer_ids])
 
@@ -181,11 +183,13 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         tenant_id=tenant, as_of=as_of, opening_balance_paise=obs["opening_balance"]["closing_paise"],
         threshold_paise=threshold_paise, buyer_ids=buyer_ids, timing=timing,
         weekday_probs=weekday_probs(out, buyer_ids), open_invoices=open_inv,
-        survival_through_day=0, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
+        survival_through_day=(through - as_of).days, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
         gst_due_days=gst_days, gst_history_net=known, gst_carry_in=carry,
         unscheduled=bootstrap_unscheduled(txns, categories, as_of, full=full_unscheduled), shift_sampler=shock_sampler,
         model_versions={"payment_timing": "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1",
                         "obligations_detector": "v1", "unscheduled": "bootstrap-8w-v0"},
-        input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(tables.items())],
+        input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(obs.items()) if isinstance(v, pl.DataFrame)]
+        + [f"opening_balance:{obs['opening_balance']['closing_paise']}@{obs['opening_balance']['date']}",
+           f"complete_through:{through}"],
         features=features,
     )

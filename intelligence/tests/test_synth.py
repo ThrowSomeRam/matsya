@@ -65,7 +65,10 @@ def test_open_invoices_are_censored(world):
     out = adapters.outcomes(observed, truth.config.as_of)
     assert out.filter(pl.col("paid_date").is_null() & pl.col("censored_at").is_null()).height == 0
     assert out.filter(pl.col("paid_date").is_not_null() & pl.col("censored_at").is_not_null()).height == 0
-    assert (out.filter(pl.col("censored_at").is_not_null())["censored_at"] == truth.config.as_of_date).all()
+    # Open labels are censored at the ledger-complete-through watermark, before as_of.
+    wm = adapters.ledger_complete_through(observed, truth.config.as_of)
+    assert wm < truth.config.as_of_date
+    assert (out.filter(pl.col("censored_at").is_not_null())["censored_at"] <= wm).all()
 
 
 @pytest.mark.parametrize("which", ["observed", "truth"])

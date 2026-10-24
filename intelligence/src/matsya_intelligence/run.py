@@ -23,7 +23,8 @@ from matsya_intelligence.io.source import ROOT, Source, load, load_config
 
 
 def run_tenant(tables: dict[str, pl.DataFrame], tenant_id: str, as_of: date | datetime, source: str,
-               n_paths: int = 10_000) -> dict[str, pl.DataFrame]:
+               n_paths: int = 10_000, return_inputs: bool = False):
+    """Every output table for one tenant; with return_inputs, (tables, EngineInputs)."""
     t = adapters.for_tenant(tables, tenant_id)
     day = as_of.date() if isinstance(as_of, datetime) else as_of
     run_id = f"{source}:{tenant_id}:{day.isoformat()}"
@@ -32,7 +33,8 @@ def run_tenant(tables: dict[str, pl.DataFrame], tenant_id: str, as_of: date | da
     cats = Categoriser().fit(txns, overrides).predict(txns, overrides)
     inp = build_learned_inputs(t, cats.select("txn_uid", "category"), day, run_id)
     res = run_engine(inp, run_id, n_paths)
-    return {"features.txn_category": cats, **inp.features, **res.contract_tables()}
+    out = {"features.txn_category": cats, **inp.features, **res.contract_tables()}
+    return (out, inp) if return_inputs else out
 
 
 def run_all(src: Source, n_paths: int = 10_000) -> dict[str, pl.DataFrame]:

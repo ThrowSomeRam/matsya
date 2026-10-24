@@ -13,3 +13,7 @@ Inputs come from `config/data_source.yaml`: `DATA_SOURCE: synth` (a generator wo
 (Parquet named `<namespace>.<table>.parquet`); `MATSYA_DATA_SOURCE` overrides it. A generator world is
 published for Track A with `synth.export.write_contract_parquet(world, out_dir)` (truth tables in
 `out_dir/truth/`).
+
+Live-ish demo and learning-curve benchmark: `uv run python -m matsya_intelligence.synth.replay --days 30
+--paths demo --out data/replay` steps as_of forward one day at a time through a generator world, reveals what
+arrived, reruns the pipeline and scores each day's forecast against what happened.
