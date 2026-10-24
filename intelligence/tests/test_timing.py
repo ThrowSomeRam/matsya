@@ -5,7 +5,8 @@ import numpy as np
 import polars as pl
 import pytest
 
-from matsya_intelligence.io.types import validate
+from matsya_contracts.validate import validate
+from matsya_intelligence.io.adapters import track_b_inputs
 from matsya_intelligence.synth import WorldConfig, generate_world
 from matsya_intelligence.timing import TimingPrior, conjugate_update, fit_timing, gibbs, p_dead_given_open, predict_open
 from matsya_intelligence.timing.evaluate import benchmark, recovery, rhat_check
@@ -137,11 +138,12 @@ def test_one_buyer_update_under_10ms():
 
 
 def test_fit_and_predict_on_world_is_reproducible():
-    obs, _ = generate_world(WorldConfig(), past_seed=2, future_seed=0)
+    tables, _ = generate_world(WorldConfig(), past_seed=2, future_seed=0)
+    obs = track_b_inputs(tables, WorldConfig().as_of)
     cfg = WorldConfig()
     a = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], cfg.as_of_date, run_id="r1").predict(13)
     b = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], cfg.as_of_date, run_id="r1").predict(13)
-    validate(a, "InvoiceTiming")
+    validate(a, "features.invoice_timing")
     assert a.equals(b)
     sums = a.group_by("invoice_id").agg(pl.col("p_paid").sum() + pl.col("p_never").first() + pl.col("p_beyond").first())
     assert (sums["p_paid"] - 1).abs().max() < 1e-9

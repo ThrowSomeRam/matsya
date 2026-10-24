@@ -33,7 +33,7 @@ class BehaviourChange:
 
 @dataclass(frozen=True)
 class WorldConfig:
-    tenant_id: str = "t_synth"
+    tenant_id: str = "5f0c6a1e-2b7d-4c3a-9e8f-1a2b3c4d5e6f"  # UUIDv4, as the contract requires
     account_id: str = "acc_synth"
     start: date = date(2025, 4, 1)
     as_of: datetime = datetime(2026, 3, 31, 18, 0, tzinfo=timezone.utc)
@@ -75,6 +75,16 @@ class WorldConfig:
     gst_rate: float = 0.18
     part_payment_prob: float = 0.10
     has_irn: bool = True  # supplier above the Rs 5 crore e-invoicing threshold
+    # Share of invoices whose terms the platform could not read (terms_source unknown:
+    # terms_days null, due date written as issue + 45). True terms still drive payment.
+    terms_unknown_share: float = 0.0
+    # TReDS: a CPSE invoice is discounted with this chance, 2-7 days after issue; the
+    # financier pays (gross - TDS) x (1 - treds_fee) and the buyer's payment never reaches
+    # the supplier. 0 keeps every other draw unchanged.
+    treds_discount_prob: float = 0.0
+    treds_fee: float = 0.015
+    # The AA account summary's balance at fetch time, as a bank_reported row in ledger.balances.
+    bank_reported_balance: bool = True
 
     # Purchases: each order is bought on its order date for purchase_ratio x
     # gross; the invoice is issued purchase_lag_days (+- jitter) later.

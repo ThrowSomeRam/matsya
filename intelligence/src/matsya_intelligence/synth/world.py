@@ -27,8 +27,11 @@ import numpy as np
 import polars as pl
 import yaml
 
+from matsya_contracts import ids
+from matsya_contracts.validate import schema
+
 from matsya_intelligence.categories import CATEGORIES
-from matsya_intelligence.io.types import BALANCE, BUYER, INVOICE, INVOICE_OUTCOME, OBLIGATION, TXN
+from matsya_intelligence.io.types import OBLIGATION, TXN
 from matsya_intelligence.seeding import rng_for
 from matsya_intelligence.synth import narration as nr
 from matsya_intelligence.synth.config import WorldConfig
@@ -55,6 +58,8 @@ PROCESS_OF_CATEGORY = {
 assert set(PROCESS_OF_CATEGORY) == set(CATEGORIES)
 
 CONSTANTS_PATH = Path(__file__).resolve().parents[3] / "config" / "track_b_constants.yaml"
+TRUTH_BALANCE = {"tenant_id": pl.String, "account_id": pl.String, "date": pl.Date, "closing_paise": pl.Int64,
+                 "continuity_ok": pl.Boolean}
 PREROLL_WEEKS = 3  # orders start this early so the first weeks have their invoices
 REJECTION_CAP = 100_000
 
@@ -106,6 +111,17 @@ def _prev_month(y: int, m: int) -> tuple[int, int]:
 
 def _irn(invoice_id: str) -> str:
     return hashlib.sha256(invoice_id.encode()).hexdigest()
+
+
+def synth_tenant_id(name: str) -> str:
+    """A deterministic UUIDv4-shaped tenant_id for a synthetic tenant name."""
+    h = hashlib.sha256(name.encode()).hexdigest()
+    return f"{h[:8]}-{h[8:12]}-4{h[13:16]}-{'89ab'[int(h[16], 16) % 4]}{h[17:20]}-{h[20:32]}"
+
+
+def fiscal_year(d: date) -> str:
+    y = d.year if d.month >= 4 else d.year - 1
+    return f"{y}-{(y + 1) % 100:02d}"
 
 
 def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tuple[dict[str, pl.DataFrame], Truth]:
@@ -173,7 +189,7 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         tp = c.type_priors[btype]
         pan = nr.make_pan(r)
         buyers.append({
-            "buyer_id": f"B{i:03d}",
+            "buyer_id": ids.buyer_id(pan),
             "index": i,
             "type": btype,
             "sector": c.sectors[sector_idx],
@@ -261,8 +277,15 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
             "tds_paise": int(round(o["buyer"]["tds_rate"] * (o["gross"] - gst))),
         })
 
+    # Terms the platform could not read (own stream, drawn only when the knob is on).
+    if c.terms_unknown_share > 0:
+        r_terms = rng_for(past_id, "terms_source")
+        for inv in invoices:
+            inv["terms_unknown"] = bool(r_terms.random() < c.terms_unknown_share)
+
     # Payment timing: weekly hazard p shifted by the sector shock, cure fraction pi.
     rp, rf = streams("payments")
+    tp_past, tp_future = streams("treds")
     bc = c.behaviour_change
     exact = c.lateness == "geometric" and not c.month_end_clustering
     if c.lateness not in ("geometric", "lognormal"):
@@ -325,6 +348,22 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
                     never, pay_week, first = True, None, None
 
         inv.update(never_paid=never, pay_week=pay_week)
+        discount = None
+        if c.treds_discount_prob > 0 and b["type"] == "cpse":
+            # Decided at issue, so the past stream fixes it for invoices issued by as_of
+            # even when the discount date falls after as_of (like a purchase's invoice).
+            r_t = tp_past if issue <= t0 else tp_future
+            if r_t.random() < c.treds_discount_prob:
+                discount = issue + timedelta(days=int(r_t.integers(2, 8)))
+        if discount is not None:
+            net = inv["gross_paise"] - inv["tds_paise"]
+            cash = int(round(net * (1 - c.treds_fee)))
+            inv.update(first_paid_date=discount, paid_date=discount, treds_discount_date=discount)
+            idx = add_txn(discount, cash, "customer_receipt",
+                          nr.credit_via_treds(rn(discount), st, discount, inv["invoice_id"].replace("-", " ")))
+            payments.append({"invoice_id": inv["invoice_id"], "part": 1, "txn_idx": idx, "value_date": discount,
+                             "amount_paise": cash, "tds_paise": inv["tds_paise"], "payer_kind": "treds_financier"})
+            continue
         if first is None:
             continue
         g = rp if first <= t0 else rf
@@ -349,7 +388,7 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
                 rail_narr = nr.credit_from_company(g, st, b["name"], d, ref, amount)
             idx = add_txn(d, amount, "customer_receipt", rail_narr)
             payments.append({"invoice_id": inv["invoice_id"], "part": part_no, "txn_idx": idx,
-                             "value_date": d, "amount_paise": amount, "tds_paise": tds})
+                             "value_date": d, "amount_paise": amount, "tds_paise": tds, "payer_kind": "buyer"})
 
     # Scheduled outflows. Each is both a txn and a truth obligation.
     obligations = []
@@ -439,7 +478,8 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
     for n, i in enumerate(order):
         t = txns[i]
         rk = rk_past if t["value_date"] <= t0 else rk_future
-        uid_of[i] = f"{c.tenant_id}-T{n:07d}"
+        uid_of[i] = ids.txn_uid(c.tenant_id, c.account_id,
+                                ids.txn_key_bank_id(f"SYN{n:07d}", t["value_date"], t["amount_paise"]))
         known_at = datetime.combine(t["value_date"], time(), tzinfo=timezone.utc) + timedelta(
             days=int(rk.integers(3)), seconds=int(rk.integers(6 * 3600, 23 * 3600)))
         rows.append({
@@ -452,83 +492,42 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
     all_txns = pl.DataFrame(rows, schema={**TXN, "category": pl.String, "rail": pl.String, "process": pl.String})
     opening = c.as_of_balance_paise - int(all_txns.filter(pl.col("value_date") <= t0)["amount_paise"].sum())
 
+    # Contract invoice ids; the generator's invoice number stays in truth and narrations.
+    id_of = {inv["invoice_id"]: ids.invoice_id(c.tenant_id, supplier_gstin, inv["invoice_id"],
+                                               fiscal_year(inv["issue_date"])) for inv in invoices}
+    remap = pl.col("invoice_id").replace_strict(id_of)
+
     pay_df = pl.DataFrame(
         [{**p, "txn_uid": uid_of.get(p["txn_idx"])} for p in payments],
         schema={"invoice_id": pl.String, "part": pl.Int32, "txn_idx": pl.Int64, "value_date": pl.Date,
-                "amount_paise": pl.Int64, "tds_paise": pl.Int64, "txn_uid": pl.String},
-    ).drop("txn_idx")
+                "amount_paise": pl.Int64, "tds_paise": pl.Int64, "payer_kind": pl.String, "txn_uid": pl.String},
+    ).drop("txn_idx").with_columns(remap)
 
     purchases_df = pl.DataFrame(
         [{**p, "txn_uid": uid_of.get(p["txn_idx"])} for p in purchases],
         schema={"invoice_id": pl.String, "txn_idx": pl.Int64, "value_date": pl.Date,
                 "amount_paise": pl.Int64, "lag_days": pl.Int32, "txn_uid": pl.String},
-    ).drop("txn_idx").filter(pl.col("value_date").is_between(c.start, end))
+    ).drop("txn_idx").filter(pl.col("value_date").is_between(c.start, end)).with_columns(remap)
 
     inv_truth = pl.DataFrame(
         [{k: v for k, v in inv.items() if k != "buyer"} | {"buyer_id": inv["buyer"]["buyer_id"]} for inv in invoices],
         schema={"invoice_id": pl.String, "issue_date": pl.Date, "due_date": pl.Date, "terms_days": pl.Int32,
                 "gross_paise": pl.Int64, "gst_paise": pl.Int64, "tds_paise": pl.Int64, "never_paid": pl.Boolean,
                 "pay_week": pl.Int32, "first_paid_date": pl.Date, "paid_date": pl.Date, "part_paid": pl.Boolean,
-                "buyer_id": pl.String},
-    ).filter(pl.col("issue_date").is_between(c.start, end))
+                "terms_unknown": pl.Boolean, "treds_discount_date": pl.Date, "buyer_id": pl.String},
+    ).filter(pl.col("issue_date").is_between(c.start, end)).with_columns(
+        pl.col("invoice_id").alias("invoice_no"), remap, pl.col("terms_unknown").fill_null(False))
 
     buyers_truth = pl.DataFrame(
         [{k: b[k] for k in ("buyer_id", "type", "sector", "p", "p_early", "pi", "loading", "mix_share", "tds_rate")}
          for b in buyers]
-    )
-    buyers_obs = pl.DataFrame(
-        [{"tenant_id": c.tenant_id, **{k: b[k] for k in ("buyer_id", "gstin", "pan", "name", "type", "sector")}}
-         for b in buyers],
-        schema=BUYER,
     )
 
     obligations_df = pl.DataFrame(
         [{"tenant_id": c.tenant_id, **o} for o in obligations], schema=OBLIGATION,
     )
 
-    # As-of cut.
-    obs_txns = all_txns.filter(pl.col("known_at") <= c.as_of)
-    observed_uids = set(obs_txns["txn_uid"])
-
-    obs_pay = pay_df.filter(pl.col("txn_uid").is_in(observed_uids)).group_by("invoice_id").agg(
-        pl.col("amount_paise").sum().alias("received"), pl.col("value_date").max().alias("last_paid"))
-    inv_obs = (
-        inv_truth.filter(pl.col("issue_date") <= t0)
-        .join(obs_pay, on="invoice_id", how="left")
-        .with_columns(
-            pl.col("received").fill_null(0),
-            (pl.col("gross_paise") - pl.col("tds_paise")).alias("net"),
-        )
-        .with_columns(
-            pl.when(pl.col("received") >= pl.col("net")).then(pl.lit("paid"))
-            .when(pl.col("received") > 0).then(pl.lit("part_paid"))
-            .otherwise(pl.lit("open")).alias("status"),
-        )
-    )
-    invoices_obs = inv_obs.select(
-        pl.lit(c.tenant_id).alias("tenant_id"),
-        "invoice_id",
-        (pl.col("invoice_id").map_elements(_irn, return_dtype=pl.String) if c.has_irn
-         else pl.lit(None, pl.String)).alias("irn"),
-        "buyer_id", "issue_date", "due_date", "terms_days", "gross_paise", "gst_paise",
-        pl.col("tds_paise").alias("expected_tds_paise"),
-        "status",
-    ).cast(INVOICE)
-    outcomes_obs = inv_obs.select(
-        pl.lit(c.tenant_id).alias("tenant_id"),
-        "invoice_id", "buyer_id", "issue_date",
-        pl.when(pl.col("status") == "paid").then(pl.col("last_paid")).alias("paid_date"),
-        (pl.col("received") / pl.col("net")).clip(0.0, 1.0).alias("paid_fraction"),
-        pl.when(pl.col("status") != "paid").then(pl.lit(t0)).alias("censored_at"),
-    ).cast(INVOICE_OUTCOME)
-
-    observed = {
-        "transactions": obs_txns.select(list(TXN)),
-        "balances": _balances(obs_txns, c, opening, t0),
-        "invoices": invoices_obs,
-        "invoice_outcomes": outcomes_obs,
-        "buyers": buyers_obs,
-    }
+    observed = _contract_tables(c, all_txns, pay_df, inv_truth, buyers, opening)
     truth = Truth(
         config=c, past_seed=past_seed, future_seed=future_seed, opening_balance_paise=opening,
         sector_shocks=shocks, weekly_orders=pl.DataFrame(weekly), buyers=buyers_truth,
@@ -536,6 +535,110 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         balances=_balances(all_txns, c, opening, end), obligations=obligations_df,
     )
     return observed, truth
+
+
+def _utc_midnight(d: date) -> datetime:
+    return datetime.combine(d, time(), tzinfo=timezone.utc)
+
+
+def _contract_tables(c: WorldConfig, all_txns: pl.DataFrame, pay_df: pl.DataFrame, inv_truth: pl.DataFrame,
+                     buyers: list[dict], opening: int) -> dict[str, pl.DataFrame]:
+    """The tables Track A would hold at c.as_of, in contract shape: only rows with known_at <= as_of.
+
+    Append-only versions: an invoice and its label get a row when issued (known at midnight UTC
+    on the issue date, before any credit for it), one per observed payment (known when its credit is), and open labels
+    are re-stamped at as_of with censored_at = as_of (as in the contract fixtures).
+    """
+    t0 = c.as_of_date
+    obs_txns = all_txns.filter(pl.col("known_at") <= c.as_of)
+    known_at = dict(zip(obs_txns["txn_uid"], obs_txns["known_at"]))
+    pays = pay_df.filter(pl.col("txn_uid").is_in(list(known_at))).with_columns(
+        pl.col("txn_uid").replace_strict(known_at, return_dtype=pl.Datetime("us", "UTC")).alias("known_at")
+    ).sort("known_at")
+    pays_by_inv: dict[str, list[dict]] = {}
+    for r in pays.iter_rows(named=True):
+        pays_by_inv.setdefault(r["invoice_id"], []).append(r)
+    rate_of = {b["buyer_id"]: b["tds_rate"] for b in buyers}
+
+    inv_rows, out_rows, match_rows = [], [], []
+    for inv in inv_truth.filter(pl.col("issue_date") <= t0).sort("issue_date", "invoice_id").iter_rows(named=True):
+        unknown = inv["terms_unknown"]
+        base = {
+            "tenant_id": c.tenant_id, "invoice_id": inv["invoice_id"],
+            "irn": _irn(inv["invoice_no"]) if c.has_irn else None, "buyer_id": inv["buyer_id"],
+            "issue_date": inv["issue_date"],
+            "due_date": inv["issue_date"] + timedelta(days=45) if unknown else inv["due_date"],
+            "terms_days": None if unknown else inv["terms_days"],
+            "terms_source": "unknown" if unknown else "document_terms",
+            "gross_paise": inv["gross_paise"], "gst_paise": inv["gst_paise"],
+            "expected_tds_paise": inv["tds_paise"],
+        }
+        label = {"tenant_id": c.tenant_id, "invoice_id": inv["invoice_id"], "buyer_id": inv["buyer_id"],
+                 "issue_date": inv["issue_date"]}
+        issued = _utc_midnight(inv["issue_date"])
+        inv_rows.append({**base, "status": "open", "known_at": issued})
+        out_rows.append({**label, "first_paid_date": None, "paid_date": None, "paid_fraction": 0.0,
+                         "settlement_kind": None, "censored_at": inv["issue_date"], "known_at": issued})
+        net = inv["gross_paise"] - inv["tds_paise"]
+        received, settled, first = 0, 0, None
+        latest = out_rows[-1]
+        for p in pays_by_inv.get(inv["invoice_id"], []):
+            treds = p["payer_kind"] == "treds_financier"
+            received += p["amount_paise"]
+            settled += p["amount_paise"] + p["tds_paise"]
+            first = first or p["value_date"]
+            paid = treds or received >= net
+            k = p["known_at"]
+            match_rows.append({
+                "tenant_id": c.tenant_id, "txn_uid": p["txn_uid"], "invoice_id": inv["invoice_id"],
+                "allocated_paise": p["amount_paise"], "tds_inferred_paise": p["tds_paise"], "confidence": 1.0,
+                "method": "reference", "payer_kind": p["payer_kind"], "tds_rate": rate_of[inv["buyer_id"]],
+                "tds_basis": "taxable_value", "known_at": k,
+            })
+            inv_rows.append({**base, "status": "paid" if paid else "part_paid", "known_at": k})
+            latest = {**label, "first_paid_date": first, "paid_date": p["value_date"] if paid else None,
+                      "paid_fraction": 1.0 if treds else min(settled / inv["gross_paise"], 1.0),
+                      "settlement_kind": ("treds_discount" if treds else "buyer") if paid else None,
+                      "censored_at": p["value_date"] if treds else (None if paid else k.date()), "known_at": k}
+            out_rows.append(latest)
+        if latest["paid_date"] is None and latest["known_at"] < c.as_of:
+            out_rows.append({**latest, "censored_at": t0, "known_at": c.as_of})
+
+    bal = _balances(obs_txns, c, opening, t0)
+    ka = obs_txns.sort("value_date").group_by("value_date", maintain_order=True).agg(pl.col("known_at").max())
+    bal = bal.join(ka.rename({"value_date": "date"}), on="date", how="left").sort("date").with_columns(
+        pl.col("known_at").cum_max().fill_null(_utc_midnight(c.start - timedelta(days=1))))
+    bal = bal.with_columns(  # keep (date, known_at) unique against the bank-reported row below
+        pl.when(pl.col("known_at") == c.as_of).then(pl.col("known_at") - timedelta(microseconds=1))
+        .otherwise(pl.col("known_at")).alias("known_at"),
+        pl.lit("reconstructed").alias("balance_source"))
+    if c.bank_reported_balance:
+        bank = pl.DataFrame({"tenant_id": [c.tenant_id], "account_id": [c.account_id], "date": [t0],
+                             "closing_paise": [c.as_of_balance_paise], "continuity_ok": [None],
+                             "balance_source": ["bank_reported"], "known_at": [c.as_of]})
+        bal = pl.concat([bal.select(bank.columns), bank.cast(bal.select(bank.columns).schema)])
+
+    def frame(table: str, rows) -> pl.DataFrame:
+        sch = schema(table)
+        df = rows if isinstance(rows, pl.DataFrame) else pl.DataFrame(rows, schema=sch, orient="row")
+        return df.select(list(sch)).cast(sch)
+
+    return {
+        "ledger.transactions": frame("ledger.transactions", obs_txns),
+        "ledger.balances": frame("ledger.balances", bal),
+        "ledger.invoices": frame("ledger.invoices", inv_rows),
+        "ledger.matches": frame("ledger.matches", match_rows),
+        "labels.invoice_outcomes": frame("labels.invoice_outcomes", out_rows),
+        "labels.txn_corrections": frame("labels.txn_corrections", []),  # owner corrections: none in synth
+        "ref.buyers": frame("ref.buyers", [
+            {"buyer_id": b["buyer_id"], "id_basis": "pan", "pan": b["pan"], "gstin": b["gstin"], "name": b["name"],
+             "type": b["type"], "sector": b["sector"], "sector_source": "cin_nic" if b["type"] == "unlisted" else "exchange",
+             "treds_mandated": True if b["type"] == "cpse" else None}  # VERIFY: CPSE TReDS mandate
+            for b in buyers]),
+        "ref.tenant_buyers": frame("ref.tenant_buyers", [
+            {"tenant_id": c.tenant_id, "buyer_id": b["buyer_id"], "display_name": None, "owner_sector": None,
+             "written_agreement": None, "treds_onboarded": None} for b in buyers]),
+    }
 
 
 def _conditional_geometric(r, issue: date, t0: date, end: date, pi: float, hazard):
@@ -588,7 +691,7 @@ def _balances(txns: pl.DataFrame, c: WorldConfig, opening: int, last: date) -> p
             (pl.lit(opening, pl.Int64) + pl.col("flow").cum_sum()).alias("closing_paise"),
             pl.lit(True).alias("continuity_ok"),
         )
-        .cast(BALANCE)
+        .cast(TRUTH_BALANCE)
     )
 
 

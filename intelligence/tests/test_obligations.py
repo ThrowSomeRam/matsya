@@ -4,9 +4,10 @@ import polars as pl
 import pytest
 
 from matsya_intelligence.categorise import Categoriser
-from matsya_intelligence.io.types import validate
+from matsya_contracts.validate import validate
 from matsya_intelligence.obligations import detect_obligations, detect_recurrences, statutory_dates
 from matsya_intelligence.obligations.detector import EXCLUDED_CATEGORIES, RECURRING_CATEGORIES, STATUTORY_KINDS
+from matsya_intelligence.io.adapters import track_b_inputs
 from matsya_intelligence.synth import WorldConfig, generate_world
 
 HORIZON = 90
@@ -49,11 +50,12 @@ def test_recurrence_periods_and_rejection():
 
 def _score(seed: int, use_categoriser: Categoriser | None = None):
     cfg = WorldConfig()
-    obs, truth = generate_world(cfg, past_seed=seed, future_seed=0)
+    tables, truth = generate_world(cfg, past_seed=seed, future_seed=0)
+    obs = track_b_inputs(tables, cfg.as_of)
     cats = (use_categoriser.predict(obs["transactions"]) if use_categoriser
             else truth.transactions.select("txn_uid", "category"))
     det = detect_obligations(obs["transactions"], cats, cfg.as_of_date, HORIZON)
-    validate(det, "Obligation")
+    validate(det, "features.obligations")
     a = cfg.as_of_date
     tr = truth.obligations.filter(pl.col("due_date").is_between(a + timedelta(days=1), a + timedelta(days=HORIZON)))
     key = lambda df: set(zip(df["kind"], df["due_date"]))
@@ -91,7 +93,8 @@ def test_no_double_counting_supplier_payments():
     used = set(RECURRING_CATEGORIES) | {c for c, _ in STATUTORY_KINDS.values()}
     assert not used & set(EXCLUDED_CATEGORIES)
     # A perfectly regular monthly supplier payment is still not an obligation.
-    obs, truth = generate_world(WorldConfig(), past_seed=1, future_seed=0)
+    tables, truth = generate_world(WorldConfig(), past_seed=1, future_seed=0)
+    obs = track_b_inputs(tables, WorldConfig().as_of)
     txns = obs["transactions"]
     a = WorldConfig().as_of_date
     fake = pl.DataFrame([{

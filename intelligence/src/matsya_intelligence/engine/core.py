@@ -17,6 +17,7 @@ Per path:
   5. fixed obligations, unscheduled flows, overrides; cumulative balance.
 """
 
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -98,6 +99,7 @@ class EngineInputs:
     shift_sampler: Callable[[int, int, np.random.Generator], ShiftFn] | None = None  # per-run shock paths
     model_versions: dict = field(default_factory=dict)
     input_snapshot_ids: list[str] = field(default_factory=list)
+    features: dict[str, pl.DataFrame] = field(default_factory=dict)  # component outputs, contract tables
 
 
 def month_key(d: date) -> int:
@@ -216,8 +218,12 @@ class EngineResult:
     balance: np.ndarray  # (n_paths, horizon + 1) int64, column 0 = opening
     component_totals: dict[str, np.ndarray]  # per-path totals by component
     flows: dict[str, np.ndarray] | None  # (n_paths, horizon + 1) per component, when keep_flows
-    balance_quantiles: pl.DataFrame
-    shortfall: pl.DataFrame
+    balance_quantiles: pl.DataFrame  # forecast.balance_quantiles
+    shortfall: pl.DataFrame  # forecast.shortfall
+
+    def contract_tables(self) -> dict[str, pl.DataFrame]:
+        return {"forecast.runs": run_table(self.run), "forecast.balance_quantiles": self.balance_quantiles,
+                "forecast.shortfall": self.shortfall}
 
 
 def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: int = 90,
@@ -315,21 +321,40 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
         "n_paths": n_paths,
         "horizon_days": H,
     }
-    bq, sf, runway = summarise(balance, inp.threshold_paise, inp.as_of, run_id)
+    bq, sf, runway = summarise(balance, inp.threshold_paise, inp.as_of, run_id, inp.tenant_id)
     run["runway_days"] = runway
+    run["threshold_paise"] = inp.threshold_paise
     return EngineResult(run=run, balance=balance,
                         component_totals={k: v.sum(axis=1) for k, v in flows.items()},
                         flows=flows if keep_flows else None,
                         balance_quantiles=bq, shortfall=sf)
 
 
-def summarise(balance: np.ndarray, threshold: int, as_of: date, run_id: str):
-    """Fan-chart quantiles, p_short, expected shortfall and runway (docs/track-b-decisions.md)."""
+def run_table(run: dict) -> pl.DataFrame:
+    """The forecast.runs row for a run record."""
+    from matsya_contracts.validate import schema
+
+    return pl.DataFrame([{
+        "tenant_id": run["tenant_id"], "run_id": run["run_id"], "as_of": run["as_of"],
+        "input_snapshot_ids": run["input_snapshot_ids"],
+        "model_versions_json": json.dumps(run["model_versions"], sort_keys=True), "seed": run["seed"],
+        "seed_streams_json": json.dumps(run["seed_streams"], sort_keys=True), "scenario_id": run["scenario_id"],
+        "threshold_paise": run["threshold_paise"], "overrides_json": run["overrides_json"],
+        "overrides_hash": hashlib.sha256(run["overrides_json"].encode()).hexdigest(),
+        "n_paths": run["n_paths"], "horizon_days": run["horizon_days"], "runway_days": run["runway_days"],
+    }], schema=schema("forecast.runs"))
+
+
+def summarise(balance: np.ndarray, threshold: int, as_of: date, run_id: str, tenant_id: str):
+    """Fan-chart quantiles, p_short, expected shortfall and runway (docs/track-b-decisions.md).
+
+    Frames are forecast.balance_quantiles and forecast.shortfall in contract shape.
+    """
     b = balance[:, 1:]
     H = b.shape[1]
     dates = [as_of + timedelta(days=d) for d in range(1, H + 1)]
     qs = np.quantile(b, [0.05, 0.25, 0.5, 0.75, 0.95], axis=0, method="lower").astype(np.int64)
-    bq = pl.DataFrame({"run_id": run_id, "date": dates, "q05": qs[0], "q25": qs[1], "q50": qs[2],
+    bq = pl.DataFrame({"tenant_id": tenant_id, "run_id": run_id, "date": dates, "q05": qs[0], "q25": qs[1], "q50": qs[2],
                        "q75": qs[3], "q95": qs[4]})
     running_min = np.minimum.accumulate(b, axis=1)
     short = running_min < threshold
@@ -337,10 +362,12 @@ def summarise(balance: np.ndarray, threshold: int, as_of: date, run_id: str):
     depth = np.where(short, threshold - running_min, 0)
     with np.errstate(invalid="ignore", divide="ignore"):
         cond = np.where(short.any(axis=0), depth.sum(axis=0) / np.maximum(short.sum(axis=0), 1), 0.0)
+    cond = np.round(cond).astype(np.int64)
     sf = pl.DataFrame({
-        "run_id": run_id, "date": dates, "day": np.arange(1, H + 1, dtype=np.int32), "p_short": p_short,
-        "expected_shortfall_paise": np.round(cond).astype(np.int64),  # conditional, as in the handbook
-        "es_unconditional_paise": np.round(p_short * cond).astype(np.int64),
+        "tenant_id": tenant_id, "run_id": run_id, "date": dates, "day": np.arange(1, H + 1, dtype=np.int32),
+        "p_short": p_short,
+        "expected_shortfall_cond_paise": cond,  # average depth over paths short by date
+        "expected_shortfall_uncond_paise": np.round(p_short * cond).astype(np.int64),
     })
     over = np.flatnonzero(p_short >= 0.5)
     runway = int(over[0] + 1) if over.size else None

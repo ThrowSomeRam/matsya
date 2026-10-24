@@ -4,8 +4,9 @@ import numpy as np
 import polars as pl
 import pytest
 
-from matsya_intelligence.io.types import validate
+from matsya_contracts.validate import validate
 from matsya_intelligence.sales import fit_sales, gst_by_month
+from matsya_intelligence.io.adapters import track_b_inputs
 from matsya_intelligence.synth import WorldConfig, generate_world
 
 # Weeks aligned with the generator's order weeks and a whole-week lag, so weekly
@@ -15,7 +16,8 @@ ALIGNED = dict(start=date(2026, 3, 31) - timedelta(weeks=570), demand_sigma=0.0,
 
 
 def _fit(cfg: WorldConfig, seed: int):
-    obs, truth = generate_world(cfg, past_seed=seed, future_seed=0)
+    tables, truth = generate_world(cfg, past_seed=seed, future_seed=0)
+    obs = track_b_inputs(tables, cfg.as_of)
     return fit_sales(obs["invoices"], obs["transactions"], truth.transactions.select("txn_uid", "category"),
                      cfg.as_of_date), truth
 
@@ -39,7 +41,7 @@ def test_recovers_ratio_and_lag_default_world():
         f, _ = _fit(cfg, s)
         assert abs(f.purchase_ratio - cfg.purchase_ratio) < 0.015
         assert abs(f.purchase_lag_days - cfg.purchase_lag_days) <= 1
-        validate(f.features(), "SalesProcess")
+        validate(f.contract_features(), "features.sales_process")
         assert abs(f.mix.sum() - 1) < 1e-12
 
 

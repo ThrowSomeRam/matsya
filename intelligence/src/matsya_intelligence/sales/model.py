@@ -44,6 +44,8 @@ from datetime import date, timedelta
 import numpy as np
 import polars as pl
 
+from matsya_contracts.enums import SalesParam
+
 from matsya_intelligence.io.types import SALES_PROCESS
 from matsya_intelligence.seeding import rng_for
 from matsya_intelligence.shocks.kalman import AR1Fit, kalman_filter
@@ -89,6 +91,12 @@ class SalesModel:
         ] + [("buyer_share", b, float(s)) for b, s in zip(self.buyer_ids, self.mix)]
         return pl.DataFrame(
             [(self.tenant_id, self.as_of, n, k, v) for n, k, v in rows], schema=SALES_PROCESS, orient="row")
+
+    def contract_features(self) -> pl.DataFrame:
+        """features.sales_process: only names in the contract's SalesParam enum. The AR(1) and
+        bootstrap-spread rows wait for an additive enum change (requested from Track A)."""
+        known = [m.value for m in SalesParam]
+        return self.features().filter(pl.col("name").is_in(known))
 
     def demand_levels(self, n_paths: int, rng: np.random.Generator) -> np.ndarray:
         s = self.level_sigma

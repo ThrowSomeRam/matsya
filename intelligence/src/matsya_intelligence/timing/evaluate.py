@@ -24,7 +24,9 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.seeding import rng_for
+from matsya_intelligence.io.adapters import track_b_inputs
 from matsya_intelligence.synth import WorldConfig, generate_world
+from matsya_intelligence.synth.world import synth_tenant_id
 from matsya_intelligence.timing.labels import timing_labels
 from matsya_intelligence.timing.model import TimingPrior, gibbs, split_rhat
 from matsya_intelligence.timing.pipeline import fit_timing, split_buyer
@@ -41,7 +43,8 @@ CAL_WEEKS = (4, 8, 12)
 
 def _buyer_data(cfg: WorldConfig, seeds):
     for s in seeds:
-        obs, truth = generate_world(cfg, past_seed=s, future_seed=0)
+        tables, truth = generate_world(cfg, past_seed=s, future_seed=0)
+        obs = track_b_inputs(tables, cfg.as_of)
         lab = timing_labels(obs["invoice_outcomes"], obs["invoices"], cfg.as_of_date)
         for b in truth.buyers.iter_rows(named=True):
             yield s, b, split_buyer(lab, b["buyer_id"])
@@ -107,7 +110,8 @@ def benchmark(seeds, cfg: WorldConfig | None = None, horizon: int = 13) -> dict:
     cfg = cfg or WorldConfig()
     model_dist, due_dist, outcomes = [], [], []
     for s in seeds:
-        obs, truth = generate_world(replace(cfg, tenant_id=f"t{s}"), past_seed=s, future_seed=0)
+        tables, truth = generate_world(replace(cfg, tenant_id=synth_tenant_id(f"t{s}")), past_seed=s, future_seed=0)
+        obs = track_b_inputs(tables, cfg.as_of)
         model = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], cfg.as_of_date, run_id=f"bench-{s}")
         pred = model.predict(horizon)
         inv = truth.invoices.select("invoice_id", "due_date", "paid_date")

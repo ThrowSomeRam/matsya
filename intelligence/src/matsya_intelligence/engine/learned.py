@@ -1,5 +1,11 @@
 """Build engine inputs from an as_of snapshot and the fitted components (learned mode).
 
+Input is contract tables (generator worlds or Track A's, see io.source); the
+adapters (io.adapters) turn them into each component's inputs. The opening
+balance is the latest ledger.balances row known by as_of (bank_reported when
+the AA summary balance is the latest), and open invoices are known unpaid
+through as_of itself, because labels are as-of reads (known_at <= as_of).
+
 Payment-timing model -> posterior draws and open invoices; sales forecaster ->
 future invoices and purchases (with a persistent demand level per path);
 obligations detector -> fixed obligations and GST dates; GST amounts per path
@@ -32,6 +38,7 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.engine.core import EngineInputs, Invoices, TimingDraws, month_key
+from matsya_intelligence.io.adapters import track_b_inputs
 from matsya_intelligence.obligations import detect_obligations
 from matsya_intelligence.sales import fit_sales
 from matsya_intelligence.shocks import base_chance, fit_sector_shocks
@@ -91,19 +98,19 @@ def bootstrap_unscheduled(txns: pl.DataFrame, categories: pl.DataFrame, as_of: d
     return sample
 
 
-def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame, as_of: date, run_id: str,
+def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFrame, as_of: date, run_id: str,
                          threshold_paise: int = 0, gst_rate: float = 0.18, horizon: int = 90,
-                         with_sales: bool = True, label_lag_days: int = 3, sales_uncertainty: bool = True,
+                         with_sales: bool = True, sales_uncertainty: bool = True,
                          sector_shocks: bool = True, demand_ar1: bool = True, full_unscheduled: bool = True,
                          naive_purchases: bool = False, timing_priors: dict | None = None,
                          timing_hierarchical: bool = True, shock_base: bool = True) -> EngineInputs:
+    obs = track_b_inputs(tables, as_of, gst_rate)
     inv, out, buyers, txns = obs["invoices"], obs["invoice_outcomes"], obs["buyers"], obs["transactions"]
-    tenant = inv["tenant_id"][0]
+    tenant = obs["tenant_id"]
     buyer_ids = buyers["buyer_id"].to_list()
     bidx = {b: i for i, b in enumerate(buyer_ids)}
 
-    tm = fit_timing(out, inv, buyers, as_of, run_id=run_id, label_lag_days=label_lag_days,
-                    type_defaults=timing_priors, hierarchical=timing_hierarchical)
+    tm = fit_timing(out, inv, buyers, as_of, run_id=run_id, type_defaults=timing_priors, hierarchical=timing_hierarchical)
     timing = TimingDraws(p_early=[tm.posteriors[b].p_early for b in buyer_ids],
                          p=[tm.posteriors[b].p for b in buyer_ids], pi=[tm.posteriors[b].pi for b in buyer_ids])
 
@@ -149,6 +156,9 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
         daily = int(round(abs(sp["amount_paise"].sum()) / span))
         fixed += [(d, daily) for d in range(1, horizon + 1)]
 
+    features = {"features.obligations": obligations, "features.invoice_timing": tm.predict((horizon + 6) // 7)}
+    if with_sales:
+        features["features.sales_process"] = sm.contract_features()
     shock_sampler = None
     if sector_shocks:
         means = {b: (float(tm.posteriors[b].p_early.mean()), float(tm.posteriors[b].p.mean()),
@@ -156,6 +166,7 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
         sector_of = dict(zip(buyers["buyer_id"], buyers["sector"]))
         shocks = fit_sector_shocks(tm.labels, means, sector_of, as_of)
         shock_sampler = shocks.shift_sampler([sector_of[b] for b in buyer_ids])
+        features["forecast.shock_state"] = shocks.state_table(tenant)
         var = [0.0 if not shock_base else shocks.stationary_var(sector_of[b]) for b in buyer_ids]
         timing = replace(timing, p_early_base=[base_chance(x, v) for x, v in zip(timing.p_early, var)],
                          p_base=[base_chance(x, v) for x, v in zip(timing.p, var)])
@@ -166,15 +177,15 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
     known, carry = gst_known(inv.with_columns((pl.col("gross_paise") - pl.col("gst_paise")).alias("taxable")),
                              supplier, gst_rate, first_base)
 
-    bal = obs["balances"].filter(pl.col("date") <= as_of).sort("date")
     return EngineInputs(
-        tenant_id=tenant, as_of=as_of, opening_balance_paise=int(bal["closing_paise"][-1]),
+        tenant_id=tenant, as_of=as_of, opening_balance_paise=obs["opening_balance"]["closing_paise"],
         threshold_paise=threshold_paise, buyer_ids=buyer_ids, timing=timing,
         weekday_probs=weekday_probs(out, buyer_ids), open_invoices=open_inv,
-        survival_through_day=-label_lag_days, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
+        survival_through_day=0, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
         gst_due_days=gst_days, gst_history_net=known, gst_carry_in=carry,
         unscheduled=bootstrap_unscheduled(txns, categories, as_of, full=full_unscheduled), shift_sampler=shock_sampler,
         model_versions={"payment_timing": "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1",
                         "obligations_detector": "v1", "unscheduled": "bootstrap-8w-v0"},
-        input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(obs.items())],
+        input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(tables.items())],
+        features=features,
     )

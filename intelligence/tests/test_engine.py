@@ -70,7 +70,7 @@ def test_outputs_and_run_record(learned):
     sf = res.shortfall
     p = sf["p_short"].to_numpy()
     assert (np.diff(p) >= 0).all()
-    assert (sf["es_unconditional_paise"].to_numpy() <= sf["expected_shortfall_paise"].to_numpy()).all()
+    assert (sf["expected_shortfall_uncond_paise"].to_numpy() <= sf["expected_shortfall_cond_paise"].to_numpy()).all()
     q = res.balance_quantiles
     assert (q["q05"] <= q["q25"]).all() and (q["q25"] <= q["q50"]).all() and (q["q75"] <= q["q95"]).all()
     over = np.flatnonzero(p >= 0.5)

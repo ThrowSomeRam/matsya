@@ -4,18 +4,15 @@ import numpy as np
 import polars as pl
 import pytest
 
-from matsya_intelligence.io.types import SchemaError, validate
+from matsya_contracts.validate import ContractError, validate
+
+from matsya_intelligence.io import adapters
+from matsya_intelligence.io.types import READS
 from matsya_intelligence.synth import PRESETS, BehaviourChange, TypePrior, WorldConfig, generate_world, resample_futures
 from matsya_intelligence.synth.world import PROCESS_OF_CATEGORY
 from matsya_intelligence.synth.narration import gstin_checksum
 
-OBSERVED_SCHEMA = {
-    "transactions": "Txn",
-    "balances": "Balance",
-    "invoices": "Invoice",
-    "invoice_outcomes": "InvoiceOutcome",
-    "buyers": "Buyer",
-}
+AS_OF_TABLES = ("ledger.transactions", "ledger.balances", "ledger.invoices", "ledger.matches", "labels.invoice_outcomes")
 
 
 @pytest.fixture(scope="module")
@@ -25,19 +22,19 @@ def world():
 
 def test_observed_tables_validate(world):
     observed, truth = world
-    assert set(observed) == set(OBSERVED_SCHEMA)
-    for key, name in OBSERVED_SCHEMA.items():
-        assert observed[key].height > 0, key
-        validate(observed[key], name)
-    validate(truth.obligations, "Obligation")
-    validate(truth.balances, "Balance")
-    validate(truth.transactions.drop("category", "rail", "process"), "Txn")
+    assert set(observed) == set(READS)
+    for name, df in observed.items():
+        if name != "labels.txn_corrections":
+            assert df.height > 0, name
+        validate(df, name)
+    validate(truth.obligations, "features.obligations")
+    validate(truth.transactions.drop("category", "rail", "process"), "ledger.transactions")
 
 
 def test_validate_rejects_bad_sign(world):
-    txns = world[0]["transactions"].with_columns(pl.col("amount_paise").abs())
-    with pytest.raises(SchemaError):
-        validate(txns, "Txn")
+    txns = world[0]["ledger.transactions"].with_columns(pl.col("amount_paise").abs())
+    with pytest.raises(ContractError):
+        validate(txns, "ledger.transactions")
 
 
 def test_same_seed_identical():
@@ -48,31 +45,37 @@ def test_same_seed_identical():
     assert a_truth.transactions.equals(b_truth.transactions)
     assert a_truth.invoices.equals(b_truth.invoices)
     c_obs, _ = generate_world(WorldConfig(), past_seed=4, future_seed=0)
-    assert not a_obs["transactions"].equals(c_obs["transactions"])
+    assert not a_obs["ledger.transactions"].equals(c_obs["ledger.transactions"])
 
 
 def test_no_look_ahead(world):
     observed, truth = world
     as_of = truth.config.as_of
-    assert observed["transactions"]["known_at"].max() <= as_of
-    assert observed["balances"]["date"].max() == truth.config.as_of_date
-    assert observed["invoices"]["issue_date"].max() <= truth.config.as_of_date
-    assert observed["invoice_outcomes"]["paid_date"].drop_nulls().max() <= truth.config.as_of_date
+    for name in AS_OF_TABLES:
+        assert observed[name]["known_at"].max() <= as_of, name
+    assert observed["ledger.balances"]["date"].max() == truth.config.as_of_date
+    assert observed["ledger.invoices"]["issue_date"].max() <= truth.config.as_of_date
+    assert observed["labels.invoice_outcomes"]["paid_date"].drop_nulls().max() <= truth.config.as_of_date
     # Truth does hold the future.
     assert truth.transactions["value_date"].max() > truth.config.as_of_date
 
 
 def test_open_invoices_are_censored(world):
-    out = world[0]["invoice_outcomes"]
+    observed, truth = world
+    out = adapters.outcomes(observed, truth.config.as_of)
     assert out.filter(pl.col("paid_date").is_null() & pl.col("censored_at").is_null()).height == 0
     assert out.filter(pl.col("paid_date").is_not_null() & pl.col("censored_at").is_not_null()).height == 0
+    assert (out.filter(pl.col("censored_at").is_not_null())["censored_at"] == truth.config.as_of_date).all()
 
 
 @pytest.mark.parametrize("which", ["observed", "truth"])
 def test_balances_reconcile(world, which):
     observed, truth = world
-    txns = observed["transactions"] if which == "observed" else truth.transactions
-    bal = observed["balances"] if which == "observed" else truth.balances
+    if which == "observed":
+        txns = observed["ledger.transactions"]
+        bal = observed["ledger.balances"].filter(pl.col("balance_source") == "reconstructed").sort("date")
+    else:
+        txns, bal = truth.transactions, truth.balances
     opening = truth.opening_balance_paise
     assert bal["closing_paise"][0] == opening
     assert bal["closing_paise"][-1] == opening + txns["amount_paise"].sum()
@@ -81,6 +84,12 @@ def test_balances_reconcile(world, which):
     joined = bal.join(daily, left_on="date", right_on="value_date", how="left").fill_null(0).sort("date")
     diffs = joined["closing_paise"].diff().drop_nulls()
     assert (diffs == joined["amount_paise"][1:]).all()
+
+
+def test_bank_reported_balance_is_true_balance(world):
+    observed, truth = world
+    _, bal, src = adapters.opening_balance(observed, truth.config.as_of)
+    assert src == "bank_reported" and bal == truth.config.as_of_balance_paise
 
 
 def test_receipts_net_of_tds(world):
@@ -149,7 +158,7 @@ def test_behaviour_change_slows_buyer():
     changed = _single_type_world(behaviour_change=BehaviourChange(buyer_index=0, at=at, p_multiplier=0.3))
 
     def mean_week(truth):
-        return truth.invoices.filter((pl.col("buyer_id") == "B000") & (pl.col("issue_date") > at))[
+        return truth.invoices.filter((pl.col("buyer_id") == truth.buyers["buyer_id"][0]) & (pl.col("issue_date") > at))[
             "pay_week"].drop_nulls().mean()
 
     assert mean_week(changed) > 2 * mean_week(base)

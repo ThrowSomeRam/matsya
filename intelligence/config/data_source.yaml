@@ -1,0 +1,17 @@
+# Where Track B reads its inputs. One switch: DATA_SOURCE (env MATSYA_DATA_SOURCE overrides).
+#   synth:    a generator world, converted to contract tables in memory
+#   contract: Parquet files named <namespace>.<table>.parquet (Track A's tables, or a
+#             world written by synth.export.write_contract_parquet)
+DATA_SOURCE: synth
+
+synth:
+  preset: borderline
+  past_seed: 0
+  future_seed: 0
+
+contract:
+  dir: data/contract   # relative to intelligence/
+  as_of: null          # ISO date; null = the latest known_at date in ledger.transactions
+
+outputs:
+  dir: data/outputs    # relative to intelligence/

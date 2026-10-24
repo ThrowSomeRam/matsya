@@ -1,6 +1,7 @@
 """Payment-timing model: fit per buyer with group shrinkage, predict open invoices.
 
-fit_timing(outcomes, buyers, as_of, run_id) -> TimingModel
+fit_timing(outcomes, invoices, buyers, as_of, run_id) -> TimingModel
+Inputs are the adapter frames (io.adapters: outcomes, invoices, buyers).
 TimingModel.predict(horizon_weeks) -> rows of features.invoice_timing
 Seeds come from run_id and buyer_id, so a refit with the same inputs is
 bit-identical.
@@ -48,14 +49,14 @@ def split_buyer(labels: pl.DataFrame, buyer_id: str) -> dict[str, np.ndarray]:
 
 
 def fit_timing(outcomes: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFrame, as_of: date, run_id: str,
-               hierarchical: bool = True, n_draws: int | None = None, label_lag_days: int = 3,
+               hierarchical: bool = True, n_draws: int | None = None,
                type_defaults: dict[str, TimingPrior] | None = None) -> TimingModel:
     consts = load_constants()["payment_timing"]
     cap = float(consts["prior_strength"]["value"])
     burn_in = int(consts["gibbs_sweeps"]["value"])
     n_draws = n_draws or int(consts["gibbs_draws"]["value"])
     defaults = type_defaults or TYPE_DEFAULTS
-    labels = timing_labels(outcomes, invoices, as_of, label_lag_days, consts["never_paid_cutoff_days"]["value"])
+    labels = timing_labels(outcomes, invoices, as_of, consts["never_paid_cutoff_days"]["value"])
     data = {b: split_buyer(labels, b) for b in buyers["buyer_id"]}
     btype = dict(zip(buyers["buyer_id"], buyers["type"]))
     group = {b: (s, t) for b, s, t in zip(buyers["buyer_id"], buyers["sector"], buyers["type"])}

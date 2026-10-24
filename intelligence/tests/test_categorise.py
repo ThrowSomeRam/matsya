@@ -8,7 +8,7 @@ from matsya_intelligence.categorise.evaluate import TRAIN_STYLE, build, run
 from matsya_intelligence.categorise.label_model import LabelModel
 from matsya_intelligence.categorise.lfs import ABSTAIN, LF_NAMES, apply_lfs
 from matsya_intelligence.categorise.llm import llm_label, strip_pii
-from matsya_intelligence.io.types import validate
+from matsya_contracts.validate import validate
 from matsya_intelligence.synth import WorldConfig, generate_world
 from matsya_intelligence.synth.world import PROCESS_OF_CATEGORY
 
@@ -36,7 +36,7 @@ def test_generator_and_categoriser_share_one_list():
 
 def test_output_rows_validate(fitted, train):
     out = fitted.predict(train[0])
-    validate(out, "TxnCategory")
+    validate(out, "features.txn_category")
     assert out.height == train[0].height
     assert set(out["category"]) <= set(CATEGORIES) | {ABSTAIN_LABEL}
     assert out.filter(pl.col("category") == ABSTAIN_LABEL)["needs_llm"].all()

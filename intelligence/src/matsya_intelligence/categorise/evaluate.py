@@ -28,6 +28,7 @@ from matsya_intelligence.categorise.lfs import ABSTAIN, apply_lfs, majority_vote
 from matsya_intelligence.categorise.pipeline import ABSTAIN_LABEL, Categoriser
 from matsya_intelligence.io.types import TXN
 from matsya_intelligence.synth import WorldConfig, generate_world
+from matsya_intelligence.synth.world import synth_tenant_id
 
 TRAIN_STYLE = {"narration_variants": (0,), "narration_banks": ("HDFC", "ICIC", "SBIN", "UTIB")}
 HELD_OUT_STYLE = {"narration_variants": (1,), "narration_banks": ("KKBK", "PUNB", "BARB", "CNRB")}
@@ -38,7 +39,7 @@ def build(style: dict, seeds, base: WorldConfig | None = None) -> tuple[pl.DataF
     base = base or WorldConfig()
     frames = []
     for s in seeds:
-        cfg = replace(base, tenant_id=f"t{s}", **style)
+        cfg = replace(base, tenant_id=synth_tenant_id(f"t{s}"), **style)
         frames.append(generate_world(cfg, past_seed=s, future_seed=0)[1].transactions)
     all_txns = pl.concat(frames)
     return all_txns.select(list(TXN)), all_txns["category"].to_list()

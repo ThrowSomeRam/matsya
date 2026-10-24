@@ -2,6 +2,7 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.shocks import fit_ar1, fit_sector_shocks, kalman_filter, lateness_residuals
+from matsya_intelligence.io.adapters import track_b_inputs
 from matsya_intelligence.synth import WorldConfig, generate_world
 from matsya_intelligence.timing import fit_timing
 
@@ -29,7 +30,8 @@ def test_kalman_filter_no_data_returns_prior():
 def test_sector_residuals_track_planted_shock():
     """With strong planted sector shocks, the filtered lateness series correlates with the true z."""
     cfg = WorldConfig(shock_sigma=0.6, n_buyers=12, order_mean_per_week=20.0, pre_due_phase=False)
-    obs, truth = generate_world(cfg, past_seed=3, future_seed=0)
+    tables, truth = generate_world(cfg, past_seed=3, future_seed=0)
+    obs = track_b_inputs(tables, cfg.as_of)
     tm = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], cfg.as_of_date, run_id="s")
     means = {b: (float(p.p_early.mean()), float(p.p.mean()), float(p.pi.mean())) for b, p in tm.posteriors.items()}
     sector_of = dict(zip(obs["buyers"]["buyer_id"], obs["buyers"]["sector"]))

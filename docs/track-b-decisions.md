@@ -62,6 +62,99 @@ $-\text{overdraft limit} + \text{owner cushion}$).
 All of these are computed on the same paths; the oracle versions in the synthetic generator
 (`Futures.oracle_shortfall`) use resampled true futures of one fixed past.
 
+## Contracts v0.1 integration (2026-10-24)
+
+Track B now reads and writes only contract tables (`matsya_contracts`).
+
+- **Types.** `intelligence/io/types.py` takes every contract schema from `matsya_contracts`;
+  the only shapes defined there are the adapters' internal outputs.
+- **Adapters** (`io/adapters.py`): as-of reads (per key, latest row with known_at <= as_of)
+  of ledger.balances, ledger.invoices, ledger.matches and labels.invoice_outcomes;
+  transactions with known_at <= as_of; effective sector from ref.buyers + ref.tenant_buyers;
+  owner corrections from labels.txn_corrections (latest corrected_at wins). An as_of given as
+  a date means the end of that day, UTC. Models are unchanged.
+- **Payment-timing labels** use the as-of read and each label's censored_at. The old
+  `as_of - 3 days` cut (label_lag_days) is gone; open invoices are known unpaid through
+  as_of, so the engine's survival runs to day 0.
+- **TReDS.** An invoice with an as-of match whose payer_kind is treds_financier is censored
+  for timing at the discount date (earliest such credit's value_date), whatever its label
+  row says. Its cash stays in the ledger and the invoice counts as settled (not open in the
+  engine).
+- **Terms.** terms_source unknown: terms and MSMED deadline 45 days
+  (`msmed_act.section_15.unknown_terms_default_days`, status decide). default_15d: 15.
+  Stated terms: the stated days, MSMED deadline capped at 45.
+- **Opening balance** is the latest ledger.balances row known by as_of. The generator now
+  writes the AA summary balance as a bank_reported row at as_of, which is the opening-balance
+  fix proposed in the calibration diagnosis.
+- **Outputs**, each validated before writing (`io/sink.py`, refuses non-Track-B tables):
+  features.txn_category (categoriser), features.obligations (obligations detector),
+  features.invoice_timing (payment-timing model), features.sales_process (sales
+  forecaster), forecast.shock_state (shock component), forecast.runs,
+  forecast.balance_quantiles, forecast.shortfall (simulation engine). The engine's shortfall
+  columns are renamed to `expected_shortfall_cond_paise` / `expected_shortfall_uncond_paise`.
+- **Data source.** `intelligence/config/data_source.yaml`, one value `DATA_SOURCE`
+  (`synth` | `contract`, env `MATSYA_DATA_SOURCE`). `python -m matsya_intelligence.run`
+  runs every tenant and writes every table. A test checks the same world gives
+  bit-identical outputs from either source.
+- **Generator.** Contract IDs (UUIDv4 tenant, txn_uid from a synthetic bank txnId, invoice_id
+  from supplier GSTIN + invoice number + FY, buyer_id from PAN), append-only invoice and label
+  versions, matches, ref.buyers / ref.tenant_buyers. New knobs, off by default:
+  `terms_unknown_share`, `treds_discount_prob` (CPSE invoices discounted 2-7 days after issue,
+  fee `treds_fee`). `synth.export.write_contract_parquet(world, out_dir)` writes every
+  contract table plus truth tables in `out_dir/truth/`.
+- **CI.** `.github/workflows/track-b.yml` runs the contract conformance tests and the Track B
+  unit tests.
+
+**Effect on learned-mode calibration** (same 100 pasts and oracle cache as above, all fixes
+on, base logit on):
+
+| variant | mean gap | mean \|gap\| | corr | 0.05-0.20 pred / oracle | 0.40-0.60 | median gap day 30 / 90 (Rs) | receipts gap day 90 (Rs) |
+|---|---|---|---|---|---|---|---|
+| before contracts (3-day label cut, reconstructed opening) | +0.021 | 0.143 | 0.738 | 0.136 / 0.193 | 0.494 / 0.356 | -3,01,976 / -4,16,672 | -1,91,601 |
+| contracts (as-of labels, bank-reported opening) | -0.039 | 0.141 | 0.753 | 0.125 / 0.198 | 0.470 / 0.475 | -29,663 / +30,364 | +88,854 |
+
+The median balance bias mostly goes, from the bank-reported opening balance. Receipts are now
+over-forecast: payments made before as_of but reported after it are in the bank balance, and
+their invoices still look open, so they are counted twice. That is question 1 below (a
+complete-through date would fix it). The low bin is still under-predicted.
+
+### Questions for Track A (contracts v0.1)
+
+1. **censored_at for open labels.** The fixtures stamp it with the as_of date. A payment
+   value-dated before as_of but reported after it is invisible at as_of, so the last days
+   before as_of count as unpaid when they were not. This biases p down slightly near the
+   cut (the reason for the old 3-day lag). Can censored_at be the date through which the
+   account's ledger is complete (e.g. the AA data range end minus reporting lag), or can
+   ledger.balances / a new column carry that date?
+2. **Are open labels re-stamped at every fetch?** The as-of read takes the latest label row;
+   if an open invoice only has its issue-time row, censored_at stays at the issue date and
+   the label loses every week since.
+3. **Does every invoice get a label row from issue?** The adapters assume one row per invoice
+   in labels.invoice_outcomes.
+4. **Balance precedence.** The as-of read per (tenant, account, date) takes the latest
+   known_at whatever the balance_source. Is that intended when a bank_reported and a
+   reconstructed row exist for the same date? Will A write a bank_reported row from the AA
+   summary balance at each fetch? (It is the opening-balance fix.)
+5. **due_date when terms_source is unknown.** The fixtures write issue + 15 days. Track B
+   assumes 45 (the s.15 maximum). Which should A write, or should due_date be nullable?
+   Do stated document_terms above 45 days count as an agreement for the MSMED cap? (VERIFY)
+6. **TReDS pass-through vs discount.** CPSE settlement through TReDS routes the buyer's own
+   payment via the platform; a discount is the financier paying early. Both credits come
+   from the platform. Only the discount should be payer_kind treds_financier. How does the
+   matcher tell them apart?
+7. **TReDS fee and paid_date.** A financier pays gross minus TDS minus a discount fee. If the
+   fee exceeds the settlement tolerance, allocated + TDS never reaches gross and the label
+   never gets paid_date or settlement_kind. Should treds_discount settle the invoice
+   regardless of the fee?
+8. **as_of as a date.** Track B reads a date as the end of that day in UTC. If as_of dates are
+   IST business days, the cutoff is 18:30 UTC. Which?
+9. **SalesParam enum (additive).** The sales forecaster also produces `demand_ar_rho`,
+   `demand_ar_sd`, `order_mean_boot_sd` and `purchase_ratio_boot_sd`. They are dropped when
+   writing features.sales_process until the enum has them.
+10. **forecast.shock_state (additive).** It holds z and z_sd at the last week only. Replaying a
+    shock path also needs the AR(1) rho and q per sector; propose nullable `rho` and `q`
+    columns.
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).

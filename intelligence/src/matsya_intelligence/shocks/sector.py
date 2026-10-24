@@ -38,12 +38,13 @@ so z measures deviations from each buyer's own average, as intended, but the
 residuals are mildly shrunk toward zero.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 
 import numpy as np
 import polars as pl
 
+from matsya_intelligence.io.types import SHOCK_STATE
 from matsya_intelligence.shocks.kalman import AR1Fit, fit_ar1
 
 
@@ -113,6 +114,13 @@ def base_chance(p: np.ndarray, var: float, iters: int = 50) -> np.ndarray:
 @dataclass
 class SectorShocks:
     fits: dict[str, AR1Fit]
+    last_week_start: dict[str, date] = field(default_factory=dict)  # week of each fit's filtered state
+
+    def state_table(self, tenant_id: str) -> pl.DataFrame:
+        """forecast.shock_state: the filtered lateness z (and its sd) at each sector's last full week."""
+        rows = [(tenant_id, s, self.last_week_start[s], float(f.mean_T), float(np.sqrt(f.var_T)))
+                for s, f in sorted(self.fits.items())]
+        return pl.DataFrame(rows, schema=SHOCK_STATE, orient="row")
 
     def stationary_var(self, sector: str) -> float:
         """Long-run variance of the sector's z; 0 for sectors without a fit (no shock applied)."""
@@ -142,4 +150,6 @@ class SectorShocks:
 def fit_sector_shocks(labels: pl.DataFrame, means: dict[str, tuple[float, float, float]], sector_of: dict[str, str],
                       as_of: date) -> SectorShocks:
     res = lateness_residuals(labels, means, sector_of, as_of)
-    return SectorShocks(fits={s: fit_ar1(z, R) for s, (_, z, R) in res.items() if np.isfinite(z).sum() >= 8})
+    keep = {s: v for s, v in res.items() if np.isfinite(v[1]).sum() >= 8}
+    return SectorShocks(fits={s: fit_ar1(z, R) for s, (_, z, R) in keep.items()},
+                        last_week_start={s: as_of + timedelta(days=7 * int(w[-1])) for s, (w, _, _) in keep.items()})

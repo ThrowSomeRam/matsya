@@ -8,10 +8,14 @@ dependencies = [
     "polars>=1.0",
     "pyyaml>=6",
     "scikit-learn>=1.4",
+    "matsya-contracts",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+
+[tool.uv.sources]
+matsya-contracts = { path = "../contracts", editable = true }
 
 [build-system]
 requires = ["hatchling"]

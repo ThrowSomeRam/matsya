@@ -1,7 +1,15 @@
 # intelligence (Track B)
 
-Components B1 to B10. Writes only `features`, `forecast`, `decisions`, `ref.obligations`, `ref.buyer_priors`, `ops.calibration_state`. Reads Track A tables through `contracts/` only.
+Writes only `features.*`, `forecast.*` and `decisions.*` (contracts v0.1). Reads Track A tables through
+`matsya_contracts` only: `io/adapters.py` turns as-of reads of contract tables into each component's inputs,
+and `io/sink.py` validates every output against its contract before writing.
 
 ```bash
-cd intelligence && pip install -e '.[dev]' && pytest
+cd intelligence && uv sync --extra dev && uv run pytest -m "not slow"
+uv run python -m matsya_intelligence.run --out data/outputs   # every output table, one Parquet per table
 ```
+
+Inputs come from `config/data_source.yaml`: `DATA_SOURCE: synth` (a generator world) or `contract`
+(Parquet named `<namespace>.<table>.parquet`); `MATSYA_DATA_SOURCE` overrides it. A generator world is
+published for Track A with `synth.export.write_contract_parquet(world, out_dir)` (truth tables in
+`out_dir/truth/`).

@@ -1,0 +1,24 @@
+name: track-b
+
+on:
+  push:
+    paths: ["intelligence/**", "contracts/**", ".github/workflows/track-b.yml"]
+  pull_request:
+    paths: ["intelligence/**", "contracts/**", ".github/workflows/track-b.yml"]
+
+jobs:
+  contract-conformance:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: intelligence
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev
+      - name: Contract conformance (every table Track B reads and writes)
+        run: uv run pytest -q tests/test_contract_conformance.py
+      - name: Track B unit tests
+        run: uv run pytest -q -m "not slow" --ignore=tests/test_contract_conformance.py

@@ -30,6 +30,7 @@ msmed_act:
   section_15:
     max_payment_days_with_agreement: 45
     payment_days_without_agreement: 15
+    unknown_terms_default_days: {value: 45, status: decide, why: "terms_source unknown: assume the s.15 maximum (an agreement may exist that we have not seen), the late end of the legal range"}
     clock_starts: "acceptance or deemed acceptance of goods/services"
   section_16:
     rate_multiplier: 3            # x RBI bank rate
