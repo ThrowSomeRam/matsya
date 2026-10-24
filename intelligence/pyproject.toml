@@ -22,3 +22,4 @@ packages = ["src/matsya_intelligence"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: long-running statistical checks (deselect with -m 'not slow')"]

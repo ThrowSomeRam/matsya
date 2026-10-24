@@ -87,6 +87,16 @@ TXN_CATEGORY = {
     "needs_llm": pl.Boolean,  # extra to the contract: abstained, waiting for the LLM
 }
 
+INVOICE_TIMING = {
+    "tenant_id": pl.String,
+    "invoice_id": pl.String,
+    "week": pl.Int32,  # weeks from as_of, 1..horizon
+    "p_paid": pl.Float64,  # P(paid in that week)
+    "p_never": pl.Float64,  # P(never paid), same on every row of the invoice
+    "p_beyond": pl.Float64,  # extra to the contract: alive but unpaid past the horizon
+    "past_cutoff": pl.Boolean,  # extra: open longer than never_paid_cutoff_days
+}
+
 SCHEMAS = {
     "Txn": TXN,
     "Invoice": INVOICE,
@@ -95,6 +105,7 @@ SCHEMAS = {
     "Balance": BALANCE,
     "Obligation": OBLIGATION,
     "TxnCategory": TXN_CATEGORY,
+    "InvoiceTiming": INVOICE_TIMING,
 }
 
 NOT_NULL = {
@@ -105,6 +116,7 @@ NOT_NULL = {
     "Balance": ["tenant_id", "account_id", "date", "closing_paise"],
     "Obligation": ["tenant_id", "obligation_id", "kind", "due_date", "amount_paise"],
     "TxnCategory": ["tenant_id", "txn_uid", "category", "confidence", "source", "needs_llm"],
+    "InvoiceTiming": ["tenant_id", "invoice_id", "week", "p_paid", "p_never", "p_beyond", "past_cutoff"],
 }
 
 ENUMS = {
