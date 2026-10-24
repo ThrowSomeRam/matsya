@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import polars as pl
 import pytest
@@ -7,6 +7,7 @@ from matsya_contracts.validate import validate
 from matsya_intelligence.io import adapters
 from matsya_intelligence.run import run_tenant
 from matsya_intelligence.synth import WorldConfig, generate_world
+from matsya_intelligence.synth import replay as replay_mod
 from matsya_intelligence.synth.replay import AS_OF_TABLES, KEEP, Replay, buyer_range, score
 from matsya_intelligence.synth.world import complete_through, contract_tables_at
 
@@ -115,3 +116,32 @@ def test_scores_and_buyer_range(replay):
     assert br.height == DAYS
     assert ((br["weeks_q05"] <= br["weeks_q50"]) & (br["weeks_q50"] <= br["weeks_q95"])).all()
     assert (br["true_weeks"] > 0).all()
+
+
+def test_multi_account_opening_balance_each_step(truth, monkeypatch):
+    """A second account whose bank reports a day late, with a balance that moves daily:
+    every step must sum each account's own latest known balance, not a stale or dropped one."""
+    c = truth.config
+
+    def second(d):
+        return 3_00_000_00 + 1_000_00 * (d - c.start).days
+
+    def with_second_account(t, cut):
+        tables = contract_tables_at(t, cut)
+        days = pl.date_range(c.start, c.as_of_date + timedelta(days=c.future_days), "1d", eager=True)
+        rows = pl.DataFrame({
+            "tenant_id": c.tenant_id, "account_id": "acc_second", "date": days,
+            "closing_paise": [second(d) for d in days], "continuity_ok": None, "balance_source": "bank_reported",
+            "known_at": [datetime.combine(d + timedelta(days=1), c.as_of.timetz()) for d in days],
+        }).filter(pl.col("known_at") <= cut)
+        bal = tables["ledger.balances"]
+        return {**tables, "ledger.balances": pl.concat([bal, rows.select(bal.columns).cast(bal.schema)])}
+
+    monkeypatch.setattr(replay_mod, "contract_tables_at", with_second_account)
+    r = Replay(truth, n_paths=N)
+    for s in r.run(DAYS):
+        validate(r.tables["ledger.balances"], "ledger.balances")
+        d = s.as_of.date()
+        want = truth.balances.filter(pl.col("date") == d)["closing_paise"][0] + second(d - timedelta(days=1))
+        assert adapters.opening_balance(r.tables, s.as_of) == (d - timedelta(days=1), want, "bank_reported")
+        assert f"opening_balance:{want}@{d - timedelta(days=1)}" in s.forecast["forecast.runs"]["input_snapshot_ids"][0]
