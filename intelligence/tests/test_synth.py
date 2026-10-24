@@ -5,7 +5,7 @@ import polars as pl
 import pytest
 
 from matsya_intelligence.io.types import SchemaError, validate
-from matsya_intelligence.synth import PRESETS, BehaviourChange, TypePrior, WorldConfig, generate_world
+from matsya_intelligence.synth import PRESETS, BehaviourChange, TypePrior, WorldConfig, generate_world, resample_futures
 from matsya_intelligence.synth.world import PROCESS_OF_CATEGORY
 from matsya_intelligence.synth.narration import gstin_checksum
 
@@ -20,7 +20,7 @@ OBSERVED_SCHEMA = {
 
 @pytest.fixture(scope="module")
 def world():
-    return generate_world(WorldConfig(), seed=7)
+    return generate_world(WorldConfig(), past_seed=7, future_seed=0)
 
 
 def test_observed_tables_validate(world):
@@ -41,13 +41,13 @@ def test_validate_rejects_bad_sign(world):
 
 
 def test_same_seed_identical():
-    a_obs, a_truth = generate_world(WorldConfig(), seed=3)
-    b_obs, b_truth = generate_world(WorldConfig(), seed=3)
+    a_obs, a_truth = generate_world(WorldConfig(), past_seed=3, future_seed=0)
+    b_obs, b_truth = generate_world(WorldConfig(), past_seed=3, future_seed=0)
     for key in a_obs:
         assert a_obs[key].equals(b_obs[key]), key
     assert a_truth.transactions.equals(b_truth.transactions)
     assert a_truth.invoices.equals(b_truth.invoices)
-    c_obs, _ = generate_world(WorldConfig(), seed=4)
+    c_obs, _ = generate_world(WorldConfig(), past_seed=4, future_seed=0)
     assert not a_obs["transactions"].equals(c_obs["transactions"])
 
 
@@ -73,7 +73,7 @@ def test_balances_reconcile(world, which):
     observed, truth = world
     txns = observed["transactions"] if which == "observed" else truth.transactions
     bal = observed["balances"] if which == "observed" else truth.balances
-    opening = truth.config.opening_balance_paise
+    opening = truth.opening_balance_paise
     assert bal["closing_paise"][0] == opening
     assert bal["closing_paise"][-1] == opening + txns["amount_paise"].sum()
     # Day by day: each closing equals the previous closing plus that day's flows.
@@ -121,7 +121,7 @@ def _single_type_world(**overrides):
         misc_credits_per_day=0.0,
         **overrides,
     )
-    return generate_world(cfg, seed=11)[1]
+    return generate_world(cfg, past_seed=11, future_seed=0)[1]
 
 
 def test_empirical_lateness_matches_planted():
@@ -176,7 +176,7 @@ def long_world():
         n_buyers=3,
         demand_sigma=0.0,
     )
-    return generate_world(cfg, seed=5)[1]
+    return generate_world(cfg, past_seed=5, future_seed=0)[1]
 
 
 def test_order_count_recovers_negative_binomial(long_world):
@@ -207,7 +207,7 @@ def test_purchases_scale_with_sales_fixed_costs_do_not():
     fixed = ["salary", "rent", "emi", "professional_fee", "pf_esi"]
 
     def totals(order_mean):
-        truth = generate_world(WorldConfig(order_mean_per_week=order_mean), seed=9)[1]
+        truth = generate_world(WorldConfig(order_mean_per_week=order_mean), past_seed=9, future_seed=0)[1]
         by_cat = dict(truth.transactions.group_by("category").agg(pl.col("amount_paise").sum()).iter_rows())
         return by_cat, truth
 
@@ -219,11 +219,12 @@ def test_purchases_scale_with_sales_fixed_costs_do_not():
     # Linked month by month: purchases track invoices issued (not receipts,
     # which lag by the payment timing).
     month = pl.col("d").dt.truncate("1mo")
-    sales = truth.invoices.select(pl.col("issue_date").alias("d"), "gross_paise").group_by(month).agg(
+    lag = pl.duration(days=truth.config.purchase_lag_days)
+    sales = truth.invoices.select((pl.col("issue_date") - lag).alias("d"), "gross_paise").group_by(month).agg(
         pl.col("gross_paise").sum())
     purch = truth.transactions.filter(pl.col("category") == "supplier_payment").select(
         pl.col("value_date").alias("d"), (-pl.col("amount_paise")).alias("p")).group_by(month).agg(pl.col("p").sum())
-    m = sales.join(purch, on="d")
+    m = sales.join(purch, on="d").sort("d")[1:-1]  # drop partial first and last months
     assert m.select(pl.corr("gross_paise", "p")).item() > 0.8
 
 
@@ -239,7 +240,7 @@ def test_every_flow_tagged_with_one_process(world):
 def test_demand_shock_correlation_knob():
     def innovation_corr(corr):
         cfg = WorldConfig(start=date(2015, 1, 1), demand_shock_corr=corr)
-        truth = generate_world(cfg, seed=2)[1]
+        truth = generate_world(cfg, past_seed=2, future_seed=0)[1]
         x = truth.weekly_orders["demand_x"].to_numpy()
         e_d = x[1:] - cfg.demand_rho * x[:-1]
         z = truth.sector_shocks.pivot(on="sector", index="week", values="z").drop("week").to_numpy().T
@@ -250,19 +251,108 @@ def test_demand_shock_correlation_knob():
     assert innovation_corr(-0.8) < -0.7
 
 
-@pytest.mark.parametrize("name,lo,hi", [("healthy", 0.0, 0.10), ("borderline", 0.20, 0.40), ("distressed", 0.80, 1.0)])
+@pytest.mark.parametrize("name,lo,hi", [("healthy", 0.0, 0.10), ("borderline", 0.20, 0.40), ("distressed", 0.70, 1.0)])
 def test_presets_land_in_shortfall_band(name, lo, hi):
+    """Median over fixed pasts of the oracle P(short by day 90). See PRESETS for the spread."""
     cfg = WorldConfig.preset(name)
-    a = cfg.as_of_date
-    hits = 0
-    seeds = range(60)
-    for s in seeds:
-        bal = generate_world(cfg, seed=s)[1].balances
-        window = bal.filter((pl.col("date") > a) & (pl.col("date") <= a + timedelta(days=90)))
-        hits += window["closing_paise"].min() < 0
-    assert lo <= hits / len(seeds) <= hi
+    p90 = [resample_futures(cfg, past_seed=ps, n=40).oracle_shortfall()["p_short"][-1] for ps in range(7)]
+    assert lo <= float(np.median(p90)) <= hi
 
 
 def test_default_is_borderline():
     assert WorldConfig() == WorldConfig.preset("borderline")
     assert set(PRESETS) == {"healthy", "borderline", "distressed"}
+
+
+def _ipc_bytes(df: pl.DataFrame) -> bytes:
+    return df.write_ipc(None).getvalue()
+
+
+def test_past_identical_across_future_seeds():
+    a_obs, a_truth = generate_world(WorldConfig(), past_seed=7, future_seed=0)
+    b_obs, b_truth = generate_world(WorldConfig(), past_seed=7, future_seed=1)
+    for key in a_obs:
+        assert _ipc_bytes(a_obs[key]) == _ipc_bytes(b_obs[key]), key
+    t0 = a_truth.config.as_of_date
+    past = lambda t: t.transactions.filter(pl.col("value_date") <= t0)
+    assert _ipc_bytes(past(a_truth)) == _ipc_bytes(past(b_truth))
+    assert a_truth.opening_balance_paise == b_truth.opening_balance_paise
+    # The future does differ.
+    assert not a_truth.transactions.equals(b_truth.transactions)
+
+
+def test_open_invoices_resampled_paid_ones_fixed():
+    futures = resample_futures(WorldConfig(), past_seed=7, n=12)
+    t0 = futures.config.as_of_date
+    open_ids = futures.observed["invoice_outcomes"].filter(pl.col("paid_fraction") == 0)["invoice_id"]
+    first = [t.invoices.filter(pl.col("invoice_id").is_in(open_ids.implode()))["first_paid_date"] for t in futures.truths]
+    for dates in first:
+        assert (dates.drop_nulls() > t0).all()
+    # Payment dates of open invoices vary across futures.
+    assert len({tuple(d.to_list()) for d in first}) > 1
+    paid_past = [t.invoices.filter(pl.col("first_paid_date") <= t0).select("invoice_id", "first_paid_date")
+                 for t in futures.truths]
+    assert all(p.equals(paid_past[0]) for p in paid_past)
+
+
+def test_conditional_timing_matches_unconditional():
+    """Invoices issued in the 8 weeks before as_of are mostly open at as_of, so
+    their timing comes from the conditional redraw. Pooled over pasts it must
+    still match the planted geometric: E[pay_week * p] = 1, never share = pi."""
+    cfg = WorldConfig(shock_sigma=0.0, n_buyers=1, demand_sigma=0.0, order_mean_per_week=30.0,
+                      type_priors={"listed": TypePrior(p_ab=(300, 700), pi_ab=(100, 900), share=1.0)})
+    t0 = cfg.as_of_date
+    scaled_weeks, never_gap, n = [], [], 0
+    for ps in range(10):
+        truth = generate_world(cfg, past_seed=ps, future_seed=0)[1]
+        p, pi = truth.buyers["p"][0], truth.buyers["pi"][0]
+        inv = truth.invoices.filter(pl.col("issue_date").is_between(t0 - timedelta(days=56), t0 - timedelta(days=7)))
+        scaled_weeks.extend((inv["pay_week"].drop_nulls() * p).to_list())
+        never_gap.extend((inv["never_paid"].cast(pl.Float64) - pi).to_list())
+    assert len(scaled_weeks) > 1500
+    assert abs(np.mean(scaled_weeks) - 1) < 0.08
+    assert abs(np.mean(never_gap)) < 0.03
+
+
+def test_as_of_balance_pinned():
+    for ps in range(3):
+        truth = generate_world(WorldConfig(), past_seed=ps, future_seed=0)[1]
+        bal = truth.balances.filter(pl.col("date") == truth.config.as_of_date)["closing_paise"][0]
+        assert bal == truth.config.as_of_balance_paise
+
+
+def test_gst_is_rate_times_sales_minus_purchases(world):
+    truth = world[1]
+    c = truth.config
+    month = lambda col: pl.col(col).dt.truncate("1mo").alias("m")
+    sales = truth.invoices.group_by(month("issue_date")).agg((pl.col("gross_paise") - pl.col("gst_paise")).sum().alias("s"))
+    purch = truth.purchases.group_by(month("value_date")).agg((pl.col("amount_paise") / (1 + c.gst_rate)).sum().alias("p"))
+    gst = truth.obligations.filter(pl.col("kind") == "gst").with_columns(
+        (pl.col("due_date").dt.truncate("1mo") - pl.duration(days=1)).dt.truncate("1mo").alias("m"))
+    j = gst.join(sales, on="m").join(purch, on="m")
+    assert j.height >= 6
+    expected = (c.gst_rate * (j["s"] - j["p"])).round()
+    # Within a few rupees: invoices issued before start are not in truth.invoices.
+    assert ((j["amount_paise"] - expected).abs() <= 100).all()
+
+
+def test_no_missing_purchases_at_window_end(world):
+    truth = world[1]
+    end = truth.config.as_of_date + timedelta(days=truth.config.future_days)
+    last_weeks = truth.transactions.filter(
+        (pl.col("category") == "supplier_payment") & (pl.col("value_date") > end - timedelta(days=21)))
+    earlier = truth.transactions.filter(
+        (pl.col("category") == "supplier_payment") & pl.col("value_date").is_between(end - timedelta(days=63), end - timedelta(days=21), closed="left"))
+    # Purchase rate in the last 3 weeks is comparable to the 6 weeks before.
+    assert last_weeks.height / 3 > 0.5 * earlier.height / 6
+
+
+def test_oracle_shortfall_monotone_and_threshold():
+    futures = resample_futures(WorldConfig(), past_seed=0, n=20)
+    base = futures.oracle_shortfall(horizon_days=90)
+    assert base.height == 90
+    assert (base["p_short"].diff().drop_nulls() >= 0).all()
+    higher = futures.oracle_shortfall(threshold_paise=10_00_000_00, horizon_days=90)
+    assert (higher["p_short"] >= base["p_short"]).all()
+    with pytest.raises(ValueError):
+        futures.oracle_shortfall(horizon_days=futures.config.future_days + 1)

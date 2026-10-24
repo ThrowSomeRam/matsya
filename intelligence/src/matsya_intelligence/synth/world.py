@@ -1,8 +1,18 @@
 """Simulate one supplier's books end to end, then cut them at as_of.
 
-The full timeline (start to as_of + future_days) is simulated first and kept
-in Truth. Observed tables are what Track A would hand us at as_of: only rows
-with known_at <= as_of, open invoices censored.
+Randomness is split at as_of. Every draw that decides something on or before
+as_of comes from past streams (past_seed); every draw that decides something
+after it comes from future streams (past_seed, future_seed). So one past_seed
+fixes the observed tables exactly, and varying future_seed resamples only the
+future, which is what resample_futures() uses to get oracle probabilities.
+
+Invoices still open at as_of get their payment timing redrawn from the future
+streams conditional on "not paid by as_of" (exact for geometric timing,
+rejection sampling for the misspecification knobs).
+
+Orders are placed on the purchase date; the invoice is issued purchase_lag
+days later. So purchases made before as_of belong to past orders even when
+their invoice is issued after as_of.
 """
 
 import calendar
@@ -22,10 +32,8 @@ from matsya_intelligence.seeding import rng_for
 from matsya_intelligence.synth import narration as nr
 from matsya_intelligence.synth.config import WorldConfig
 
-# Which generating process each category comes from. Each process is forecast
-# by exactly one component: sales -> sales forecaster + payment-timing model,
-# purchase -> sales forecaster (linked purchases), fixed_obligation ->
-# obligations detector, unscheduled -> flow forecaster.
+# Which generating process each category comes from (see docs/track-b-decisions.md
+# for which component owns each flow's date and amount).
 PROCESS_OF_CATEGORY = {
     "customer_receipt": "sales",
     "supplier_payment": "purchase",
@@ -44,6 +52,8 @@ PROCESS_OF_CATEGORY = {
 }
 
 CONSTANTS_PATH = Path(__file__).resolve().parents[3] / "config" / "track_b_constants.yaml"
+PREROLL_WEEKS = 3  # orders start this early so the first weeks have their invoices
+REJECTION_CAP = 100_000
 
 
 @cache
@@ -54,13 +64,15 @@ def load_constants() -> dict:
 @dataclass
 class Truth:
     config: WorldConfig
-    seed: int
+    past_seed: int
+    future_seed: int
+    opening_balance_paise: int  # back-solved so the true balance at as_of is as_of_balance_paise
     sector_shocks: pl.DataFrame  # sector, week, week_start, z
     weekly_orders: pl.DataFrame  # week, week_start, demand_x, mean, count
     buyers: pl.DataFrame  # planted p, pi, loading, mix_share, tds_rate per buyer
-    invoices: pl.DataFrame  # every invoice with never_paid, pay_week, paid dates
+    invoices: pl.DataFrame  # invoices issued in [start, end] with never_paid, pay_week, paid dates
     payments: pl.DataFrame  # one row per receipt: invoice_id, part, txn_uid, value_date, amounts
-    purchases: pl.DataFrame  # one row per invoice: invoice_id, txn_uid, value_date, amount_paise, lag_days
+    purchases: pl.DataFrame  # purchases dated in [start, end]; invoice may be issued after end
     transactions: pl.DataFrame  # every txn incl. future, Txn columns + category + rail + process
     balances: pl.DataFrame  # daily closing from all txns
     obligations: pl.DataFrame  # every scheduled outflow, Obligation schema
@@ -89,19 +101,36 @@ def _prev_month(y: int, m: int) -> tuple[int, int]:
     return (y - 1, 12) if m == 1 else (y, m - 1)
 
 
-def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFrame], Truth]:
+def _irn(invoice_id: str) -> str:
+    return hashlib.sha256(invoice_id.encode()).hexdigest()
+
+
+def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tuple[dict[str, pl.DataFrame], Truth]:
     c = config
-    run_id = f"synth-{seed}"
     consts = load_constants()
     tds_rates = consts["tds"]["matcher_candidate_rates"]
     cal = consts["statutory_calendar"]["monthly"]
-    end = c.as_of_date + timedelta(days=c.future_days)
+    t0 = c.as_of_date
+    end = t0 + timedelta(days=c.future_days)
     n_weeks = (end - c.start).days // 7 + 2
-    rn = rng_for(run_id, "narration")
+    n_past_weeks = (t0 - c.start).days // 7 + 1  # weeks starting on or before as_of
+    past_id, future_id = f"synth-past-{past_seed}", f"synth-future-{past_seed}-{future_seed}"
+
+    def streams(name: str) -> tuple[np.random.Generator, np.random.Generator]:
+        return rng_for(past_id, name), rng_for(future_id, name)
+
+    rn_past, rn_future = streams("narration")
+
+    def rn(d: date) -> np.random.Generator:
+        return rn_past if d <= t0 else rn_future
+
+    def week_of(d: date) -> int:
+        return min(max((d - c.start).days // 7, 0), n_weeks - 1)
 
     # Sector shocks: stationary AR(1), one value per world week.
-    r = rng_for(run_id, "sectors")
-    u = r.normal(size=(len(c.sectors), n_weeks))
+    rp, rf = streams("sectors")
+    n_s = len(c.sectors)
+    u = np.concatenate([rp.normal(size=(n_s, n_past_weeks)), rf.normal(size=(n_s, n_weeks - n_past_weeks))], axis=1)
     eps = c.shock_sigma * u
     z = np.zeros_like(eps)
     z[:, 0] = eps[:, 0] / math.sqrt(1 - c.shock_rho**2)
@@ -116,9 +145,10 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
 
     # Demand shock: AR(1) on the log order rate. Innovations correlate with the
     # standardised mean of the sector lateness innovations.
-    r = rng_for(run_id, "demand")
-    common = u.mean(axis=0) * math.sqrt(len(c.sectors))
-    e = c.demand_shock_corr * common + math.sqrt(1 - c.demand_shock_corr**2) * r.normal(size=n_weeks)
+    rp, rf = streams("demand")
+    common = u.mean(axis=0) * math.sqrt(n_s)
+    own = np.concatenate([rp.normal(size=n_past_weeks), rf.normal(size=n_weeks - n_past_weeks)])
+    e = c.demand_shock_corr * common + math.sqrt(1 - c.demand_shock_corr**2) * own
     var_x = c.demand_sigma**2 / (1 - c.demand_rho**2)
     x = np.zeros(n_weeks)
     x[0] = math.sqrt(var_x) * e[0]
@@ -127,13 +157,13 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
     order_mean = c.order_mean_per_week * np.exp(x - var_x / 2)
 
     # Buyers drawn from type-level hyperpriors; fixed shares of the order flow.
-    r = rng_for(run_id, "buyers")
+    r = rng_for(past_id, "buyers")
     types = list(c.type_priors)
     shares = np.array([c.type_priors[t].share for t in types])
     buyers = []
     for i in range(c.n_buyers):
         btype = str(r.choice(types, p=shares / shares.sum()))
-        sector_idx = int(r.integers(len(c.sectors)))
+        sector_idx = int(r.integers(n_s))
         tp = c.type_priors[btype]
         pan = nr.make_pan(r)
         buyers.append({
@@ -154,38 +184,39 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
     for b, share in zip(buyers, mix):
         b["mix_share"] = float(share)
 
-    # Invoices: NegBin weekly count (gamma-Poisson), buyer by fixed shares,
-    # lognormal amounts.
-    r = rng_for(run_id, "invoices")
-    invoices = []
+    # Orders: NegBin weekly count (gamma-Poisson), placed on the purchase date.
+    # The week containing as_of is split: the past stream draws a full week and
+    # keeps days <= as_of, the future stream draws a full week and keeps the
+    # rest (right mean, slightly less dispersion than one NB draw for that week).
+    rp, rf = streams("orders")
+    orders = []
     weekly = []
-    for w in range(n_weeks):
-        week_start = c.start + timedelta(days=7 * w)
-        if week_start > end:
-            break
-        lam = r.gamma(c.order_dispersion, order_mean[w] / c.order_dispersion)
-        count = int(r.poisson(lam))
-        weekly.append({"week": w, "week_start": week_start, "demand_x": float(x[w]),
-                       "mean": float(order_mean[w]), "count": count})
-        for _ in range(count):
+
+    def draw_week(r: np.random.Generator, w: int, week_start: date, keep) -> int:
+        lam = r.gamma(c.order_dispersion, order_mean[max(w, 0)] / c.order_dispersion)
+        kept = 0
+        for _ in range(int(r.poisson(lam))):
             b = buyers[int(r.choice(c.n_buyers, p=mix))]
-            issue = week_start + timedelta(days=int(r.integers(7)))
+            order_date = week_start + timedelta(days=int(r.integers(7)))
             gross = int(round(c.amount_median_paise * math.exp(c.amount_sigma * r.normal())))
             terms = int(r.choice(c.terms_choices))
-            if issue > end:
-                continue
-            gst = int(round(gross * c.gst_rate / (1 + c.gst_rate)))
-            inv_id = f"INV-{len(invoices):05d}"
-            invoices.append({
-                "invoice_id": inv_id,
-                "buyer": b,
-                "issue_date": issue,
-                "due_date": issue + timedelta(days=terms),
-                "terms_days": terms,
-                "gross_paise": gross,
-                "gst_paise": gst,
-                "tds_paise": int(round(b["tds_rate"] * (gross - gst))),
-            })
+            lag = c.purchase_lag_days + int(r.integers(-c.purchase_lag_jitter_days, c.purchase_lag_jitter_days + 1))
+            if keep(order_date):
+                orders.append({"buyer": b, "order_date": order_date, "gross": gross, "terms": terms, "lag": lag})
+                kept += 1
+        return kept
+
+    w = -PREROLL_WEEKS
+    while (week_start := c.start + timedelta(days=7 * w)) <= end:
+        count = 0
+        if week_start <= t0:
+            count += draw_week(rp, w, week_start, lambda d: d <= t0)
+        if week_start + timedelta(days=6) > t0:
+            count += draw_week(rf, w, week_start, lambda d: d > t0)
+        if w >= 0:
+            weekly.append({"week": w, "week_start": week_start, "demand_x": float(x[w]),
+                           "mean": float(order_mean[w]), "count": count})
+        w += 1
 
     txns: list[dict] = []
 
@@ -196,89 +227,135 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
                      "rail": rail_narr[0], "narration_raw": rail_narr[1]})
         return len(txns) - 1
 
-    # Purchases: ratio x sales, paid a planted lag before the invoice date.
-    r = rng_for(run_id, "purchases")
-    suppliers = [nr.company_name(rn, str(rn.choice(c.sectors)), "unlisted") for _ in range(8)]
-    purchases = []
-    for inv in invoices:
-        lag = c.purchase_lag_days + int(r.integers(-c.purchase_lag_jitter_days, c.purchase_lag_jitter_days + 1))
-        d = inv["issue_date"] - timedelta(days=lag)
-        amount = int(round(c.purchase_ratio * inv["gross_paise"]))
-        name = suppliers[int(r.integers(len(suppliers)))]
-        idx = add_txn(d, -amount, "supplier_payment", nr.debit_to_party(rn, name, d, f"BILL {r.integers(100, 9999)}", amount))
-        purchases.append({"invoice_id": inv["invoice_id"], "txn_idx": idx, "value_date": d,
-                          "amount_paise": amount, "lag_days": lag})
+    # Purchases (paid on the order date) and the invoices they lead to.
+    suppliers = [nr.company_name(rn_past, str(rn_past.choice(c.sectors)), "unlisted") for _ in range(8)]
+    purchases, invoices = [], []
+    for n, o in enumerate(orders):
+        d = o["order_date"]
+        amount = int(round(c.purchase_ratio * o["gross"]))
+        g = rn(d)
+        name = suppliers[int(g.integers(len(suppliers)))]
+        idx = add_txn(d, -amount, "supplier_payment", nr.debit_to_party(g, name, d, f"BILL {g.integers(100, 9999)}", amount))
+        inv_id = f"INV-{n:05d}"
+        purchases.append({"invoice_id": inv_id, "txn_idx": idx, "value_date": d, "amount_paise": amount,
+                          "lag_days": o["lag"]})
+        issue = d + timedelta(days=o["lag"])
+        gst = int(round(o["gross"] * c.gst_rate / (1 + c.gst_rate)))
+        invoices.append({
+            "invoice_id": inv_id,
+            "buyer": o["buyer"],
+            "issue_date": issue,
+            "due_date": issue + timedelta(days=o["terms"]),
+            "terms_days": o["terms"],
+            "gross_paise": o["gross"],
+            "gst_paise": gst,
+            "tds_paise": int(round(o["buyer"]["tds_rate"] * (o["gross"] - gst))),
+        })
 
     # Payment timing: weekly hazard p shifted by the sector shock, cure fraction pi.
-    r = rng_for(run_id, "payments")
+    rp, rf = streams("payments")
     bc = c.behaviour_change
+    exact = c.lateness == "geometric" and not c.month_end_clustering
+    if c.lateness not in ("geometric", "lognormal"):
+        raise ValueError(f"unknown lateness {c.lateness!r}")
     payments = []
     for inv in invoices:
         b, issue = inv["buyer"], inv["issue_date"]
+        inv.update(never_paid=False, pay_week=None, first_paid_date=None, paid_date=None, part_paid=False)
+        if issue < c.start or issue > end:
+            continue
         changed = bc is not None and bc.buyer_index == b["index"]
-        pi = b["pi"]
-        if changed and issue >= bc.at:
-            pi = min(pi + bc.pi_add, 0.99)
+        pi = min(b["pi"] + bc.pi_add, 0.99) if changed and issue >= bc.at else b["pi"]
 
-        def p_at(d: date) -> float:
+        def hazard(k: int) -> float:
+            d = issue + timedelta(days=7 * (k - 1))
             p = b["p"]
             if changed and d >= bc.at:
                 p = min(max(p * bc.p_multiplier, 1e-4), 1 - 1e-4)
-            w = min((d - c.start).days // 7, n_weeks - 1)
-            return _sigmoid(_logit(p) + b["loading"] * z[b["sector_idx"], w])
+            return _sigmoid(_logit(p) + b["loading"] * z[b["sector_idx"], week_of(d)])
 
-        never = bool(r.random() < pi)
-        pay_week = None
-        if not never:
-            if c.lateness == "geometric":
+        def draw(r: np.random.Generator, stop: date) -> tuple[bool, int | None, date | None]:
+            """Unconditional draw of (never, pay_week, first date); weeks starting after stop are not tried."""
+            if r.random() < pi:
+                return True, None, None
+            if c.lateness == "lognormal":
+                days = 7 / hazard(1) * math.exp(c.lognormal_sigma * r.normal())
+                k = max(1, math.ceil(days / 7))
+            else:
                 k = 1
-                while issue + timedelta(days=7 * (k - 1)) <= end:
-                    if r.random() < p_at(issue + timedelta(days=7 * (k - 1))):
-                        pay_week = k
+                while issue + timedelta(days=7 * (k - 1)) <= stop:
+                    if r.random() < hazard(k):
                         break
                     k += 1
-            elif c.lateness == "lognormal":
-                median_days = 7 / p_at(issue)
-                days = median_days * math.exp(c.lognormal_sigma * r.normal())
-                pay_week = max(1, math.ceil(days / 7))
-            else:
-                raise ValueError(f"unknown lateness {c.lateness!r}")
+                else:
+                    return False, None, None
+            first = issue + timedelta(days=7 * (k - 1) + int(r.integers(7)))
+            if c.month_end_clustering and r.random() < c.month_end_prob:
+                first = _last_day_of_month(first)
+            return False, k, first
 
-        inv.update(never_paid=never, pay_week=pay_week, first_paid_date=None, paid_date=None, part_paid=False)
-        if pay_week is None:
+        never, pay_week, first = False, None, None
+        paid_in_past = False
+        if issue <= t0:
+            never, pay_week, first = draw(rp, t0)
+            paid_in_past = first is not None and first <= t0
+        if not paid_in_past:
+            # Open at as_of (or issued after it): draw from the future streams,
+            # conditional on not being paid by as_of.
+            if exact:
+                never, pay_week, first = _conditional_geometric(rf, issue, t0, end, pi, hazard)
+            else:
+                for _ in range(REJECTION_CAP):
+                    never, pay_week, first = draw(rf, end)
+                    if first is None or first > t0:
+                        break
+                else:
+                    never, pay_week, first = True, None, None
+
+        inv.update(never_paid=never, pay_week=pay_week)
+        if first is None:
             continue
-        first = issue + timedelta(days=7 * (pay_week - 1) + int(r.integers(7)))
-        if c.month_end_clustering and r.random() < c.month_end_prob:
-            first = _last_day_of_month(first)
+        g = rp if first <= t0 else rf
         net = inv["gross_paise"] - inv["tds_paise"]
         parts = [(first, net, inv["tds_paise"])]
-        if r.random() < c.part_payment_prob:
-            f = r.uniform(0.3, 0.7)
-            second = first + timedelta(days=int(r.integers(7, 29)))
+        if g.random() < c.part_payment_prob:
+            f = g.uniform(0.3, 0.7)
+            second = first + timedelta(days=int(g.integers(7, 29)))
+            if first <= t0 < second:
+                # Second part still unpaid at as_of: its date is future randomness.
+                second = first + timedelta(days=int(rf.integers(max(7, (t0 - first).days + 1), 29)))
             n1, t1 = int(round(net * f)), int(round(inv["tds_paise"] * f))
             parts = [(first, n1, t1), (second, net - n1, inv["tds_paise"] - t1)]
             inv["part_paid"] = True
         inv["first_paid_date"], inv["paid_date"] = parts[0][0], parts[-1][0]
-        ref = inv["invoice_id"].replace("-", " ") if r.random() < 0.7 else "PAYMENT"
         for part_no, (d, amount, tds) in enumerate(parts, start=1):
+            g = rn(d)
+            ref = inv["invoice_id"].replace("-", " ") if g.random() < 0.7 else "PAYMENT"
             if b["type"] == "cpse":
-                rail_narr = nr.credit_via_treds(rn, d, ref)
+                rail_narr = nr.credit_via_treds(g, d, ref)
             else:
-                rail_narr = nr.credit_from_company(rn, b["name"], d, ref, amount)
+                rail_narr = nr.credit_from_company(g, b["name"], d, ref, amount)
             idx = add_txn(d, amount, "customer_receipt", rail_narr)
             payments.append({"invoice_id": inv["invoice_id"], "part": part_no, "txn_idx": idx,
                              "value_date": d, "amount_paise": amount, "tds_paise": tds})
 
     # Scheduled outflows. Each is both a txn and a truth obligation.
     obligations = []
-    supplier_gstin = nr.make_gstin(rn, nr.make_pan(rn))
-    landlord, owner, lender = nr.person_name(rn), nr.person_name(rn), str(rn.choice(nr.LENDERS))
-    ca_firm = f"{nr.person_name(rn)} AND CO"
+    supplier_gstin = nr.make_gstin(rn_past, nr.make_pan(rn_past))
+    landlord, owner, lender = nr.person_name(rn_past), nr.person_name(rn_past), str(rn_past.choice(nr.LENDERS))
+    ca_firm = f"{nr.person_name(rn_past)} AND CO"
     tds_deducted: dict[tuple[int, int], int] = {}
-    gst_by_month: dict[tuple[int, int], int] = {}
+
+    # GST for a month = gst_rate x (taxable sales issued - taxable purchases made),
+    # with any excess input credit carried forward.
+    taxable_net: dict[tuple[int, int], float] = {}
     for inv in invoices:
         key = (inv["issue_date"].year, inv["issue_date"].month)
-        gst_by_month[key] = gst_by_month.get(key, 0) + inv["gst_paise"]
+        taxable_net[key] = taxable_net.get(key, 0.0) + inv["gross_paise"] - inv["gst_paise"]
+    for p in purchases:
+        key = (p["value_date"].year, p["value_date"].month)
+        taxable_net[key] = taxable_net.get(key, 0.0) - p["amount_paise"] / (1 + c.gst_rate)
+    gst_carry = 0.0
 
     def scheduled(kind: str, d: date, amount: int, category: str, rail_narr: tuple[str, str]):
         if add_txn(d, -amount, category, rail_narr) is not None:
@@ -288,58 +365,62 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
     for y, m in _months(c.start, end):
         py, pm = _prev_month(y, m)
         d = date(y, m, c.salary_day)
-        scheduled("salary", d, c.salary_paise, "salary", nr.salary(rn, d))
+        scheduled("salary", d, c.salary_paise, "salary", nr.salary(rn(d), d))
         d = date(y, m, c.professional_fee_day)
         tds = int(round(0.10 * c.professional_fee_paise))  # 194J professional fees
         scheduled("professional_fee", d, c.professional_fee_paise - tds, "professional_fee",
-                  nr.debit_to_party(rn, ca_firm, d, "PROF FEES", c.professional_fee_paise))
+                  nr.debit_to_party(rn(d), ca_firm, d, "PROF FEES", c.professional_fee_paise))
         if c.start <= d <= end:
             tds_deducted[(y, m)] = tds
         d = date(y, m, c.rent_day)
-        scheduled("rent", d, c.rent_paise, "rent", nr.debit_to_party(rn, landlord, d, "RENT", c.rent_paise))
+        scheduled("rent", d, c.rent_paise, "rent", nr.debit_to_party(rn(d), landlord, d, "RENT", c.rent_paise))
         d = date(y, m, c.emi_day)
-        scheduled("emi", d, c.emi_paise, "emi", nr.ach_emi(rn, lender))
+        scheduled("emi", d, c.emi_paise, "emi", nr.ach_emi(rn(d), lender))
         # TDS for the previous month: 7th, except March deductions are due 30 April.
         d = date(y, 4, 30) if pm == 3 else date(y, m, cal["tds_deposit"]["day"])
-        scheduled("tds", d, tds_deducted.get((py, pm), 0), "tds_payment", nr.tds_payment(rn, d))
+        scheduled("tds", d, tds_deducted.get((py, pm), 0), "tds_payment", nr.tds_payment(rn(d), d))
         d = date(y, m, cal["pf_deposit"]["day"])
-        scheduled("pf", d, int(round(c.pf_rate * c.salary_paise)), "pf_esi", nr.pf_payment(rn))
+        scheduled("pf", d, int(round(c.pf_rate * c.salary_paise)), "pf_esi", nr.pf_payment(rn(d)))
         d = date(y, m, cal["esi_deposit"]["day"])
-        scheduled("esi", d, int(round(c.esi_rate * c.salary_paise)), "pf_esi", nr.esi_payment(rn))
+        scheduled("esi", d, int(round(c.esi_rate * c.salary_paise)), "pf_esi", nr.esi_payment(rn(d)))
         d = date(y, m, cal["gstr3b_monthly"]["day"])
         if d.weekday() == 6:  # Sunday moves to next working day
             d += timedelta(days=1)
-        gst = int(round(c.gst_net_of_itc * gst_by_month.get((py, pm), 0)))
-        scheduled("gst", d, gst, "gst_payment", nr.gst_payment(rn, supplier_gstin))
+        due = c.gst_rate * taxable_net.get((py, pm), 0.0) + gst_carry
+        gst_carry = min(due, 0.0)
+        scheduled("gst", d, int(round(max(due, 0.0))), "gst_payment", nr.gst_payment(rn(d), supplier_gstin))
         d = _last_day_of_month(date(y, m, 1))
-        add_txn(d, -int(rn.integers(59, 591)) * 100, "bank_charges", nr.bank_charge(rn, d, quarterly=False))
+        add_txn(d, -int(rn(d).integers(59, 591)) * 100, "bank_charges", nr.bank_charge(rn(d), d, quarterly=False))
         if m in (1, 4, 7, 10):
             d = date(y, m, 1)
-            add_txn(d, -int(rn.integers(15, 60)) * 100, "bank_charges", nr.bank_charge(rn, d, quarterly=True))
+            add_txn(d, -int(rn(d).integers(15, 60)) * 100, "bank_charges", nr.bank_charge(rn(d), d, quarterly=True))
 
     # Unscheduled flows (supplier payments are not here; they are purchases).
-    r = rng_for(run_id, "flows")
+    rp, rf = streams("flows")
     d = c.start
     while d <= end:
+        r, g = (rp, rn_past) if d <= t0 else (rf, rn_future)
         for _ in range(r.poisson(c.misc_credits_per_day)):
             amt = int(round(c.misc_credit_median_paise * math.exp(0.6 * r.normal())))
             if r.random() < 0.5:
-                add_txn(d, amt, "refund", nr.upi_credit(rn, suppliers[int(r.integers(len(suppliers)))], "REFUND"))
+                add_txn(d, amt, "refund", nr.upi_credit(g, suppliers[int(r.integers(len(suppliers)))], "REFUND"))
             else:
-                add_txn(d, amt, "misc_income", nr.upi_credit(rn, nr.person_name(rn), "PAYMENT"))
+                add_txn(d, amt, "misc_income", nr.upi_credit(g, nr.person_name(g), "PAYMENT"))
         if r.random() < c.cash_withdrawals_per_week / 7:
-            add_txn(d, -int(r.integers(1, 6)) * 10_000_00, "cash_withdrawal", nr.cash_withdrawal(rn))
+            add_txn(d, -int(r.integers(1, 6)) * 10_000_00, "cash_withdrawal", nr.cash_withdrawal(g))
         if r.random() < c.owner_transfers_per_month / 30:
-            add_txn(d, -int(r.integers(5, 21)) * 10_000_00, "owner_transfer", nr.owner_transfer(rn, owner))
+            add_txn(d, -int(r.integers(5, 21)) * 10_000_00, "owner_transfer", nr.owner_transfer(g, owner))
         d += timedelta(days=1)
 
-    # Order, ids and known_at.
+    # Order, ids and known_at. Past-dated txns sort first, so their ids and
+    # known_at draws never depend on the future.
     order = sorted(range(len(txns)), key=lambda i: (txns[i]["value_date"], i))
     uid_of = {}
-    rk = rng_for(run_id, "known_at")
+    rk_past, rk_future = streams("known_at")
     rows = []
     for n, i in enumerate(order):
         t = txns[i]
+        rk = rk_past if t["value_date"] <= t0 else rk_future
         uid_of[i] = f"{c.tenant_id}-T{n:07d}"
         known_at = datetime.combine(t["value_date"], time(), tzinfo=timezone.utc) + timedelta(
             days=int(rk.integers(3)), seconds=int(rk.integers(6 * 3600, 23 * 3600)))
@@ -351,6 +432,7 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
             "category": t["category"], "rail": t["rail"], "process": PROCESS_OF_CATEGORY[t["category"]],
         })
     all_txns = pl.DataFrame(rows, schema={**TXN, "category": pl.String, "rail": pl.String, "process": pl.String})
+    opening = c.as_of_balance_paise - int(all_txns.filter(pl.col("value_date") <= t0)["amount_paise"].sum())
 
     pay_df = pl.DataFrame(
         [{**p, "txn_uid": uid_of.get(p["txn_idx"])} for p in payments],
@@ -362,7 +444,7 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
         [{**p, "txn_uid": uid_of.get(p["txn_idx"])} for p in purchases],
         schema={"invoice_id": pl.String, "txn_idx": pl.Int64, "value_date": pl.Date,
                 "amount_paise": pl.Int64, "lag_days": pl.Int32, "txn_uid": pl.String},
-    ).drop("txn_idx")
+    ).drop("txn_idx").filter(pl.col("value_date").is_between(c.start, end))
 
     inv_truth = pl.DataFrame(
         [{k: v for k, v in inv.items() if k != "buyer"} | {"buyer_id": inv["buyer"]["buyer_id"]} for inv in invoices],
@@ -370,7 +452,7 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
                 "gross_paise": pl.Int64, "gst_paise": pl.Int64, "tds_paise": pl.Int64, "never_paid": pl.Boolean,
                 "pay_week": pl.Int32, "first_paid_date": pl.Date, "paid_date": pl.Date, "part_paid": pl.Boolean,
                 "buyer_id": pl.String},
-    )
+    ).filter(pl.col("issue_date").is_between(c.start, end))
 
     buyers_truth = pl.DataFrame(
         [{k: b[k] for k in ("buyer_id", "type", "sector", "p", "pi", "loading", "mix_share", "tds_rate")}
@@ -393,7 +475,7 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
     obs_pay = pay_df.filter(pl.col("txn_uid").is_in(observed_uids)).group_by("invoice_id").agg(
         pl.col("amount_paise").sum().alias("received"), pl.col("value_date").max().alias("last_paid"))
     inv_obs = (
-        inv_truth.filter(pl.col("issue_date") <= c.as_of_date)
+        inv_truth.filter(pl.col("issue_date") <= t0)
         .join(obs_pay, on="invoice_id", how="left")
         .with_columns(
             pl.col("received").fill_null(0),
@@ -419,29 +501,61 @@ def generate_world(config: WorldConfig, seed: int) -> tuple[dict[str, pl.DataFra
         "invoice_id", "buyer_id", "issue_date",
         pl.when(pl.col("status") == "paid").then(pl.col("last_paid")).alias("paid_date"),
         (pl.col("received") / pl.col("net")).clip(0.0, 1.0).alias("paid_fraction"),
-        pl.when(pl.col("status") != "paid").then(pl.lit(c.as_of_date)).alias("censored_at"),
+        pl.when(pl.col("status") != "paid").then(pl.lit(t0)).alias("censored_at"),
     ).cast(INVOICE_OUTCOME)
 
     observed = {
         "transactions": obs_txns.select(list(TXN)),
-        "balances": _balances(obs_txns, c, c.as_of_date),
+        "balances": _balances(obs_txns, c, opening, t0),
         "invoices": invoices_obs,
         "invoice_outcomes": outcomes_obs,
         "buyers": buyers_obs,
     }
     truth = Truth(
-        config=c, seed=seed, sector_shocks=shocks, weekly_orders=pl.DataFrame(weekly), buyers=buyers_truth,
-        invoices=inv_truth, payments=pay_df, purchases=purchases_df, transactions=all_txns, balances=_balances(all_txns, c, end),
-        obligations=obligations_df,
+        config=c, past_seed=past_seed, future_seed=future_seed, opening_balance_paise=opening,
+        sector_shocks=shocks, weekly_orders=pl.DataFrame(weekly), buyers=buyers_truth,
+        invoices=inv_truth, payments=pay_df, purchases=purchases_df, transactions=all_txns,
+        balances=_balances(all_txns, c, opening, end), obligations=obligations_df,
     )
     return observed, truth
 
 
-def _irn(invoice_id: str) -> str:
-    return hashlib.sha256(invoice_id.encode()).hexdigest()
+def _conditional_geometric(r, issue: date, t0: date, end: date, pi: float, hazard):
+    """Draw (never, pay_week, first date) given the invoice was not paid by t0.
+
+    Survival to t0 for an eventual payer is S = prod over weeks wholly before
+    t0 of (1 - h_k), times (1 - h_s f) for the week straddling t0, where f is
+    the share of that week's days on or before t0 (pay day is uniform in the
+    week). Then P(never | open at t0) = pi / (pi + (1 - pi) S).
+    """
+    k, survive = 1, 1.0
+    straddle = None
+    while (wk := issue + timedelta(days=7 * (k - 1))) <= t0:
+        days_in = (t0 - wk).days + 1
+        if days_in >= 7:
+            survive *= 1 - hazard(k)
+        else:
+            straddle = (k, days_in)
+            survive *= 1 - hazard(k) * days_in / 7
+            break
+        k += 1
+    if r.random() < pi / (pi + (1 - pi) * survive):
+        return True, None, None
+    if straddle is not None:
+        k, days_in = straddle
+        h = hazard(k)
+        if r.random() < h * (1 - days_in / 7) / (1 - h * days_in / 7):
+            day = int(r.integers(days_in, 7))
+            return False, k, issue + timedelta(days=7 * (k - 1) + day)
+        k += 1
+    while (wk := issue + timedelta(days=7 * (k - 1))) <= end:
+        if r.random() < hazard(k):
+            return False, k, wk + timedelta(days=int(r.integers(7)))
+        k += 1
+    return False, None, None
 
 
-def _balances(txns: pl.DataFrame, c: WorldConfig, last: date) -> pl.DataFrame:
+def _balances(txns: pl.DataFrame, c: WorldConfig, opening: int, last: date) -> pl.DataFrame:
     """Daily closing balance from an opening row on start - 1 day."""
     days = pl.DataFrame({"date": pl.date_range(c.start - timedelta(days=1), last, "1d", eager=True)})
     daily = txns.group_by(pl.col("value_date").alias("date")).agg(pl.col("amount_paise").sum().alias("flow"))
@@ -453,8 +567,46 @@ def _balances(txns: pl.DataFrame, c: WorldConfig, last: date) -> pl.DataFrame:
             pl.lit(c.tenant_id).alias("tenant_id"),
             pl.lit(c.account_id).alias("account_id"),
             "date",
-            (pl.lit(c.opening_balance_paise, pl.Int64) + pl.col("flow").cum_sum()).alias("closing_paise"),
+            (pl.lit(opening, pl.Int64) + pl.col("flow").cum_sum()).alias("closing_paise"),
             pl.lit(True).alias("continuity_ok"),
         )
         .cast(BALANCE)
     )
+
+
+@dataclass
+class Futures:
+    """n truth futures sharing one past."""
+
+    config: WorldConfig
+    past_seed: int
+    observed: dict[str, pl.DataFrame]
+    truths: list[Truth]
+
+    def balance_paths(self, horizon_days: int) -> np.ndarray:
+        """(n_futures, horizon_days) true closing balances for days as_of+1 .. as_of+horizon."""
+        if horizon_days > self.config.future_days:
+            raise ValueError("horizon_days exceeds the simulated future")
+        t0 = self.config.as_of_date
+        return np.stack([
+            t.balances.filter(pl.col("date").is_between(t0 + timedelta(days=1), t0 + timedelta(days=horizon_days)))
+            ["closing_paise"].to_numpy()
+            for t in self.truths
+        ])
+
+    def oracle_shortfall(self, threshold_paise: int | None = None, horizon_days: int = 90) -> pl.DataFrame:
+        """True P(balance has gone below threshold by day t), t = 1..horizon."""
+        threshold = self.config.shortfall_threshold_paise if threshold_paise is None else threshold_paise
+        paths = self.balance_paths(horizon_days)
+        ever_below = np.minimum.accumulate(paths, axis=1) < threshold
+        t0 = self.config.as_of_date
+        return pl.DataFrame({
+            "day": np.arange(1, horizon_days + 1, dtype=np.int32),
+            "date": [t0 + timedelta(days=d) for d in range(1, horizon_days + 1)],
+            "p_short": ever_below.mean(axis=0),
+        })
+
+
+def resample_futures(config: WorldConfig, past_seed: int, n: int) -> Futures:
+    worlds = [generate_world(config, past_seed, future_seed) for future_seed in range(n)]
+    return Futures(config=config, past_seed=past_seed, observed=worlds[0][0], truths=[t for _, t in worlds])

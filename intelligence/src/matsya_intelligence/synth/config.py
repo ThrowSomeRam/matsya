@@ -37,7 +37,11 @@ class WorldConfig:
     start: date = date(2025, 4, 1)
     as_of: datetime = datetime(2026, 3, 31, 18, 0, tzinfo=timezone.utc)
     future_days: int = 120  # simulated past as_of; kept only in truth
-    opening_balance_paise: int = 10_00_000_00  # Rs 10 lakh
+    # True balance at as_of; the opening balance is back-solved to hit it.
+    # Default is about 1.5 months of fixed costs (salary, rent, EMI, fee, PF, ESI ~ Rs 19 lakh/month).
+    as_of_balance_paise: int = 28_60_000_00
+    # Short = balance below this. 0 for now; later -(overdraft limit) + owner cushion.
+    shortfall_threshold_paise: int = 0
 
     # Sector shock: z_t = rho z_{t-1} + eps, eps ~ N(0, sigma), weekly.
     # z is lateness: positive z means slower payment, so loadings are negative
@@ -71,9 +75,9 @@ class WorldConfig:
     part_payment_prob: float = 0.10
     has_irn: bool = True  # supplier above the Rs 5 crore e-invoicing threshold
 
-    # Purchases: each invoice has a purchase of purchase_ratio x gross, paid
-    # purchase_lag_days (+- jitter) BEFORE the invoice's issue date.
-    purchase_ratio: float = 0.42
+    # Purchases: each order is bought on its order date for purchase_ratio x
+    # gross; the invoice is issued purchase_lag_days (+- jitter) later.
+    purchase_ratio: float = 0.45
     purchase_lag_days: int = 10
     purchase_lag_jitter_days: int = 3
 
@@ -88,7 +92,6 @@ class WorldConfig:
     professional_fee_day: int = 3
     pf_rate: float = 0.12  # VERIFY: employer PF share of salary, simplified
     esi_rate: float = 0.0325  # VERIFY: employer ESI share, simplified
-    gst_net_of_itc: float = 0.6  # share of output GST left after input credit (assumption)
 
     # Unscheduled flows (Poisson per day, lognormal amounts)
     misc_credits_per_day: float = 0.2
@@ -112,13 +115,16 @@ class WorldConfig:
         return replace(cls(), **PRESETS[name], **overrides)
 
 
-# Shortfall share = fraction of seeds whose true balance dips below zero in
-# the 90 days after as_of (see test_presets_land_in_shortfall_band). This is
-# across worlds, not across futures of one fixed past. Measured 2026-10-24 on
-# 100 seeds: healthy 0.03, borderline 0.28 (0.26 on 300 other seeds),
-# distressed 0.98. Only the purchase ratio (gross margin) differs.
+# Calibrated on the oracle: P(balance below threshold by day 90), from 60
+# resampled futures per fixed past, median over past seeds 0..6 (2026-10-24):
+#   healthy     0.33 -> ~0.02 (5 pasts: 0.00-0.40)
+#   borderline  0.45 -> 0.28  (pasts: 0.03, 0.20, 0.20, 0.28, 0.42, 0.72, 0.77)
+#   distressed  0.66 -> 0.90  (pasts: 0.62-1.00)
+# The spread across pasts is real (buyer mix, receivables open at as_of), so
+# the bands hold for the median past, not for every past. Only the purchase
+# ratio (gross margin) differs.
 PRESETS: dict[str, dict] = {
     "healthy": {"purchase_ratio": 0.33},
     "borderline": {},
-    "distressed": {"purchase_ratio": 0.55},
+    "distressed": {"purchase_ratio": 0.66},
 }
