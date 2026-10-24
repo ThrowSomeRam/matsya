@@ -138,10 +138,19 @@ def speed(n_paths: int = 10_000, horizon: int = 90, past_seed: int = 0) -> dict:
 def _learned_one(args) -> dict:
     past_seed, n_paths, flags = args
     cfg = WorldConfig()
+    flags = dict(flags)
+    if flags.pop("true_priors", False):  # diagnostic: the generator's type hyperpriors as timing priors
+        from matsya_intelligence.timing.evaluate import true_hyperpriors
+
+        flags["timing_priors"] = true_hyperpriors(cfg)
     obs, truth = generate_world(cfg, past_seed, 0)
     cats = truth.transactions.select("txn_uid", "category")
     run_id = f"cal-{past_seed}"
-    res = run_engine(build_learned_inputs(obs, cats, cfg.as_of_date, run_id, **flags), run_id, n_paths, keep_flows=True)
+    true_opening = flags.pop("true_opening", False)  # diagnostic: the generator's true balance at as_of
+    inp = build_learned_inputs(obs, cats, cfg.as_of_date, run_id, **flags)
+    if true_opening:
+        inp.opening_balance_paise = cfg.as_of_balance_paise
+    res = run_engine(inp, run_id, n_paths, keep_flows=True)
     cum = {t: np.zeros(len(HORIZONS)) for t in FLOW_TYPES}
     for comp, arr in res.flows.items():
         t = FLOW_TYPE_OF_COMPONENT[comp]

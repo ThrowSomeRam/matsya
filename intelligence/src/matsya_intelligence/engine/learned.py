@@ -17,6 +17,8 @@ Flags (each was a calibration step; see eval/models/engine_calibration.py):
   full_unscheduled:  bootstrap unscheduled flows from the full history
   naive_purchases:   (only with with_sales=False) supplier payments as a flat daily
                      outflow at their historical mean, as a naive tool would
+  timing_priors, timing_hierarchical: diagnostics only (e.g. the generator's true
+                     type hyperpriors, no group shrinkage)
 """
 
 import hashlib
@@ -89,13 +91,15 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
                          threshold_paise: int = 0, gst_rate: float = 0.18, horizon: int = 90,
                          with_sales: bool = True, label_lag_days: int = 3, sales_uncertainty: bool = True,
                          sector_shocks: bool = True, demand_ar1: bool = True, full_unscheduled: bool = True,
-                         naive_purchases: bool = False) -> EngineInputs:
+                         naive_purchases: bool = False, timing_priors: dict | None = None,
+                         timing_hierarchical: bool = True) -> EngineInputs:
     inv, out, buyers, txns = obs["invoices"], obs["invoice_outcomes"], obs["buyers"], obs["transactions"]
     tenant = inv["tenant_id"][0]
     buyer_ids = buyers["buyer_id"].to_list()
     bidx = {b: i for i, b in enumerate(buyer_ids)}
 
-    tm = fit_timing(out, inv, buyers, as_of, run_id=run_id, label_lag_days=label_lag_days)
+    tm = fit_timing(out, inv, buyers, as_of, run_id=run_id, label_lag_days=label_lag_days,
+                    type_defaults=timing_priors, hierarchical=timing_hierarchical)
     timing = TimingDraws(p_early=[tm.posteriors[b].p_early for b in buyer_ids],
                          p=[tm.posteriors[b].p for b in buyer_ids], pi=[tm.posteriors[b].pi for b in buyer_ids])
 

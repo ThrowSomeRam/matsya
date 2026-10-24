@@ -74,3 +74,58 @@ All of these are computed on the same paths; the oracle versions in the syntheti
 - Schedule III ageing layouts vary: some add an "Unbilled" column, some omit "Not due".
 - State that `ledger.transactions.amount_paise` is signed (+ credit, - debit).
 - Add `known_at` to `ledger.balances` so as-of balance queries are look-ahead safe.
+- Expose the AA-reported account balance at fetch time (with its timestamp) alongside
+  `ledger.balances`. Summing known transactions misses ones reported after as_of; on
+  synthetic worlds that leaves the opening balance off by Rs 3.1 lakh (sd).
+
+## Learned-mode calibration: diagnosis (2026-10-24)
+
+Setup: 100 borderline pasts, oracle P(short by day 90) from 200 resampled futures per
+past, learned engine at 4,000 paths. Tables are "binned by prediction": pasts grouped by
+the engine's p_short(90), then the mean oracle p_short in each group. A calibrated
+forecaster sits on the diagonal. No recalibration fitted on synthetic data is used.
+
+**The pattern.** Low predictions are too low and middle ones too high (shipped settings:
+predicted 0.12 vs oracle 0.21 in the 0.05-0.20 bin, 0.48 vs 0.41 in 0.40-0.60). That is
+the signature of forecasts that vary more across tenants than the truth does: each
+forecast carries per-tenant error the model does not represent, so extreme predictions
+regress toward the middle. It is not a mean bias (mean gap about -0.015).
+
+| variant (all four engine fixes on) | mean \|gap\| | corr | bin 0.05-0.20 pred / oracle | bin 0.40-0.60 |
+|---|---|---|---|---|
+| shipped: placeholder priors + group shrinkage, iid-week bootstrap | 0.143 | 0.729 | 0.121 / 0.207 | 0.482 / 0.400 |
+| placeholder priors, no shrinkage | 0.143 | 0.728 | 0.121 / 0.197 | 0.484 / 0.411 |
+| true type hyperpriors, no shrinkage | 0.139 | 0.747 | 0.126 / 0.203 | 0.491 / 0.390 |
+| shipped + 4-week block bootstrap | 0.143 | 0.733 | 0.121 / 0.205 | 0.482 / 0.413 |
+| block bootstrap + true priors, no shrinkage | 0.138 | 0.749 | 0.127 / 0.204 | 0.482 / 0.379 |
+| diagnostic: true opening balance | 0.135 | 0.766 | 0.129 / 0.218 | 0.479 / 0.464 |
+| diagnostic: true opening + true priors | 0.132 | 0.778 | 0.127 / 0.199 | 0.478 / 0.476 |
+
+**What moved it.**
+- Priors (step 1): little. True hyperpriors improve mean |gap| by 0.004 and correlation by
+  0.02; the low bin does not move. Placeholder priors are not the main cause.
+- Block bootstrap (step 2): almost nothing on the table; kept because it is the correct
+  bootstrap under autocorrelation (purchase-ratio and order-rate spreads widen slightly).
+- Opening balance (extra diagnostic): the largest single effect. The observed balance at
+  as_of misses transactions reported after as_of (known_at lag): on these worlds it is on
+  average Rs 1.64 lakh below the truth (sd Rs 3.1 lakh, range -12.0 to +4.8 lakh). Using the
+  true balance fixes the middle bins and removes the steady -Rs 1 lakh median bias (it
+  becomes about +Rs 0.5 lakh), but leaves the low bin and makes the mean gap -0.047.
+
+**What is left.**
+1. Shock double counting (leading hypothesis). The payment-timing posterior p is already
+   the marginal weekly chance, averaged over past sector shocks. The engine then adds
+   logit-scale shock noise on top, which for small p raises the average weekly chance
+   (Jensen). Evidence: the receipts gap went from about -Rs 0.4 lakh to +Rs 0.7 lakh at day
+   30 when sector shocks were switched on, and stays positive in every variant. Fix to
+   try: solve for a base logit so that E[sigmoid(base + shift)] over the shock
+   distribution equals the posterior p.
+2. Opening balance. A product issue, not a model one: the engine must start from the
+   bank-reported balance at as_of (the AA account summary carries the current balance at
+   fetch time), not from summing known transactions. Request to Track A: expose the
+   AA-reported balance with its timestamp alongside `ledger.balances`.
+3. Components without posterior uncertainty: invoice amounts resampled from history,
+   unscheduled flows bootstrapped, a single shock loading of 1 per sector (the generator
+   plants per-buyer loadings around -1, sd 0.3).
+4. Whatever remains after 1-3 is the calibration component's job (adaptive conformal on
+   real outcomes), not a fit to synthetic data.

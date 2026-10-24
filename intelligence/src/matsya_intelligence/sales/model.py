@@ -24,8 +24,10 @@ Because k is itself fitted from weekly variance, this double counts some
 variation and the result is a rough, slightly conservative spread.
 
 Parameter uncertainty (param_draws=True in sample): each path uses one of
-N_BOOT bootstrap replicates of (m, k, purchase ratio): weeks resampled with
-replacement for m and k, months resampled for the ratio.
+N_BOOT bootstrap replicates of (m, k, purchase ratio). Weeks are resampled as
+moving blocks of BOOT_BLOCK_WEEKS (so demand autocorrelation inflates the
+spread of m as it should; an iid-week bootstrap understates it), months are
+resampled for the ratio.
 
 Demand AR(1) (demand="ar1" in sample): latent x_t on the log order rate,
 x_t = rho x_{t-1} + e_t. From the count autocovariances,
@@ -50,6 +52,7 @@ MIN_OWN_INVOICES = 10
 K_MAX = 1e4
 MAX_LAG_DAYS = 30
 N_BOOT = 200
+BOOT_BLOCK_WEEKS = 4
 
 
 @dataclass
@@ -206,7 +209,7 @@ def fit_sales(invoices: pl.DataFrame, txns: pl.DataFrame, categories: pl.DataFra
 
     tenant = invoices["tenant_id"][0]
     rb = rng_for(f"sales-fit:{tenant}:{as_of}", "bootstrap")  # deterministic given inputs
-    wk = counts[rb.integers(0, n_weeks, (N_BOOT, n_weeks))]
+    wk = counts[_block_indices(rb, n_weeks, BOOT_BLOCK_WEEKS, N_BOOT)]
     boot_mean, boot_var = wk.mean(axis=1), wk.var(axis=1, ddof=1)
     p_mo = purch.filter(pl.col("value_date").is_between(h0, as_of - timedelta(days=L))).group_by(
         (pl.col("value_date") + pl.duration(days=L)).dt.truncate("1mo").alias("mo")).agg(pl.col("amount_paise").sum().abs().alias("p"))
@@ -222,6 +225,14 @@ def fit_sales(invoices: pl.DataFrame, txns: pl.DataFrame, categories: pl.DataFra
         tds_ratio=dict(zip(tds["buyer_id"], tds["r"])), level_sigma=level_sigma,
         boot_mean=boot_mean, boot_var=boot_var, boot_ratio=boot_ratio, demand=_fit_demand(counts, m, v, k),
     )
+
+
+def _block_indices(rng: np.random.Generator, n: int, block: int, reps: int) -> np.ndarray:
+    """(reps, n) moving-block bootstrap indices: ceil(n / block) blocks of consecutive weeks, trimmed to n."""
+    block = max(1, min(block, n))
+    n_blocks = -(-n // block)
+    starts = rng.integers(0, n - block + 1, (reps, n_blocks))
+    return (starts[:, :, None] + np.arange(block)[None, None, :]).reshape(reps, -1)[:, :n]
 
 
 def _fit_demand(counts: np.ndarray, m: float, v: float, k: float) -> AR1Fit | None:
