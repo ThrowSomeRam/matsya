@@ -15,6 +15,13 @@ Fit from history at as_of:
   - purchase ratio: supplier payments in [h0, as_of - L] over invoices issued
     in [h0 + L, as_of], so both windows cover the same orders.
 Weekly counts are sampled independently (demand autocorrelation not modelled yet).
+
+Demand level (a simplification of the demand AR(1)): sample() can scale each
+path's order rate by a persistent level L ~ lognormal with mean 1. level_sigma
+is fitted from 8-week block means of the weekly counts: their variance beyond
+what NegBin sampling noise alone gives, (m + m^2/k) / 8, as a share of m^2.
+Because k is itself fitted from weekly variance, this double counts some
+variation and the result is a rough, slightly conservative spread.
 """
 
 from dataclasses import dataclass
@@ -42,6 +49,8 @@ class SalesModel:
     pools: dict[str, tuple[np.ndarray, np.ndarray]]  # buyer_id -> (gross_paise, terms_days) to resample
     purchase_ratio: float
     purchase_lag_days: int
+    tds_ratio: dict[str, float]  # buyer_id -> expected TDS / gross, median over history
+    level_sigma: float
 
     def features(self) -> pl.DataFrame:
         rows = [
@@ -50,11 +59,17 @@ class SalesModel:
             ("history_weeks", None, float(self.n_weeks)),
             ("purchase_ratio", None, self.purchase_ratio),
             ("purchase_lag_days", None, float(self.purchase_lag_days)),
+            ("demand_level_sigma", None, self.level_sigma),
         ] + [("buyer_share", b, float(s)) for b, s in zip(self.buyer_ids, self.mix)]
         return pl.DataFrame(
             [(self.tenant_id, self.as_of, n, k, v) for n, k, v in rows], schema=SALES_PROCESS, orient="row")
 
-    def sample(self, n_paths: int, horizon_days: int, rng: np.random.Generator) -> tuple[pl.DataFrame, pl.DataFrame]:
+    def demand_levels(self, n_paths: int, rng: np.random.Generator) -> np.ndarray:
+        s = self.level_sigma
+        return np.exp(s * rng.standard_normal(n_paths) - s * s / 2)
+
+    def sample(self, n_paths: int, horizon_days: int, rng: np.random.Generator,
+               level: np.ndarray | None = None) -> tuple[pl.DataFrame, pl.DataFrame]:
         """Future invoices issued in (as_of, as_of + horizon] and purchases paid in that window, per path.
 
         Invoices are drawn L days past the horizon too, so purchases near its end
@@ -64,7 +79,8 @@ class SalesModel:
         """
         L = self.purchase_lag_days
         n_weeks = -(-(horizon_days + L) // 7)
-        lam = rng.gamma(self.dispersion, self.mean_per_week / self.dispersion, size=(n_paths, n_weeks))
+        scale = self.mean_per_week / self.dispersion * (np.ones(n_paths) if level is None else level)
+        lam = rng.gamma(self.dispersion, scale[:, None], size=(n_paths, n_weeks))
         counts = rng.poisson(lam)
         path = np.repeat(np.repeat(np.arange(n_paths), n_weeks), counts.ravel())
         week = np.repeat(np.tile(np.arange(n_weeks), n_paths), counts.ravel())
@@ -142,7 +158,13 @@ def fit_sales(invoices: pl.DataFrame, txns: pl.DataFrame, categories: pl.DataFra
     s_sum = inv.filter(pl.col("issue_date") >= h0 + timedelta(days=L))["gross_paise"].sum()
     ratio = float(abs(p_sum) / s_sum) if s_sum else 0.0
 
+    tds = inv.group_by("buyer_id").agg((pl.col("expected_tds_paise") / pl.col("gross_paise")).median().alias("r"))
+    blocks = counts[: counts.size // 8 * 8].reshape(-1, 8).mean(axis=1)
+    excess = blocks.var(ddof=1) - (m + m * m / k) / 8 if blocks.size > 2 else 0.0
+    level_sigma = float(np.sqrt(np.log1p(max(excess, 0.0) / (m * m)))) if m > 0 else 0.0
+
     return SalesModel(
         tenant_id=invoices["tenant_id"][0], as_of=as_of, mean_per_week=m, dispersion=float(k), n_weeks=n_weeks,
         buyer_ids=buyer_ids, mix=mix, pools=pools, purchase_ratio=ratio, purchase_lag_days=L,
+        tds_ratio=dict(zip(tds["buyer_id"], tds["r"])), level_sigma=level_sigma,
     )

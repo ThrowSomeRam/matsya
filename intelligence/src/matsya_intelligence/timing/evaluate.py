@@ -64,7 +64,7 @@ def recovery(cfg: WorldConfig, seeds, n_draws: int = 1000) -> dict:
     return out
 
 
-def rhat_check(cfg: WorldConfig, seeds, n_chains: int = 4, n_draws: int = 200, burn_in: int = 20) -> dict:
+def rhat_check(cfg: WorldConfig, seeds, n_chains: int = 4, n_draws: int = 400, burn_in: int = 50) -> dict:
     hyper = true_hyperpriors(cfg)
     rhats = {n: [] for n in PARAMS}
     for s, b, data in _buyer_data(cfg, seeds):

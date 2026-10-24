@@ -167,4 +167,4 @@ def test_recovery_coverage_near_nominal():
 def test_rhat_four_chains():
     r = rhat_check(WorldConfig(shock_sigma=0.0, part_payment_prob=0.0), range(5))
     for name in ("p_early", "p", "pi"):
-        assert r[f"max_rhat_{name}"] < 1.05, r
+        assert r[f"max_rhat_{name}"] < 1.01, r

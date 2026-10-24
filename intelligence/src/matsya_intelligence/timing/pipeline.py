@@ -48,11 +48,12 @@ def split_buyer(labels: pl.DataFrame, buyer_id: str) -> dict[str, np.ndarray]:
 
 
 def fit_timing(outcomes: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFrame, as_of: date, run_id: str,
-               hierarchical: bool = True, n_draws: int = 200, label_lag_days: int = 3,
+               hierarchical: bool = True, n_draws: int | None = None, label_lag_days: int = 3,
                type_defaults: dict[str, TimingPrior] | None = None) -> TimingModel:
     consts = load_constants()["payment_timing"]
     cap = float(consts["prior_strength"]["value"])
     burn_in = int(consts["gibbs_sweeps"]["value"])
+    n_draws = n_draws or int(consts["gibbs_draws"]["value"])
     defaults = type_defaults or TYPE_DEFAULTS
     labels = timing_labels(outcomes, invoices, as_of, label_lag_days, consts["never_paid_cutoff_days"]["value"])
     data = {b: split_buyer(labels, b) for b in buyers["buyer_id"]}
