@@ -119,6 +119,7 @@ def _single_type_world(**overrides):
         demand_sigma=0.0,
         shock_sigma=0.0,
         misc_credits_per_day=0.0,
+        pre_due_phase=False,  # these checks use single-phase geometric moments
         **overrides,
     )
     return generate_world(cfg, past_seed=11, future_seed=0)[1]
@@ -286,7 +287,10 @@ def test_past_identical_across_future_seeds():
 def test_open_invoices_resampled_paid_ones_fixed():
     futures = resample_futures(WorldConfig(), past_seed=7, n=12)
     t0 = futures.config.as_of_date
-    open_ids = futures.observed["invoice_outcomes"].filter(pl.col("paid_fraction") == 0)["invoice_id"]
+    # Truly unpaid at as_of (the observed tables also show payments in the
+    # known_at lag window as open, so take this from the truth).
+    t = futures.truths[0].invoices
+    open_ids = t.filter((pl.col("issue_date") <= t0) & (pl.col("first_paid_date").is_null() | (pl.col("first_paid_date") > t0)))["invoice_id"]
     first = [t.invoices.filter(pl.col("invoice_id").is_in(open_ids.implode()))["first_paid_date"] for t in futures.truths]
     for dates in first:
         assert (dates.drop_nulls() > t0).all()
@@ -301,7 +305,7 @@ def test_conditional_timing_matches_unconditional():
     """Invoices issued in the 8 weeks before as_of are mostly open at as_of, so
     their timing comes from the conditional redraw. Pooled over pasts it must
     still match the planted geometric: E[pay_week * p] = 1, never share = pi."""
-    cfg = WorldConfig(shock_sigma=0.0, n_buyers=1, demand_sigma=0.0, order_mean_per_week=30.0,
+    cfg = WorldConfig(shock_sigma=0.0, n_buyers=1, demand_sigma=0.0, order_mean_per_week=30.0, pre_due_phase=False,
                       type_priors={"listed": TypePrior(p_ab=(300, 700), pi_ab=(100, 900), share=1.0)})
     t0 = cfg.as_of_date
     scaled_weeks, never_gap, n = [], [], 0

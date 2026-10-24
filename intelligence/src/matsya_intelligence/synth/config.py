@@ -11,6 +11,7 @@ class TypePrior:
     p_ab: tuple[float, float]  # Beta on the weekly payment chance p
     pi_ab: tuple[float, float]  # Beta on the never-paid share pi
     share: float  # fraction of buyers of this type
+    p_early_ab: tuple[float, float] = (1, 19)  # Beta on the weekly chance before the due week, mean 0.05
 
 
 DEFAULT_TYPE_PRIORS = {
@@ -77,7 +78,7 @@ class WorldConfig:
 
     # Purchases: each order is bought on its order date for purchase_ratio x
     # gross; the invoice is issued purchase_lag_days (+- jitter) later.
-    purchase_ratio: float = 0.45
+    purchase_ratio: float = 0.47
     purchase_lag_days: int = 10
     purchase_lag_jitter_days: int = 3
 
@@ -106,6 +107,10 @@ class WorldConfig:
     narration_variants: tuple[int, ...] = (0, 1)
     narration_banks: tuple[str, ...] = ("HDFC", "ICIC", "SBIN", "UTIB", "KKBK", "PUNB", "BARB", "CNRB")
 
+    # Two-phase timing: weeks before the due week (terms_days // 7 + 1) use the
+    # buyer's p_early, weeks from it on use p. Off = p throughout.
+    pre_due_phase: bool = True
+
     # Misspecification knobs, all off by default
     lateness: str = "geometric"  # "geometric" | "lognormal"
     lognormal_sigma: float = 0.6
@@ -122,16 +127,17 @@ class WorldConfig:
         return replace(cls(), **PRESETS[name], **overrides)
 
 
-# Calibrated on the oracle: P(balance below threshold by day 90), from 60
-# resampled futures per fixed past, median over past seeds 0..6 (2026-10-24):
-#   healthy     0.33 -> ~0.02 (5 pasts: 0.00-0.40)
-#   borderline  0.45 -> 0.28  (pasts: 0.03, 0.20, 0.20, 0.28, 0.42, 0.72, 0.77)
-#   distressed  0.66 -> 0.90  (pasts: 0.62-1.00)
+# Calibrated on the oracle: P(balance below threshold by day 90), from 40
+# resampled futures per fixed past, median over past seeds 0..6 (2026-10-24,
+# two-phase payment timing on):
+#   healthy     0.29 -> 0.03  (pasts: 0.00-0.17)
+#   borderline  0.47 -> 0.28  (pasts: 0.12, 0.23, 0.25, 0.28, 0.38, 0.70, 0.78)
+#   distressed  0.66 -> 0.82  (pasts: 0.42-0.97)
 # The spread across pasts is real (buyer mix, receivables open at as_of), so
 # the bands hold for the median past, not for every past. Only the purchase
 # ratio (gross margin) differs.
 PRESETS: dict[str, dict] = {
-    "healthy": {"purchase_ratio": 0.33},
+    "healthy": {"purchase_ratio": 0.29},
     "borderline": {},
     "distressed": {"purchase_ratio": 0.66},
 }

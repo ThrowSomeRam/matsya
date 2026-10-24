@@ -8,7 +8,7 @@ import pytest
 from matsya_intelligence.io.types import validate
 from matsya_intelligence.synth import WorldConfig, generate_world
 from matsya_intelligence.timing import TimingPrior, conjugate_update, fit_timing, gibbs, p_dead_given_open, predict_open
-from matsya_intelligence.timing.evaluate import benchmark, recovery
+from matsya_intelligence.timing.evaluate import benchmark, recovery, rhat_check
 from matsya_intelligence.timing.hierarchy import group_prior
 from matsya_intelligence.timing.labels import timing_labels
 
@@ -16,15 +16,26 @@ RNG = np.random.default_rng
 
 
 def test_conjugate_update_exact():
-    a, b = conjugate_update(TimingPrior(2, 6, 1, 1), np.array([2, 5, 3]), np.array([4, 6]))
+    # Due in week 1: everything is in the late phase, p_early's prior is untouched.
+    ae, be, a, b = conjugate_update(TimingPrior(2, 6, 1, 1), np.array([2, 5, 3]), np.array([4, 6]))
     assert (a, b) == (5, 23)
+    assert (ae, be) == (1, 1)
+
+
+def test_two_phase_conjugate_counts():
+    # Due week 3. Paid in week 2 (early success, 1 early failure); paid in week 5
+    # (2 early failures, 2 late failures, late success); open at 4 (2 early, 2 late failures).
+    ae, be, a, b = conjugate_update(TimingPrior(2, 6, 1, 1, 1, 9), np.array([2, 5]), np.array([4]),
+                                    paid_due=np.array([3, 3]), open_due=np.array([3]))
+    assert (ae, be) == (1 + 1, 9 + 1 + 2 + 2)
+    assert (a, b) == (2 + 1, 6 + 2 + 2)
 
 
 def test_gibbs_with_pi_zero_matches_conjugate():
     prior = TimingPrior(2, 6, 1, 1)
     k, c = np.array([2, 5, 3, 1, 1, 4]), np.array([4, 6, 2])
     post = gibbs(prior, k, c, RNG(0), n_draws=20000, fix_pi=0.0)
-    a, b = conjugate_update(prior, k, c)
+    _, _, a, b = conjugate_update(prior, k, c)
     assert abs(post.p.mean() - a / (a + b)) < 0.003
     assert abs(post.p.var() - a * b / ((a + b) ** 2 * (a + b + 1))) < 0.0005
     assert (post.pi == 0).all()
@@ -43,6 +54,12 @@ def test_prediction_sums_to_one():
     paid, never, beyond = predict_open(post, age=3, horizon=13)
     assert paid.sum() + never + beyond == pytest.approx(1.0)
     assert (np.diff(paid) <= 1e-12).all()  # geometric: weekly mass never rises
+    # Two phases: mass jumps up at the due week.
+    post2 = gibbs(TimingPrior(2, 6, 1, 20, 1, 19), np.array([5, 6]), np.array([1]), RNG(2),
+                  paid_due=np.array([5, 5]), open_due=np.array([5]))
+    paid2, never2, beyond2 = predict_open(post2, age=1, horizon=13, due_week=5)
+    assert paid2.sum() + never2 + beyond2 == pytest.approx(1.0)
+    assert paid2[3] > 2 * paid2[2]  # week 5 since issue = week 4 from now
 
 
 def test_shock_hook_is_identity_at_zero_and_slows_when_negative():
@@ -66,13 +83,15 @@ def test_labels_partial_week_and_lag():
         "paid_fraction": [1.0, 1.0, 1.0, 0.0],
         "censored_at": [None, None, None, as_of],
     })
-    lab = timing_labels(out, as_of).sort("invoice_id")
+    inv = out.select("invoice_id", (pl.col("issue_date") + timedelta(days=30)).alias("due_date"))
+    lab = timing_labels(out, inv, as_of).sort("invoice_id")
     by = {r["invoice_id"]: r for r in lab.iter_rows(named=True)}
     assert by["paid_early"]["state"] == "paid" and by["paid_early"]["k"] == 2
     # 30 days = 4 full weeks; a payment on day 29 is in the partial 5th week -> open at c=4.
     assert by["paid_partial_week"]["state"] == "open" and by["paid_partial_week"]["c"] == 4
     assert by["paid_in_lag"]["state"] == "open"
     assert by["open"]["c"] == 4
+    assert by["open"]["d"] == 30 // 7 + 1
 
 
 def test_censoring_matters():
@@ -120,8 +139,8 @@ def test_one_buyer_update_under_10ms():
 def test_fit_and_predict_on_world_is_reproducible():
     obs, _ = generate_world(WorldConfig(), past_seed=2, future_seed=0)
     cfg = WorldConfig()
-    a = fit_timing(obs["invoice_outcomes"], obs["buyers"], cfg.as_of_date, run_id="r1").predict(13)
-    b = fit_timing(obs["invoice_outcomes"], obs["buyers"], cfg.as_of_date, run_id="r1").predict(13)
+    a = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], cfg.as_of_date, run_id="r1").predict(13)
+    b = fit_timing(obs["invoice_outcomes"], obs["invoices"], obs["buyers"], cfg.as_of_date, run_id="r1").predict(13)
     validate(a, "InvoiceTiming")
     assert a.equals(b)
     sums = a.group_by("invoice_id").agg(pl.col("p_paid").sum() + pl.col("p_never").first() + pl.col("p_beyond").first())
@@ -140,5 +159,12 @@ def test_recovery_coverage_near_nominal():
     r = recovery(WorldConfig(shock_sigma=0.0, part_payment_prob=0.0), range(100), n_draws=1000)
     assert r["n_buyers"] == 1000
     # Binomial SE at n=1000 is about 0.0095; allow about 3 SE.
-    assert 0.87 <= r["coverage_p"] <= 0.93
-    assert 0.87 <= r["coverage_pi"] <= 0.93
+    for name in ("p_early", "p", "pi"):
+        assert 0.87 <= r[f"coverage_{name}"] <= 0.93, (name, r)
+
+
+@pytest.mark.slow
+def test_rhat_four_chains():
+    r = rhat_check(WorldConfig(shock_sigma=0.0, part_payment_prob=0.0), range(5))
+    for name in ("p_early", "p", "pi"):
+        assert r[f"max_rhat_{name}"] < 1.05, r

@@ -15,12 +15,15 @@ from datetime import date, timedelta
 import polars as pl
 
 
-def timing_labels(outcomes: pl.DataFrame, as_of: date, label_lag_days: int = 3,
+def timing_labels(outcomes: pl.DataFrame, invoices: pl.DataFrame, as_of: date, label_lag_days: int = 3,
                   never_paid_cutoff_days: int = 365) -> pl.DataFrame:
     """invoice_id, buyer_id, issue_date, state ("paid" | "open"), k (paid week), c (open age),
-    past_cutoff (open longer than never_paid_cutoff_days; still censored in fitting)."""
+    d (due week = days to due // 7 + 1), past_cutoff (open longer than never_paid_cutoff_days;
+    still censored in fitting)."""
     through = as_of - timedelta(days=label_lag_days)
-    df = outcomes.filter(pl.col("issue_date") <= through).with_columns(
+    due = invoices.select("invoice_id", "due_date")
+    df = outcomes.filter(pl.col("issue_date") <= through).join(due, on="invoice_id", how="left").with_columns(
+        ((pl.col("due_date") - pl.col("issue_date")).dt.total_days() // 7 + 1).fill_null(1).cast(pl.Int32).alias("d"),
         ((pl.lit(through) - pl.col("issue_date")).dt.total_days() // 7).cast(pl.Int32).alias("c_full"),
         ((pl.col("paid_date") - pl.col("issue_date")).dt.total_days() // 7 + 1).cast(pl.Int32).alias("k_raw"),
     )
@@ -30,5 +33,6 @@ def timing_labels(outcomes: pl.DataFrame, as_of: date, label_lag_days: int = 3,
         pl.when(paid).then(pl.lit("paid")).otherwise(pl.lit("open")).alias("state"),
         pl.when(paid).then(pl.col("k_raw")).alias("k"),
         pl.when(paid).then(None).otherwise(pl.col("c_full")).alias("c"),
+        "d",
         (~paid & ((pl.lit(through) - pl.col("issue_date")).dt.total_days() > never_paid_cutoff_days)).alias("past_cutoff"),
     )

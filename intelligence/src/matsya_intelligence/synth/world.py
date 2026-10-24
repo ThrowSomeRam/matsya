@@ -185,6 +185,9 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
             "name": nr.company_name(r, c.sectors[sector_idx], btype),
         })
     mix = r.dirichlet(np.full(c.n_buyers, c.buyer_mix_concentration))
+    r_early = rng_for(past_id, "buyers_early")  # own stream: other buyer draws stay unchanged
+    for b in buyers:
+        b["p_early"] = float(r_early.beta(*c.type_priors[b["type"]].p_early_ab))
     for b, share in zip(buyers, mix):
         b["mix_share"] = float(share)
 
@@ -271,9 +274,12 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         changed = bc is not None and bc.buyer_index == b["index"]
         pi = min(b["pi"] + bc.pi_add, 0.99) if changed and issue >= bc.at else b["pi"]
 
-        def hazard(k: int) -> float:
+        due_week = inv["terms_days"] // 7 + 1
+
+        def hazard(k: int, phase: str | None = None) -> float:
             d = issue + timedelta(days=7 * (k - 1))
-            p = b["p"]
+            early = phase == "early" or (phase is None and c.pre_due_phase and k < due_week)
+            p = b["p_early"] if early else b["p"]
             if changed and d >= bc.at:
                 p = min(max(p * bc.p_multiplier, 1e-4), 1 - 1e-4)
             return _sigmoid(_logit(p) + b["loading"] * z[b["sector_idx"], week_of(d)])
@@ -283,7 +289,7 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
             if r.random() < pi:
                 return True, None, None
             if c.lateness == "lognormal":
-                days = 7 / hazard(1) * math.exp(c.lognormal_sigma * r.normal())
+                days = (inv["terms_days"] + 7 / hazard(1, "late")) * math.exp(c.lognormal_sigma * r.normal())
                 k = max(1, math.ceil(days / 7))
             else:
                 k = 1
@@ -464,7 +470,7 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
     ).filter(pl.col("issue_date").is_between(c.start, end))
 
     buyers_truth = pl.DataFrame(
-        [{k: b[k] for k in ("buyer_id", "type", "sector", "p", "pi", "loading", "mix_share", "tds_rate")}
+        [{k: b[k] for k in ("buyer_id", "type", "sector", "p", "p_early", "pi", "loading", "mix_share", "tds_rate")}
          for b in buyers]
     )
     buyers_obs = pl.DataFrame(
