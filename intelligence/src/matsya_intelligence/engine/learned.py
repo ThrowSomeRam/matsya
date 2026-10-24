@@ -7,7 +7,16 @@ from sales and purchases (sales forecaster owns them); unscheduled flows from
 the placeholder below until the flow forecaster exists.
 
 Unscheduled placeholder: for each future day, the net unscheduled flow of a
-random past day with the same weekday among the last 8 weeks.
+random past day with the same weekday, from the last 8 weeks or (full_unscheduled)
+the whole history, so rare large flows can appear.
+
+Flags (each was a calibration step; see eval/models/engine_calibration.py):
+  sales_uncertainty: per-path bootstrap draws of order rate, dispersion, purchase ratio
+  sector_shocks:     per-path sector lateness paths from the shock component
+  demand_ar1:        AR(1) on log order rate instead of one persistent level per path
+  full_unscheduled:  bootstrap unscheduled flows from the full history
+  naive_purchases:   (only with with_sales=False) supplier payments as a flat daily
+                     outflow at their historical mean, as a naive tool would
 """
 
 import hashlib
@@ -19,6 +28,7 @@ import polars as pl
 from matsya_intelligence.engine.core import EngineInputs, Invoices, TimingDraws, month_key
 from matsya_intelligence.obligations import detect_obligations
 from matsya_intelligence.sales import fit_sales
+from matsya_intelligence.shocks import fit_sector_shocks
 from matsya_intelligence.synth.world import PROCESS_OF_CATEGORY
 from matsya_intelligence.timing import fit_timing
 
@@ -57,8 +67,8 @@ def gst_known(invoices: pl.DataFrame, purchases: pl.DataFrame, gst_rate: float, 
     return {m: v for m, v in net.items() if m >= first_base_month}, carry
 
 
-def bootstrap_unscheduled(txns: pl.DataFrame, categories: pl.DataFrame, as_of: date):
-    start = as_of - timedelta(days=7 * BOOTSTRAP_WEEKS - 1)
+def bootstrap_unscheduled(txns: pl.DataFrame, categories: pl.DataFrame, as_of: date, full: bool = False):
+    start = txns["value_date"].min() if full else as_of - timedelta(days=7 * BOOTSTRAP_WEEKS - 1)
     u = txns.filter(pl.col("value_date").is_between(start, as_of)).join(
         categories.select("txn_uid", "category"), on="txn_uid").filter(pl.col("category").is_in(UNSCHEDULED))
     days = pl.DataFrame({"value_date": pl.date_range(start, as_of, "1d", eager=True)})
@@ -77,7 +87,9 @@ def bootstrap_unscheduled(txns: pl.DataFrame, categories: pl.DataFrame, as_of: d
 
 def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame, as_of: date, run_id: str,
                          threshold_paise: int = 0, gst_rate: float = 0.18, horizon: int = 90,
-                         with_sales: bool = True, label_lag_days: int = 3) -> EngineInputs:
+                         with_sales: bool = True, label_lag_days: int = 3, sales_uncertainty: bool = True,
+                         sector_shocks: bool = True, demand_ar1: bool = True, full_unscheduled: bool = True,
+                         naive_purchases: bool = False) -> EngineInputs:
     inv, out, buyers, txns = obs["invoices"], obs["invoice_outcomes"], obs["buyers"], obs["transactions"]
     tenant = inv["tenant_id"][0]
     buyer_ids = buyers["buyer_id"].to_list()
@@ -103,8 +115,11 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
         sm = fit_sales(inv, txns, categories, as_of)
 
         def sales_fn(n_paths: int, H: int, rng: np.random.Generator):
-            levels = sm.demand_levels(n_paths, rng)
-            fut, pur = sm.sample(n_paths, H, rng, level=levels)
+            if demand_ar1:
+                fut, pur = sm.sample(n_paths, H, rng, param_draws=sales_uncertainty, demand="ar1")
+            else:
+                fut, pur = sm.sample(n_paths, H, rng, level=sm.demand_levels(n_paths, rng),
+                                     param_draws=sales_uncertainty)
             b = np.array([bidx[x] for x in fut["buyer_id"]], dtype=np.int64)
             gross = fut["gross_paise"].to_numpy()
             tds = np.round(gross * np.array([sm.tds_ratio.get(x, 0.0) for x in fut["buyer_id"]])).astype(np.int64)
@@ -119,6 +134,20 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
     obligations = detect_obligations(txns, categories, as_of, horizon)
     fixed = [((d - as_of).days, int(a)) for d, a in zip(obligations["due_date"], obligations["amount_paise"])
              if a is not None]
+    if naive_purchases and not with_sales:
+        sp = txns.join(categories.select("txn_uid", "category"), on="txn_uid").filter(
+            (pl.col("category") == "supplier_payment") & (pl.col("value_date") <= as_of))
+        span = (as_of - txns["value_date"].min()).days + 1
+        daily = int(round(abs(sp["amount_paise"].sum()) / span))
+        fixed += [(d, daily) for d in range(1, horizon + 1)]
+
+    shock_sampler = None
+    if sector_shocks:
+        means = {b: (float(tm.posteriors[b].p_early.mean()), float(tm.posteriors[b].p.mean()),
+                     float(tm.posteriors[b].pi.mean())) for b in buyer_ids}
+        sector_of = dict(zip(buyers["buyer_id"], buyers["sector"]))
+        shock_sampler = fit_sector_shocks(tm.labels, means, sector_of, as_of).shift_sampler(
+            [sector_of[b] for b in buyer_ids])
     gst_days = [(d - as_of).days for d, k in zip(obligations["due_date"], obligations["kind"]) if k == "gst"]
     first_base = month_key(as_of + timedelta(days=min(gst_days))) - 1 if gst_days else month_key(as_of)
     supplier = txns.join(categories.select("txn_uid", "category"), on="txn_uid").filter(
@@ -133,7 +162,7 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
         weekday_probs=weekday_probs(out, buyer_ids), open_invoices=open_inv,
         survival_through_day=-label_lag_days, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
         gst_due_days=gst_days, gst_history_net=known, gst_carry_in=carry,
-        unscheduled=bootstrap_unscheduled(txns, categories, as_of),
+        unscheduled=bootstrap_unscheduled(txns, categories, as_of, full=full_unscheduled), shift_sampler=shock_sampler,
         model_versions={"payment_timing": "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1",
                         "obligations_detector": "v1", "unscheduled": "bootstrap-8w-v0"},
         input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(obs.items())],

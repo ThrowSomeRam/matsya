@@ -11,8 +11,10 @@ these worlds), to keep the runs fast.
 
 import time
 from dataclasses import replace
+from datetime import timedelta
 
 import numpy as np
+import polars as pl
 
 from matsya_intelligence.engine.core import run_engine
 from matsya_intelligence.engine.learned import build_learned_inputs
@@ -22,6 +24,42 @@ from matsya_intelligence.synth import WorldConfig, generate_world, resample_futu
 
 DAYS = (30, 60, 90)
 CURATED_BORDERLINE = (0, 1, 2)  # borderline preset pasts whose oracle p_short(90) is 0.1-0.4 (see PRESETS)
+
+
+HORIZONS = (15, 30, 45, 60, 75, 90)
+FLOW_TYPE_OF_CATEGORY = {
+    "customer_receipt": "receipts", "supplier_payment": "purchases", "gst_payment": "gst",
+    **{c: "fixed" for c in ("salary", "rent", "emi", "professional_fee", "tds_payment", "pf_esi")},
+}
+FLOW_TYPE_OF_COMPONENT = {
+    "open_invoice_receipts": "receipts", "future_invoice_receipts": "receipts", "purchases": "purchases",
+    "gst": "gst", "fixed_obligations": "fixed", "unscheduled": "unscheduled", "overrides": "overrides",
+}
+FLOW_TYPES = ("receipts", "purchases", "gst", "fixed", "unscheduled")
+
+
+def oracle_summary(past_seed: int, n_futures: int = 200) -> dict:
+    """Oracle for one borderline past: p_short by day, median balance by day, and the
+    mean cumulative flow by type at each horizon (means add up; medians do not)."""
+    cfg = WorldConfig()
+    t0 = cfg.as_of_date
+    cum = {t: np.zeros(len(HORIZONS)) for t in FLOW_TYPES}
+    paths = []
+    for fs in range(n_futures):  # streamed: holding 200 truths per worker exhausts memory
+        _, tr = generate_world(cfg, past_seed, fs)
+        paths.append(tr.balances.filter(pl.col("date").is_between(t0 + timedelta(days=1), t0 + timedelta(days=90)))
+                     ["closing_paise"].to_numpy())
+        f = tr.transactions.filter(pl.col("value_date") > t0).with_columns(
+            ((pl.col("value_date") - pl.lit(t0)).dt.total_days()).alias("day"),
+            pl.col("category").replace_strict(FLOW_TYPE_OF_CATEGORY, default="unscheduled").alias("type"))
+        for t in FLOW_TYPES:
+            g = f.filter(pl.col("type") == t)
+            for i, h in enumerate(HORIZONS):
+                cum[t][i] += g.filter(pl.col("day") <= h)["amount_paise"].sum() / n_futures
+    paths = np.stack(paths)
+    below = np.minimum.accumulate(paths, axis=1) < cfg.shortfall_threshold_paise
+    return {"past_seed": past_seed, "n_futures": n_futures, "p_short": below.mean(axis=0),
+            "median": np.median(paths, axis=0), "flow_cum_mean": cum}
 
 
 def _oracle(cfg: WorldConfig, past_seed: int, n_futures: int):
@@ -95,3 +133,65 @@ def speed(n_paths: int = 10_000, horizon: int = 90, past_seed: int = 0) -> dict:
     run_engine(inp, "speed", n_paths, horizon)
     return {"build_inputs_s": t_build, "simulate_s": time.perf_counter() - t, "n_paths": n_paths, "horizon": horizon,
             "n_open_invoices": len(inp.open_invoices.buyer)}
+
+
+def _learned_one(args) -> dict:
+    past_seed, n_paths, flags = args
+    cfg = WorldConfig()
+    obs, truth = generate_world(cfg, past_seed, 0)
+    cats = truth.transactions.select("txn_uid", "category")
+    run_id = f"cal-{past_seed}"
+    res = run_engine(build_learned_inputs(obs, cats, cfg.as_of_date, run_id, **flags), run_id, n_paths, keep_flows=True)
+    cum = {t: np.zeros(len(HORIZONS)) for t in FLOW_TYPES}
+    for comp, arr in res.flows.items():
+        t = FLOW_TYPE_OF_COMPONENT[comp]
+        if t in cum:
+            c = np.cumsum(arr, axis=1).mean(axis=0)
+            cum[t] += np.array([c[h] for h in HORIZONS])
+    return {"past_seed": past_seed, "p_short": res.shortfall["p_short"].to_numpy(),
+            "median": res.balance_quantiles["q50"].to_numpy(), "flow_cum_mean": cum}
+
+
+def learned_calibration(oracle: list[dict], n_paths: int = 4000, workers: int = 12, **flags) -> dict:
+    """Learned mode on every cached oracle past: calibration of p_short(90), mean gaps, and a
+    flow-type breakdown of the balance gap (mean cumulative flows, engine minus oracle, Rs)."""
+    import multiprocessing as mp
+    import os
+    from concurrent.futures import ProcessPoolExecutor
+
+    # spawn, not fork: forking after Polars has started its thread pool crashes workers
+    os.environ.setdefault("POLARS_MAX_THREADS", "1")
+    with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn")) as ex:
+        eng = list(ex.map(_learned_one, [(o["past_seed"], n_paths, flags) for o in oracle]))
+    pred = np.array([e["p_short"][89] for e in eng])
+    true = np.array([o["p_short"][89] for o in oracle])
+    bins = [0, 0.05, 0.2, 0.4, 0.6, 0.8, 1.0001]
+    table = []
+    for lo, hi in zip(bins[:-1], bins[1:]):
+        m = (pred >= lo) & (pred < hi)
+        if m.any():
+            table.append({"bin": f"[{lo:.2f}, {min(hi, 1):.2f})", "n": int(m.sum()),
+                          "mean_predicted": float(pred[m].mean()), "mean_oracle": float(true[m].mean())})
+    hidx = [h - 1 for h in HORIZONS]
+    median_gap = np.mean([e["median"][hidx] - o["median"][hidx] for e, o in zip(eng, oracle)], axis=0) / 100
+    breakdown = {t: np.mean([e["flow_cum_mean"][t] - o["flow_cum_mean"][t] for e, o in zip(eng, oracle)], axis=0) / 100
+                 for t in FLOW_TYPES}
+    return {
+        "n_pasts": len(oracle), "n_futures": oracle[0]["n_futures"], "flags": flags, "calibration_90": table,
+        "mean_gap_90": float((pred - true).mean()), "mean_abs_gap_90": float(np.abs(pred - true).mean()),
+        "corr_90": float(np.corrcoef(pred, true)[0, 1]),
+        "median_gap_rs": dict(zip(HORIZONS, median_gap)), "flow_gap_rs": breakdown,
+    }
+
+
+def print_calibration(r: dict) -> None:
+    print(f"flags {r['flags']}: {r['n_pasts']} pasts, oracle {r['n_futures']} futures; "
+          f"mean gap {r['mean_gap_90']:+.3f}, mean |gap| {r['mean_abs_gap_90']:.3f}, corr {r['corr_90']:.3f}")
+    print("| bin of predicted p_short(90) | n | mean predicted | mean oracle |")
+    print("|---|---|---|---|")
+    for b in r["calibration_90"]:
+        print(f"| {b['bin']} | {b['n']} | {b['mean_predicted']:.3f} | {b['mean_oracle']:.3f} |")
+    print("| horizon | median gap | " + " | ".join(FLOW_TYPES) + " |")
+    print("|---|---|" + "---|" * len(FLOW_TYPES))
+    for i, h in enumerate(HORIZONS):
+        print(f"| {h} | {r['median_gap_rs'][h]:,.0f} | " + " | ".join(f"{r['flow_gap_rs'][t][i]:,.0f}" for t in FLOW_TYPES) + " |")

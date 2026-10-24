@@ -22,6 +22,18 @@ is fitted from 8-week block means of the weekly counts: their variance beyond
 what NegBin sampling noise alone gives, (m + m^2/k) / 8, as a share of m^2.
 Because k is itself fitted from weekly variance, this double counts some
 variation and the result is a rough, slightly conservative spread.
+
+Parameter uncertainty (param_draws=True in sample): each path uses one of
+N_BOOT bootstrap replicates of (m, k, purchase ratio): weeks resampled with
+replacement for m and k, months resampled for the ratio.
+
+Demand AR(1) (demand="ar1" in sample): latent x_t on the log order rate,
+x_t = rho x_{t-1} + e_t. From the count autocovariances,
+    gamma_1 = m^2 s2 rho,  gamma_2 = m^2 s2 rho^2   (s2 = Var(e^x) ~ var(x))
+so rho = gamma_2 / gamma_1 and s2 = gamma_1 / (rho m^2); k is refitted from
+what is left, m^2 / k = Var - m - m^2 s2. The current x_T comes from a Kalman
+filter on y_t = log((n_t + 0.5) / m) with noise 1/m + 1/k. With ~50 weeks the
+autocovariances are noisy; when they are not positive, x is switched off.
 """
 
 from dataclasses import dataclass
@@ -31,10 +43,13 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.io.types import SALES_PROCESS
+from matsya_intelligence.seeding import rng_for
+from matsya_intelligence.shocks.kalman import AR1Fit, kalman_filter
 
 MIN_OWN_INVOICES = 10
 K_MAX = 1e4
 MAX_LAG_DAYS = 30
+N_BOOT = 200
 
 
 @dataclass
@@ -51,6 +66,10 @@ class SalesModel:
     purchase_lag_days: int
     tds_ratio: dict[str, float]  # buyer_id -> expected TDS / gross, median over history
     level_sigma: float
+    boot_mean: np.ndarray  # (N_BOOT,) bootstrap replicates
+    boot_var: np.ndarray
+    boot_ratio: np.ndarray
+    demand: AR1Fit | None  # None when the autocovariances do not support an AR(1)
 
     def features(self) -> pl.DataFrame:
         rows = [
@@ -60,6 +79,10 @@ class SalesModel:
             ("purchase_ratio", None, self.purchase_ratio),
             ("purchase_lag_days", None, float(self.purchase_lag_days)),
             ("demand_level_sigma", None, self.level_sigma),
+            ("demand_ar_rho", None, self.demand.rho if self.demand else 0.0),
+            ("demand_ar_sd", None, float(np.sqrt(self.demand.stationary_var)) if self.demand else 0.0),
+            ("order_mean_boot_sd", None, float(self.boot_mean.std())),
+            ("purchase_ratio_boot_sd", None, float(self.boot_ratio.std())),
         ] + [("buyer_share", b, float(s)) for b, s in zip(self.buyer_ids, self.mix)]
         return pl.DataFrame(
             [(self.tenant_id, self.as_of, n, k, v) for n, k, v in rows], schema=SALES_PROCESS, orient="row")
@@ -68,8 +91,13 @@ class SalesModel:
         s = self.level_sigma
         return np.exp(s * rng.standard_normal(n_paths) - s * s / 2)
 
+    def _dispersion(self, m: np.ndarray, v: np.ndarray, s2: float) -> np.ndarray:
+        excess = v - m - m * m * s2
+        return np.where(excess > 0, np.minimum(K_MAX, m * m / np.maximum(excess, 1e-12)), K_MAX)
+
     def sample(self, n_paths: int, horizon_days: int, rng: np.random.Generator,
-               level: np.ndarray | None = None) -> tuple[pl.DataFrame, pl.DataFrame]:
+               level: np.ndarray | None = None, param_draws: bool = False,
+               demand: str = "none") -> tuple[pl.DataFrame, pl.DataFrame]:
         """Future invoices issued in (as_of, as_of + horizon] and purchases paid in that window, per path.
 
         Invoices are drawn L days past the horizon too, so purchases near its end
@@ -79,8 +107,21 @@ class SalesModel:
         """
         L = self.purchase_lag_days
         n_weeks = -(-(horizon_days + L) // 7)
-        scale = self.mean_per_week / self.dispersion * (np.ones(n_paths) if level is None else level)
-        lam = rng.gamma(self.dispersion, scale[:, None], size=(n_paths, n_weeks))
+        if param_draws:
+            j = rng.integers(0, N_BOOT, n_paths)
+            m, v, ratio = self.boot_mean[j], self.boot_var[j], self.boot_ratio[j]
+        else:
+            m = np.full(n_paths, self.mean_per_week)
+            v = np.full(n_paths, self.mean_per_week + self.mean_per_week**2 / self.dispersion)
+            ratio = np.full(n_paths, self.purchase_ratio)
+        if demand == "ar1" and self.demand is not None:
+            s2 = self.demand.stationary_var
+            mult = np.exp(self.demand.simulate(n_paths, n_weeks, rng) - s2 / 2)
+            k = self._dispersion(m, v, s2)
+        else:
+            mult = np.ones((n_paths, n_weeks)) * (1.0 if level is None else level[:, None])
+            k = self._dispersion(m, v, 0.0)
+        lam = rng.gamma(k[:, None], (m / k)[:, None] * mult, size=(n_paths, n_weeks))
         counts = rng.poisson(lam)
         path = np.repeat(np.repeat(np.arange(n_paths), n_weeks), counts.ravel())
         week = np.repeat(np.tile(np.arange(n_weeks), n_paths), counts.ravel())
@@ -107,7 +148,7 @@ class SalesModel:
         purchases = pl.DataFrame({
             "path": path[keep].astype(np.int32),
             "value_date": as_of + p_day[keep].astype("timedelta64[D]"),
-            "amount_paise": np.round(self.purchase_ratio * gross[keep]).astype(np.int64),
+            "amount_paise": np.round(ratio[path[keep]] * gross[keep]).astype(np.int64),
         })
         return invoices, purchases
 
@@ -163,8 +204,37 @@ def fit_sales(invoices: pl.DataFrame, txns: pl.DataFrame, categories: pl.DataFra
     excess = blocks.var(ddof=1) - (m + m * m / k) / 8 if blocks.size > 2 else 0.0
     level_sigma = float(np.sqrt(np.log1p(max(excess, 0.0) / (m * m)))) if m > 0 else 0.0
 
+    tenant = invoices["tenant_id"][0]
+    rb = rng_for(f"sales-fit:{tenant}:{as_of}", "bootstrap")  # deterministic given inputs
+    wk = counts[rb.integers(0, n_weeks, (N_BOOT, n_weeks))]
+    boot_mean, boot_var = wk.mean(axis=1), wk.var(axis=1, ddof=1)
+    p_mo = purch.filter(pl.col("value_date").is_between(h0, as_of - timedelta(days=L))).group_by(
+        (pl.col("value_date") + pl.duration(days=L)).dt.truncate("1mo").alias("mo")).agg(pl.col("amount_paise").sum().abs().alias("p"))
+    s_mo = inv.filter(pl.col("issue_date") >= h0 + timedelta(days=L)).group_by(
+        pl.col("issue_date").dt.truncate("1mo").alias("mo")).agg(pl.col("gross_paise").sum().alias("s"))
+    mo = s_mo.join(p_mo, on="mo", how="left").fill_null(0).sort("mo")  # group_by order is not stable
+    pick = rb.integers(0, mo.height, (N_BOOT, mo.height))
+    boot_ratio = mo["p"].to_numpy()[pick].sum(axis=1) / np.maximum(mo["s"].to_numpy()[pick].sum(axis=1), 1)
+
     return SalesModel(
-        tenant_id=invoices["tenant_id"][0], as_of=as_of, mean_per_week=m, dispersion=float(k), n_weeks=n_weeks,
+        tenant_id=tenant, as_of=as_of, mean_per_week=m, dispersion=float(k), n_weeks=n_weeks,
         buyer_ids=buyer_ids, mix=mix, pools=pools, purchase_ratio=ratio, purchase_lag_days=L,
         tds_ratio=dict(zip(tds["buyer_id"], tds["r"])), level_sigma=level_sigma,
+        boot_mean=boot_mean, boot_var=boot_var, boot_ratio=boot_ratio, demand=_fit_demand(counts, m, v, k),
     )
+
+
+def _fit_demand(counts: np.ndarray, m: float, v: float, k: float) -> AR1Fit | None:
+    """AR(1) on the log order rate from count autocovariances (see module docstring)."""
+    c = counts - m
+    g1, g2 = float(np.mean(c[1:] * c[:-1])), float(np.mean(c[2:] * c[:-2]))
+    if g1 <= 0 or g2 <= 0 or m <= 0:
+        return None
+    rho = float(np.clip(g2 / g1, 0.05, 0.95))
+    s2 = min(g1 / (rho * m * m), max(v - m, 1e-9) / (m * m))  # cannot exceed the overdispersion
+    q = s2 * (1 - rho * rho)
+    excess = v - m - m * m * s2
+    k_ar = K_MAX if excess <= 0 else m * m / excess
+    y = np.log((counts + 0.5) / m)
+    mean_T, var_T, ll = kalman_filter(y, np.full(y.size, 1 / m + 1 / k_ar), rho, q)
+    return AR1Fit(rho=rho, q=q, mean_T=mean_T, var_T=var_T, loglik=ll)

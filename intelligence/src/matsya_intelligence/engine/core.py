@@ -27,7 +27,7 @@ import polars as pl
 
 from matsya_intelligence.seeding import rng_for, seed_from_run_id
 
-STREAMS = ("timing_draws", "open_invoices", "sales", "sales_timing", "unscheduled")
+STREAMS = ("timing_draws", "open_invoices", "sales", "sales_timing", "unscheduled", "shocks")
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,8 @@ class EngineInputs:
     gst_history_net: dict[int, float]  # month key -> taxable sales - taxable purchases already happened
     gst_carry_in: float  # carry into the earliest base month needed
     unscheduled: UnscheduledSampler | None
-    shift: ShiftFn | None = None
+    shift: ShiftFn | None = None  # fixed shift (true-parameter mode); also used for survival
+    shift_sampler: Callable[[int, int, np.random.Generator], ShiftFn] | None = None  # per-run shock paths
     model_versions: dict = field(default_factory=dict)
     input_snapshot_ids: list[str] = field(default_factory=list)
 
@@ -119,7 +120,8 @@ def _pick_offset(rng: np.random.Generator, probs: np.ndarray, start: np.ndarray)
 
 
 def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.ndarray, inv_idx: np.ndarray,
-                       inv: Invoices, draw_idx: np.ndarray, survive: np.ndarray, horizon: int) -> np.ndarray:
+                       inv: Invoices, draw_idx: np.ndarray, survive: np.ndarray, horizon: int,
+                       shift_fn: ShiftFn | None) -> np.ndarray:
     """Payment day per (path, invoice) row, or -1 if dead or after the horizon.
 
     survive[row] = survival probability to the cut (1 for invoices with no elapsed time);
@@ -146,7 +148,7 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
         a = np.flatnonzero(active)
         week_start = issue[a] + 7 * (k[a] - 1)
         base = np.where(k[a] < due[a], pe[a], p[a])
-        h = _sigmoid_shift(base, None if inp.shift is None else inp.shift(path[a], b[a], week_start))
+        h = _sigmoid_shift(base, None if shift_fn is None else shift_fn(path[a], b[a], week_start))
         ff = f[a]
         hit = rng.random(a.size) < h * (1 - ff) / (1 - h * ff)
         off = _pick_offset(rng, probs[a], start[a])
@@ -200,12 +202,13 @@ class EngineResult:
     run: dict
     balance: np.ndarray  # (n_paths, horizon + 1) int64, column 0 = opening
     component_totals: dict[str, np.ndarray]  # per-path totals by component
+    flows: dict[str, np.ndarray] | None  # (n_paths, horizon + 1) per component, when keep_flows
     balance_quantiles: pl.DataFrame
     shortfall: pl.DataFrame
 
 
 def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: int = 90,
-               overrides: list[OneOffEvent] | None = None) -> EngineResult:
+               overrides: list[OneOffEvent] | None = None, keep_flows: bool = False) -> EngineResult:
     overrides = overrides or []
     rng = {s: rng_for(run_id, f"engine:{s}") for s in STREAMS}
     H = horizon
@@ -223,6 +226,8 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
     n_b = len(inp.buyer_ids)
     draw_idx = np.stack([rng["timing_draws"].integers(0, len(inp.timing.p[b]), n_paths) for b in range(n_b)], axis=1)
 
+    shift_fn = inp.shift_sampler(n_paths, H, rng["shocks"]) if inp.shift_sampler is not None else inp.shift
+
     # 3. Open invoices.
     oi = inp.open_invoices
     if len(oi.buyer):
@@ -230,7 +235,7 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
         path = np.repeat(np.arange(n_paths), len(oi.buyer))
         idx = np.tile(np.arange(len(oi.buyer)), n_paths)
         s = surv[idx, draw_idx[path, oi.buyer[idx]]]
-        pay = _simulate_payments(inp, rng["open_invoices"], path, idx, oi, draw_idx, s, H)
+        pay = _simulate_payments(inp, rng["open_invoices"], path, idx, oi, draw_idx, s, H, shift_fn)
         add("open_invoice_receipts", path, pay, oi.cash[idx])
 
     # 2, 4, 5. Sales: future invoices and linked purchases.
@@ -241,7 +246,7 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
         if len(fut.buyer):
             ones = np.ones(len(fut.buyer))
             pay = _simulate_payments(inp, rng["sales_timing"], fut.path, np.arange(len(fut.buyer)), fut,
-                                     draw_idx, ones, H)
+                                     draw_idx, ones, H, shift_fn)
             add("future_invoice_receipts", fut.path, pay, fut.cash)
             for m in np.unique(month_of_day):
                 sel = month_of_day[np.clip(fut.issue_day, 0, H)] == m
@@ -301,6 +306,7 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
     run["runway_days"] = runway
     return EngineResult(run=run, balance=balance,
                         component_totals={k: v.sum(axis=1) for k, v in flows.items()},
+                        flows=flows if keep_flows else None,
                         balance_quantiles=bq, shortfall=sf)
 
 
