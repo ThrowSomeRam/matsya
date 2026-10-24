@@ -243,7 +243,8 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
 
     # 1. One posterior draw per (path, buyer).
     n_b = len(inp.buyer_ids)
-    draw_idx = np.stack([rng["timing_draws"].integers(0, len(inp.timing.p[b]), n_paths) for b in range(n_b)], axis=1)
+    draw_idx = (np.stack([rng["timing_draws"].integers(0, len(inp.timing.p[b]), n_paths) for b in range(n_b)], axis=1)
+                if n_b else np.zeros((n_paths, 0), dtype=np.int64))  # a tenant with no buyers (e.g. a personal account)
 
     shift_fn = inp.shift_sampler(n_paths, H, rng["shocks"]) if inp.shift_sampler is not None else inp.shift
 

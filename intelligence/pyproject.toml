@@ -13,6 +13,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# Benchmarks on foreign datasets only (eval/models); never used by production components.
+bench = ["scikit-survival>=0.23", "lightgbm>=4.3", "pymysql>=1.1"]
 
 [tool.uv.sources]
 matsya-contracts = { path = "../contracts", editable = true }

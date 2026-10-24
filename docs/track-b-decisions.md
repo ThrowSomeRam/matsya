@@ -232,6 +232,67 @@ the fit has to alternate (fit timing with the current z offsets, recompute resid
 refit, until stable) or fit both jointly. Worked through before coding; the base-logit
 correction stays as the default until then.
 
+## First real-data checks (2026-10-25)
+
+Benchmarks only: nothing fitted here sets a production parameter. Datasets, licences and the
+owner's decision to use them are in `eval/data/SOURCES.md`; full tables in `eval/results/`
+(`results.parquet` plus one markdown file per check). Data enters through contract-shaped
+loaders (`eval/models/loaders.py`) and the normal adapters.
+
+**Kaggle data limits.** The 9,681 `isOpen` rows are a label-stripped test split, not unpaid
+invoices. The labelled rows are right-truncated at the fiscal year end (an invoice appears only
+if it cleared within its year), so there are no unpaid invoices and never-paid calibration
+cannot be measured. At the horizons used the truncation removes little: of invoices issued
+Jan-Mar 2019, 1.1% took more than 83 days and 0.45% more than 112.
+
+**Payment-timing model** (train: issued before 2019-07-01, n = 17,644, open ones censored there;
+test: issued Jul-Aug 2019, n = 5,955, followed 112 days; baseline due date):
+
+| model | C-index (95% CI) | integrated Brier, weeks 1-15 | P(paid within 4w) pred / obs | ECE 4w |
+|---|---|---|---|---|
+| payment-timing model | 0.735 (0.727-0.743) | 0.031 | 0.874 / 0.903 | 0.033 |
+| due date | 0.601 (0.593-0.611) | 0.052 | 0.914 / 0.903 | 0.050 |
+| Cox | 0.770 (0.763-0.777) | 0.039 | 0.881 / 0.903 | 0.064 |
+| random survival forest | 0.790 (0.781-0.797) | 0.028 | 0.903 / 0.903 | 0.005 |
+| LightGBM person-period | 0.754 (0.744-0.764) | 0.026 | 0.906 / 0.903 | 0.005 |
+
+It clearly beats the due date but loses to every feature-based model, which use the
+customer's own payment history, amount and terms as features while it uses only the buyer
+and due week. It under-predicts early payment (weekly geometric hazard; these buyers mostly
+pay within days of the due date). The forest's settings were chosen on an internal
+temporal split inside the training period, not on the test set.
+
+**Sales forecaster weekly counts** (rolling one-week-ahead, 30 origins per tenant): negative
+binomial beats Poisson on log score overall (-4.41 vs -6.54, n = 90) and per customer
+(-2.02 vs -2.11, n = 3,364). 80% interval coverage: overall 0.97 (NB, too wide) vs 0.51
+(Poisson); per customer 0.86 vs 0.82.
+
+**Synthetic vs real.** A gradient-boosted classifier separates generator invoices from Kaggle
+invoices almost perfectly (AUC 0.999-1.000, n = 28,087), even on per-invoice features only.
+What the generator gets wrong, by feature: no part payments in Kaggle (generator 10%); 10
+buyers per tenant against about 600; terms mostly 15 days (generator spread over 15/30/45);
+payment close to the due date (median days late 0 vs 10); weekly counts far steadier relative
+to their mean, partly because Kaggle tenants post about 680 invoices a week against 8.
+Amounts relative to the tenant median match (univariate AUC 0.51). These are inputs for a
+later generator preset, not parameters.
+
+**Berka outside check** (n = 682 loans, 76 bad; only transactions before each loan date;
+engine at 10,000 paths with the obligations detector and the unscheduled bootstrap, since the
+flow forecaster is not built):
+
+| score | AUC (95% CI) | minus best balance-only baseline (95% CI) |
+|---|---|---|
+| engine P(shortfall by day 90), threshold 0 | 0.639 (0.558-0.716) | -0.170 (-0.249 to -0.087) |
+| engine, threshold = one monthly loan payment | 0.652 (0.568-0.730) | -0.156 (-0.237 to -0.074) |
+| engine P(shortfall by day 30) | 0.658 (0.580-0.733) | -0.150 (-0.230 to -0.068) |
+| minus 90-day minimum balance | 0.800 (0.733-0.859) | -0.008 (-0.038 to 0.026) |
+| balance logistic regression, 5-fold CV (best baseline) | 0.808 (0.742-0.870) | |
+
+The engine loses to balance-only scores. The unscheduled bootstrap draws each day
+independently, so simulated balances drift like a random walk, while real balances revert
+(income and spending are linked). This is the bar the flow forecaster has to clear. Lead
+time is not measurable (only final loan status is given).
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).
