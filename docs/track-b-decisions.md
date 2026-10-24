@@ -386,6 +386,38 @@ What ships, read from the same benchmark (no re-run: the 60/90-day result is the
 ACI at 1-30 days, engine band at 60-90. gamma is still the paper value (0.005); choosing it is
 left for the Berka shock replay or real tenants, as before.
 
+## Payment-timing model: due-week phase tried and dropped (2026-10-25)
+
+**Variant.** Three weekly chances instead of two: p_early before the due week (k < d), p_due in
+the week holding the due date (k = d), p after it (k > d), each Beta and still conjugate, since
+every week is one Bernoulli trial on exactly one chance. Paid in week k: early failures
+min(k-1, d-1), due-week failures [k > d], late failures max(0, k-d-1); open after c weeks:
+min(c, d-1), [c >= d], max(0, c-d). The never-paid Gibbs step only gains a (1 - p_due) factor
+in the survival. Rule set in advance: keep it only if it beats the two-phase model on the
+Kaggle benchmark.
+
+**Kaggle result** (same split as above, n = 5,955 test invoices, baseline due date; rows in
+`eval/results/results.parquet` at commit 27d37a1, model `payment_timing_model_due_week`):
+
+| model | C-index (95% CI) | integrated Brier, weeks 1-15 | 4w pred / obs, ECE | 8w | 12w |
+|---|---|---|---|---|---|
+| two-phase (current) | 0.735 (0.726-0.744) | 0.0313 | 0.874 / 0.903, 0.033 | 0.949 / 0.961, 0.014 | 0.978 / 0.989, 0.013 |
+| three-phase (due week) | 0.721 (0.714-0.731) | 0.0319 | 0.857 / 0.903, 0.049 | 0.937 / 0.961, 0.024 | 0.972 / 0.989, 0.018 |
+| Cox | 0.770 (0.762-0.778) | 0.039 | 0.881 / 0.903, 0.064 | 0.947 / 0.961, 0.016 | 0.969 / 0.989, 0.023 |
+
+**Dropped:** worse on every metric. Not a bug: mean weekly mass by week since issue
+(observed / two-phase / three-phase) is week 2 0.258 / 0.136 / 0.125, week 3 (the due week for
+most invoices, 15-day terms) 0.594 / 0.524 / 0.557, week 4 0.037 / 0.087 / 0.050. The new phase
+fits the due week and the week after better, but the two-phase model's excess in week 4 had
+been offsetting its shortfall in week 2, so removing it lowers P(paid within 4 weeks) further
+below observed and the ranking gets worse. The real misfit is before the due date: a constant
+p_early cannot put a quarter of payments in the week just before the due week and almost none
+in week 1. Code removed; the result rows stay.
+
+Note: the bootstrap seeds for each model's C-index CI come from one shared stream, so adding a
+model shifted the later models' CIs by about 0.001; the random survival forest's C-index moved
+0.790 to 0.789 between runs (not bit-identical).
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).

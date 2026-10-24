@@ -178,7 +178,6 @@ payment_timing:      # B4
   pi_prior: {status: tune, note: "derive stock-to-flow correction from steady-state equation; keep wide. Weakest number."}
   gibbs_sweeps: {value: 50, status: tune, check: "R-hat < 1.01 across chains on synthetic data", note: "burn-in; 20 gave max R-hat 1.021 for pi"}
   gibbs_draws: {value: 400, status: tune, note: "kept draws after burn-in"}
-  due_week_phase: {value: false, status: tune, test: "kept only if it beats the two-phase model on the Kaggle benchmark (C-index, integrated Brier, 4/8/12-week calibration)"}
 
 flows:               # B5
   quantiles: [0.05, 0.25, 0.50, 0.75, 0.95]
