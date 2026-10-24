@@ -96,8 +96,15 @@ class WorldConfig:
     # Unscheduled flows (Poisson per day, lognormal amounts)
     misc_credits_per_day: float = 0.2
     misc_credit_median_paise: int = 5_000_00
+    misc_expenses_per_day: float = 0.5
+    misc_expense_median_paise: int = 1_500_00
     cash_withdrawals_per_week: float = 0.5
     owner_transfers_per_month: float = 1.0
+
+    # Narration templates: which variants (0 hyphenated, 1 slashed) and bank
+    # codes this world uses. Restrict to hold templates out for the categoriser.
+    narration_variants: tuple[int, ...] = (0, 1)
+    narration_banks: tuple[str, ...] = ("HDFC", "ICIC", "SBIN", "UTIB", "KKBK", "PUNB", "BARB", "CNRB")
 
     # Misspecification knobs, all off by default
     lateness: str = "geometric"  # "geometric" | "lognormal"

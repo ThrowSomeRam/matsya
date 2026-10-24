@@ -275,7 +275,9 @@ def test_past_identical_across_future_seeds():
         assert _ipc_bytes(a_obs[key]) == _ipc_bytes(b_obs[key]), key
     t0 = a_truth.config.as_of_date
     past = lambda t: t.transactions.filter(pl.col("value_date") <= t0)
-    assert _ipc_bytes(past(a_truth)) == _ipc_bytes(past(b_truth))
+    # A filtered slice shares string buffers with future rows, so compare a
+    # canonical serialisation rather than raw Arrow buffers.
+    assert past(a_truth).write_csv() == past(b_truth).write_csv()
     assert a_truth.opening_balance_paise == b_truth.opening_balance_paise
     # The future does differ.
     assert not a_truth.transactions.equals(b_truth.transactions)

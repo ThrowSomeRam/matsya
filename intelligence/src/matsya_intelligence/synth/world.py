@@ -27,6 +27,7 @@ import numpy as np
 import polars as pl
 import yaml
 
+from matsya_intelligence.categories import CATEGORIES
 from matsya_intelligence.io.types import BALANCE, BUYER, INVOICE, INVOICE_OUTCOME, OBLIGATION, TXN
 from matsya_intelligence.seeding import rng_for
 from matsya_intelligence.synth import narration as nr
@@ -49,7 +50,9 @@ PROCESS_OF_CATEGORY = {
     "misc_income": "unscheduled",
     "cash_withdrawal": "unscheduled",
     "owner_transfer": "unscheduled",
+    "misc_expense": "unscheduled",
 }
+assert set(PROCESS_OF_CATEGORY) == set(CATEGORIES)
 
 CONSTANTS_PATH = Path(__file__).resolve().parents[3] / "config" / "track_b_constants.yaml"
 PREROLL_WEEKS = 3  # orders start this early so the first weeks have their invoices
@@ -120,6 +123,7 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         return rng_for(past_id, name), rng_for(future_id, name)
 
     rn_past, rn_future = streams("narration")
+    st = nr.Style(variants=c.narration_variants, banks=c.narration_banks)
 
     def rn(d: date) -> np.random.Generator:
         return rn_past if d <= t0 else rn_future
@@ -235,7 +239,7 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         amount = int(round(c.purchase_ratio * o["gross"]))
         g = rn(d)
         name = suppliers[int(g.integers(len(suppliers)))]
-        idx = add_txn(d, -amount, "supplier_payment", nr.debit_to_party(g, name, d, f"BILL {g.integers(100, 9999)}", amount))
+        idx = add_txn(d, -amount, "supplier_payment", nr.debit_to_party(g, st, name, d, f"BILL {g.integers(100, 9999)}", amount))
         inv_id = f"INV-{n:05d}"
         purchases.append({"invoice_id": inv_id, "txn_idx": idx, "value_date": d, "amount_paise": amount,
                           "lag_days": o["lag"]})
@@ -332,9 +336,9 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
             g = rn(d)
             ref = inv["invoice_id"].replace("-", " ") if g.random() < 0.7 else "PAYMENT"
             if b["type"] == "cpse":
-                rail_narr = nr.credit_via_treds(g, d, ref)
+                rail_narr = nr.credit_via_treds(g, st, d, ref)
             else:
-                rail_narr = nr.credit_from_company(g, b["name"], d, ref, amount)
+                rail_narr = nr.credit_from_company(g, st, b["name"], d, ref, amount)
             idx = add_txn(d, amount, "customer_receipt", rail_narr)
             payments.append({"invoice_id": inv["invoice_id"], "part": part_no, "txn_idx": idx,
                              "value_date": d, "amount_paise": amount, "tds_paise": tds})
@@ -365,35 +369,37 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
     for y, m in _months(c.start, end):
         py, pm = _prev_month(y, m)
         d = date(y, m, c.salary_day)
-        scheduled("salary", d, c.salary_paise, "salary", nr.salary(rn(d), d))
+        scheduled("salary", d, c.salary_paise, "salary", nr.salary(rn(d), st, d))
         d = date(y, m, c.professional_fee_day)
         tds = int(round(0.10 * c.professional_fee_paise))  # 194J professional fees
         scheduled("professional_fee", d, c.professional_fee_paise - tds, "professional_fee",
-                  nr.debit_to_party(rn(d), ca_firm, d, "PROF FEES", c.professional_fee_paise))
+                  nr.debit_to_party(rn(d), st, ca_firm, d, "PROF FEES", c.professional_fee_paise))
         if c.start <= d <= end:
             tds_deducted[(y, m)] = tds
         d = date(y, m, c.rent_day)
-        scheduled("rent", d, c.rent_paise, "rent", nr.debit_to_party(rn(d), landlord, d, "RENT", c.rent_paise))
+        # Real rent transfers often carry no keyword; the categoriser must use recurrence.
+        note = str(rn(d).choice(["RENT", "RENT", "RENT", "MONTHLY", "TRANSFER"]))
+        scheduled("rent", d, c.rent_paise, "rent", nr.debit_to_party(rn(d), st, landlord, d, note, c.rent_paise))
         d = date(y, m, c.emi_day)
-        scheduled("emi", d, c.emi_paise, "emi", nr.ach_emi(rn(d), lender))
+        scheduled("emi", d, c.emi_paise, "emi", nr.ach_emi(rn(d), st, lender))
         # TDS for the previous month: 7th, except March deductions are due 30 April.
         d = date(y, 4, 30) if pm == 3 else date(y, m, cal["tds_deposit"]["day"])
-        scheduled("tds", d, tds_deducted.get((py, pm), 0), "tds_payment", nr.tds_payment(rn(d), d))
+        scheduled("tds", d, tds_deducted.get((py, pm), 0), "tds_payment", nr.tds_payment(rn(d), st, d))
         d = date(y, m, cal["pf_deposit"]["day"])
-        scheduled("pf", d, int(round(c.pf_rate * c.salary_paise)), "pf_esi", nr.pf_payment(rn(d)))
+        scheduled("pf", d, int(round(c.pf_rate * c.salary_paise)), "pf_esi", nr.pf_payment(rn(d), st))
         d = date(y, m, cal["esi_deposit"]["day"])
-        scheduled("esi", d, int(round(c.esi_rate * c.salary_paise)), "pf_esi", nr.esi_payment(rn(d)))
+        scheduled("esi", d, int(round(c.esi_rate * c.salary_paise)), "pf_esi", nr.esi_payment(rn(d), st))
         d = date(y, m, cal["gstr3b_monthly"]["day"])
         if d.weekday() == 6:  # Sunday moves to next working day
             d += timedelta(days=1)
         due = c.gst_rate * taxable_net.get((py, pm), 0.0) + gst_carry
         gst_carry = min(due, 0.0)
-        scheduled("gst", d, int(round(max(due, 0.0))), "gst_payment", nr.gst_payment(rn(d), supplier_gstin))
+        scheduled("gst", d, int(round(max(due, 0.0))), "gst_payment", nr.gst_payment(rn(d), st, supplier_gstin))
         d = _last_day_of_month(date(y, m, 1))
-        add_txn(d, -int(rn(d).integers(59, 591)) * 100, "bank_charges", nr.bank_charge(rn(d), d, quarterly=False))
+        add_txn(d, -int(rn(d).integers(59, 591)) * 100, "bank_charges", nr.bank_charge(rn(d), st, d, quarterly=False))
         if m in (1, 4, 7, 10):
             d = date(y, m, 1)
-            add_txn(d, -int(rn(d).integers(15, 60)) * 100, "bank_charges", nr.bank_charge(rn(d), d, quarterly=True))
+            add_txn(d, -int(rn(d).integers(15, 60)) * 100, "bank_charges", nr.bank_charge(rn(d), st, d, quarterly=True))
 
     # Unscheduled flows (supplier payments are not here; they are purchases).
     rp, rf = streams("flows")
@@ -403,13 +409,16 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         for _ in range(r.poisson(c.misc_credits_per_day)):
             amt = int(round(c.misc_credit_median_paise * math.exp(0.6 * r.normal())))
             if r.random() < 0.5:
-                add_txn(d, amt, "refund", nr.upi_credit(g, suppliers[int(r.integers(len(suppliers)))], "REFUND"))
+                add_txn(d, amt, "refund", nr.upi_credit(g, st, suppliers[int(r.integers(len(suppliers)))], "REFUND"))
             else:
-                add_txn(d, amt, "misc_income", nr.upi_credit(g, nr.person_name(g), "PAYMENT"))
+                add_txn(d, amt, "misc_income", nr.upi_credit(g, st, nr.person_name(g), "PAYMENT"))
+        for _ in range(r.poisson(c.misc_expenses_per_day)):
+            amt = int(round(c.misc_expense_median_paise * math.exp(0.6 * r.normal())))
+            add_txn(d, -amt, "misc_expense", nr.upi_debit(g, st, nr.shop_name(g), "PAYMENT"))
         if r.random() < c.cash_withdrawals_per_week / 7:
-            add_txn(d, -int(r.integers(1, 6)) * 10_000_00, "cash_withdrawal", nr.cash_withdrawal(g))
+            add_txn(d, -int(r.integers(1, 6)) * 10_000_00, "cash_withdrawal", nr.cash_withdrawal(g, st))
         if r.random() < c.owner_transfers_per_month / 30:
-            add_txn(d, -int(r.integers(5, 21)) * 10_000_00, "owner_transfer", nr.owner_transfer(g, owner))
+            add_txn(d, -int(r.integers(5, 21)) * 10_000_00, "owner_transfer", nr.owner_transfer(g, st, owner))
         d += timedelta(days=1)
 
     # Order, ids and known_at. Past-dated txns sort first, so their ids and

@@ -78,6 +78,15 @@ OBLIGATION = {
     "confidence": pl.Float64,
 }
 
+TXN_CATEGORY = {
+    "tenant_id": pl.String,
+    "txn_uid": pl.String,
+    "category": pl.String,  # a CATEGORIES value, or "abstain"
+    "confidence": pl.Float64,
+    "source": pl.String,  # "rule" | "model" | "llm" | "owner"
+    "needs_llm": pl.Boolean,  # extra to the contract: abstained, waiting for the LLM
+}
+
 SCHEMAS = {
     "Txn": TXN,
     "Invoice": INVOICE,
@@ -85,6 +94,7 @@ SCHEMAS = {
     "Buyer": BUYER,
     "Balance": BALANCE,
     "Obligation": OBLIGATION,
+    "TxnCategory": TXN_CATEGORY,
 }
 
 NOT_NULL = {
@@ -94,12 +104,14 @@ NOT_NULL = {
     "Buyer": ["tenant_id", "buyer_id", "type", "sector"],
     "Balance": ["tenant_id", "account_id", "date", "closing_paise"],
     "Obligation": ["tenant_id", "obligation_id", "kind", "due_date", "amount_paise"],
+    "TxnCategory": ["tenant_id", "txn_uid", "category", "confidence", "source", "needs_llm"],
 }
 
 ENUMS = {
     ("Txn", "direction"): {"credit", "debit"},
     ("Invoice", "status"): {"open", "part_paid", "paid"},
     ("Buyer", "type"): {"cpse", "listed", "unlisted"},
+    ("TxnCategory", "source"): {"rule", "model", "llm", "owner"},
 }
 
 
