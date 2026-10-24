@@ -13,6 +13,13 @@ A miss lowers alpha_t (wider band), a hit raises it (narrower). The stored alpha
 clipped, as the coverage guarantee needs; the band reads the quantiles at clip(alpha_t, 0, 1),
 so alpha_t <= 0 means the whole real line (always a hit) and alpha_t >= 1 an empty band.
 
+Horizons adapted: 1 to `adapt_max_horizon_days` (30) only. Longer horizons keep the engine's
+own band (level alpha, never updated) but are still issued and scored, so their miss rate is
+reported. Reason: with delayed feedback a 60- or 90-day band learns of a miss two to three
+months later, and consecutive targets overlap, so misses arrive in long runs about events that
+are already over; ACI reacts to all of them. On the replay benchmark the engine's own 60/90-day
+bands were already near 0.80 and every step size made them worse.
+
 Delayed feedback. A horizon-h band issued on day t targets day t + h and is scored only when
 that day's balance is known (update() is given the balances known at as_of). Until then it
 waits in `pending`; nothing about it touches alpha. Updates are applied in target-date order.
@@ -89,11 +96,14 @@ class Calibrator:
     """Per-tenant calibration state, carried from one forecast run to the next."""
 
     def __init__(self, method: str = "aci", gamma: float | None = None, target_coverage: float | None = None,
-                 horizons: tuple[int, ...] = HORIZONS, grid: tuple[float, ...] | None = None):
+                 horizons: tuple[int, ...] = HORIZONS, grid: tuple[float, ...] | None = None,
+                 adapt_max_horizon: int | None = None):
         c = constants()
         self.alpha = 1 - (target_coverage if target_coverage is not None else float(c["target_coverage"]["value"]))
         self.method = method
         self.horizons = tuple(horizons)
+        self.adapt_max_horizon = int(adapt_max_horizon if adapt_max_horizon is not None
+                                     else c["adapt_max_horizon_days"]["value"])
         if method == "aci":
             self.gamma = float(gamma if gamma is not None else c["aci_gamma"]["paper_value"])
         elif method == "online":
@@ -114,10 +124,15 @@ class Calibrator:
 
     def level(self, h: int) -> float:
         """Miscoverage level the next horizon-h band is read at."""
+        if not self.adapts(h):
+            return self.alpha
         st = self.state[h]
         if self.method == "online":
             return float(st.weights @ st.experts)
         return st.alpha_t
+
+    def adapts(self, h: int) -> bool:
+        return self.method != "off" and h <= self.adapt_max_horizon
 
     # ------------------------------------------------------------ issue and score bands
 
@@ -153,7 +168,8 @@ class Calibrator:
                     continue
                 y = float(known[p.target])
                 err = int(y < p.lo or y > p.hi)
-                self._step(st, p, y, err)
+                if self.adapts(h):
+                    self._step(st, p, y, err)
                 st.history.append((p.target, err))
                 scored.append((h, p.made_on, p.target, p.level, p.lo, p.hi, y, err))
             st.pending = keep

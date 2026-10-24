@@ -186,6 +186,15 @@ flows:               # B5
 
 calibration:         # B7
   target_coverage: {value: 0.80, status: assumption}
+  adapt_max_horizon_days:
+    value: 30
+    status: decided
+    why: >
+      ACI adapts horizons 1-30 only; 60 and 90 use the engine's own band (level fixed at
+      alpha). Delayed feedback: a horizon-h band is scored h days after issue, so at 60-90
+      days misses arrive in long correlated runs about events already over, and ACI keeps
+      widening and narrowing against them. On the replay benchmark the uncalibrated band
+      covered 0.82 / 0.80 at 60 / 90 days and every ACI step size made it worse.
   aci_gamma:
     status: tune
     paper_value: 0.005   # Gibbs & Candes 2021, chosen for long series

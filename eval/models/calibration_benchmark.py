@@ -39,6 +39,7 @@ EVAL_FROM = date(2026, 1, 1)
 SHOCK_AT = date(2026, 2, 2)
 SHOCK_FACTOR = 0.3
 N_PATHS = 2_000
+ALL = 90  # the benchmark compares methods at every horizon, including the ones production leaves alone
 WORLDS = {"borderline_0": (0, None), "borderline_1": (1, None), "borderline_2": (2, None),
           "shock_0": (0, (SHOCK_AT, SHOCK_FACTOR))}
 
@@ -53,7 +54,7 @@ def _replay(name: str) -> dict:
     seed, shock = WORLDS[name]
     cfg = replace(WorldConfig(), payment_shock=shock)
     _, truth = generate_world(cfg, seed, 0)
-    r = Replay(truth, n_paths=N_PATHS, start=START, keep_paths=True, calibrator=Calibrator(method="online"))
+    r = Replay(truth, n_paths=N_PATHS, start=START, keep_paths=True, calibrator=Calibrator(method="online", adapt_max_horizon=ALL))
     r.run((r.last_day - START).days)
     live = pl.concat([s.calibration["scored"] for s in r.steps if s.calibration["scored"].height])
     return {"name": name, "days": [s.as_of.date() for s in r.steps], "paths": [s.paths for s in r.steps],
@@ -112,8 +113,8 @@ def methods(run: dict, cal_until: date | None) -> dict[str, pl.DataFrame]:
     c = constants()
     out = {"off": _offline(run, Calibrator(method="off"))}
     for g in c["aci_gamma"]["grid"]:
-        out[f"aci_gamma_{g}"] = _offline(run, Calibrator(method="aci", gamma=g))
-    out["online"] = _offline(run, Calibrator(method="online"))
+        out[f"aci_gamma_{g}"] = _offline(run, Calibrator(method="aci", gamma=g, adapt_max_horizon=ALL))
+    out["online"] = _offline(run, Calibrator(method="online", adapt_max_horizon=ALL))
     out["split_conformal"] = _split_conformal(run, 1 - float(c["target_coverage"]["value"]), cal_until)
     live = run["live"].select("horizon", "made_on", "target_date", "miss").sort("horizon", "target_date", "made_on")
     mine = out["online"].select("horizon", "made_on", "target_date", "miss").sort("horizon", "target_date", "made_on")

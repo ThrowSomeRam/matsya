@@ -62,6 +62,19 @@ def test_delayed_feedback_waits_for_the_outcome():
     assert len(cal.state[7].pending) == 0
 
 
+@pytest.mark.parametrize("method", ["aci", "online"])
+def test_long_horizons_keep_the_engine_band(method):
+    cal = Calibrator(method=method, gamma=0.1, horizons=(30, 60))
+    for t in range(120):
+        day = D0 + timedelta(days=t)
+        cal.update(day, {day - timedelta(days=k): 1e6 for k in range(3)})  # every outcome a miss
+        cal.issue(day, PATHS)
+    assert cal.level(30) < cal.alpha  # adapted
+    assert cal.level(60) == cal.alpha and cal.state[60].alpha_t == pytest.approx(cal.alpha)
+    assert len(cal.state[60].history) > 0 and all(e == 1 for _, e in cal.state[60].history)  # still scored
+    assert Calibrator(method=method, horizons=(60,), adapt_max_horizon=90).adapts(60)
+
+
 def test_online_weights_stay_a_distribution():
     cal = Calibrator(method="online", horizons=(1,))
     _stream(cal, 150.0, 40)

@@ -364,6 +364,28 @@ Contract gaps (questions 11 and 12 below): the calibrated band has nowhere to go
 `forecast.calibration_state` cannot carry the state needed to resume (unclipped alpha_t, online
 weights, bands waiting for their outcome). The replay carries the `Calibrator` object instead.
 
+## Calibration horizons: ACI at 1-30 days only (2026-10-25)
+
+**Decision.** The calibration component adapts horizons 1, 7, 14 and 30 days. At 60 and 90
+days the band is the engine's own (level fixed at alpha = 0.20, never updated). Those bands are
+still issued and scored, so their miss rate is reported in `forecast.calibration_state`.
+Constant: `calibration.adapt_max_horizon_days` = 30. The calibration benchmark passes 90 to keep
+comparing every method at every horizon.
+
+**Why: delayed feedback.** A horizon-h band issued on day t is scored on day t + h, when that
+day's balance is known. At 60-90 days, ACI learns of a miss two to three months after it issued
+the band. Bands issued on consecutive days target overlapping futures, so one bad stretch shows
+up as a run of 60-90 misses, all about events that are already over. ACI steps alpha down for
+each one, then narrows again through a run of hits, so the level swings with past events. In
+the benchmark above the engine's own 80% band covered 0.817 at 60 days and 0.803 at 90 (n = 630
+each, effective n far smaller). Every ACI step size made that worse (0.517 to 0.778 at 90 days),
+and so did the online method. At 7 and 14 days, where feedback arrives within two weeks, ACI
+raises coverage from 0.73 / 0.72 to 0.78-0.80 at gamma 0.05. At 30 days it is roughly neutral.
+
+What ships, read from the same benchmark (no re-run: the 60/90-day result is the "off" column):
+ACI at 1-30 days, engine band at 60-90. gamma is still the paper value (0.005); choosing it is
+left for the Berka shock replay or real tenants, as before.
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).
