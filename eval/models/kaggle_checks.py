@@ -107,8 +107,9 @@ def _weekly_to_daily(paid_weeks: np.ndarray) -> np.ndarray:
     return cum[w] + paid_weeks[w] * ((GRID % 7) + 1) / 7
 
 
-def ours(test: pl.DataFrame) -> np.ndarray:
-    """Payment-timing model, fitted per tenant on the as-of contract tables via the adapters."""
+def ours(test: pl.DataFrame, due_phase: bool = False) -> np.ndarray:
+    """Payment-timing model, fitted per tenant on the as-of contract tables via the adapters.
+    due_phase: the three-phase variant (separate due-week chance)."""
     raw = loaders.kaggle_raw()
     n_weeks = FOLLOW_DAYS // 7 + 1
     cdf = np.zeros((test.height, GRID.size))
@@ -116,11 +117,13 @@ def ours(test: pl.DataFrame) -> np.ndarray:
         tables = loaders.kaggle_tables(raw, bc, AS_OF)
         out, inv, buyers = adapters.outcomes(tables, AS_OF), adapters.invoices(tables, AS_OF), adapters.buyers(
             tables, loaders.kaggle_tenant_id(bc))
-        tm = fit_timing(out, inv, buyers, adapters.ledger_complete_through(tables, AS_OF), run_id=f"{SEED}:{bc}")
+        tm = fit_timing(out, inv, buyers, adapters.ledger_complete_through(tables, AS_OF), run_id=f"{SEED}:{bc}",
+                        due_phase=due_phase)
         prior = next(iter(tm.priors.values()))
         r = rng_for(SEED, f"unseen:{bc}")
         unseen = Posterior(p=r.beta(prior.alpha, prior.beta, 400), pi=r.beta(prior.a, prior.b, 400),
-                           p_early=r.beta(prior.alpha_e, prior.beta_e, 400))
+                           p_early=r.beta(prior.alpha_e, prior.beta_e, 400),
+                           p_due=r.beta(*prior.due_ab, 400) if due_phase else None)
         tenant = loaders.kaggle_tenant_id(bc)
         from matsya_contracts import ids
 
@@ -261,7 +264,8 @@ def calibration(test, cdf, day) -> tuple[float, float, float, float]:
 
 def check_timing() -> tuple[list[dict], str]:
     d, train, test = split()
-    models = {"payment_timing_model": lambda: ours(test), "due_date": lambda: due_date(test),
+    models = {"payment_timing_model": lambda: ours(test),
+              "payment_timing_model_due_week": lambda: ours(test, due_phase=True), "due_date": lambda: due_date(test),
               "cox": lambda: cox(train, test), "random_survival_forest": lambda: rsf(train, test),
               "lgbm_person_period": lambda: lgbm_person_period(train, test)}
     early = d.filter(pl.col("issue_date") < date(2019, 4, 1))

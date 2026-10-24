@@ -50,8 +50,10 @@ def split_buyer(labels: pl.DataFrame, buyer_id: str) -> dict[str, np.ndarray]:
 
 def fit_timing(outcomes: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFrame, as_of: date, run_id: str,
                hierarchical: bool = True, n_draws: int | None = None,
-               type_defaults: dict[str, TimingPrior] | None = None) -> TimingModel:
+               type_defaults: dict[str, TimingPrior] | None = None, due_phase: bool | None = None) -> TimingModel:
+    """due_phase: three-phase model (separate due-week chance); None = constants due_week_phase."""
     consts = load_constants()["payment_timing"]
+    due_phase = bool(consts["due_week_phase"]["value"]) if due_phase is None else due_phase
     cap = float(consts["prior_strength"]["value"])
     burn_in = int(consts["gibbs_sweeps"]["value"])
     n_draws = n_draws or int(consts["gibbs_draws"]["value"])
@@ -62,7 +64,8 @@ def fit_timing(outcomes: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFr
     group = {b: (s, t) for b, s, t in zip(buyers["buyer_id"], buyers["sector"], buyers["type"])}
 
     def fit(prior: TimingPrior, b: str, stage: str) -> Posterior:
-        return gibbs(prior, rng=rng_for(run_id, f"timing:{stage}:{b}"), n_draws=n_draws, burn_in=burn_in, **data[b])
+        return gibbs(prior, rng=rng_for(run_id, f"timing:{stage}:{b}"), n_draws=n_draws, burn_in=burn_in,
+                     due_phase=due_phase, **data[b])
 
     priors = {b: defaults[btype[b]] for b in data}
     posts = {b: fit(priors[b], b, "type") for b in data}
@@ -75,7 +78,8 @@ def fit_timing(outcomes: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFr
                 continue
             gp = group_prior(np.array([posts[b].p.mean() for b in bs]),
                              np.array([posts[b].pi.mean() for b in bs]), cap,
-                             np.array([posts[b].p_early.mean() for b in bs]))
+                             np.array([posts[b].p_early.mean() for b in bs]),
+                             np.array([posts[b].p_due.mean() for b in bs]) if due_phase else None)
             for b in bs:
                 priors[b] = gp
                 posts[b] = fit(gp, b, "group")

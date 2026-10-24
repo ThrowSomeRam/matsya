@@ -12,6 +12,7 @@ from matsya_intelligence.timing import TimingPrior, conjugate_update, fit_timing
 from matsya_intelligence.timing.evaluate import benchmark, recovery, rhat_check
 from matsya_intelligence.timing.hierarchy import group_prior
 from matsya_intelligence.timing.labels import timing_labels
+from matsya_intelligence.timing.model import conjugate_update3
 
 RNG = np.random.default_rng
 
@@ -30,6 +31,47 @@ def test_two_phase_conjugate_counts():
                                     paid_due=np.array([3, 3]), open_due=np.array([3]))
     assert (ae, be) == (1 + 1, 9 + 1 + 2 + 2)
     assert (a, b) == (2 + 1, 6 + 2 + 2)
+
+
+def test_three_phase_conjugate_counts():
+    # Due week 3. Paid in week 2: early success, 1 early failure. Paid in week 3: 2 early
+    # failures, due-week success. Paid in week 5: 2 early, 1 due-week, 1 late failure, late
+    # success. Open at 4: 2 early, 1 due-week, 1 late failure. Open at 2: 2 early failures.
+    prior = TimingPrior(2, 6, 1, 1, 1, 9, 3, 3)
+    k, c = np.array([2, 3, 5]), np.array([4, 2])
+    ae, be, ad, bd, a, b = conjugate_update3(prior, k, c, paid_due=np.array([3, 3, 3]), open_due=np.array([3, 3]))
+    assert (ae, be) == (1 + 1, 9 + 1 + 2 + 2 + 2 + 2)
+    assert (ad, bd) == (3 + 1, 3 + 1 + 1)
+    assert (a, b) == (2 + 1, 6 + 1 + 1)
+    # Folding the due week into p gives back the two-phase counts.
+    ae2, be2, a2, b2 = conjugate_update(prior, k, c, paid_due=np.array([3, 3, 3]), open_due=np.array([3, 3]))
+    assert (ae2, be2) == (ae, be) and (a2, b2) == (a + ad - 3, b + bd - 3)
+
+
+def test_three_phase_gibbs_with_pi_zero_matches_conjugate():
+    prior = TimingPrior(2, 6, 1, 1, 1, 9, 2, 2)
+    k, c = np.array([2, 3, 3, 4, 6, 3]), np.array([4, 1, 5])
+    kd, cd = np.full(k.size, 3), np.full(c.size, 3)
+    post = gibbs(prior, k, c, RNG(0), paid_due=kd, open_due=cd, n_draws=20000, fix_pi=0.0, due_phase=True)
+    ae, be, ad, bd, a, b = conjugate_update3(prior, k, c, kd, cd)
+    for x, (al, bl) in ((post.p_early, (ae, be)), (post.p_due, (ad, bd)), (post.p, (a, b))):
+        assert abs(x.mean() - al / (al + bl)) < 0.004
+
+
+def test_due_phase_off_is_the_two_phase_model():
+    args = dict(paid_weeks=np.array([2, 3, 5]), open_ages=np.array([4]), paid_due=np.array([3, 3, 3]),
+                open_due=np.array([3]))
+    a = gibbs(TimingPrior(2, 6, 1, 20, 1, 9), rng=RNG(3), **args)
+    b = gibbs(TimingPrior(2, 6, 1, 20, 1, 9, 5, 1), rng=RNG(3), due_phase=False, **args)
+    assert a.p_due is None and np.array_equal(a.p, b.p) and np.array_equal(a.p_early, b.p_early)
+
+
+def test_three_phase_prediction_peaks_in_the_due_week():
+    post = gibbs(TimingPrior(2, 6, 1, 20, 1, 19, 1, 1), np.array([3] * 20 + [4, 5]), np.array([1]), RNG(4),
+                 paid_due=np.full(22, 3), open_due=np.array([3]), due_phase=True)
+    paid, never, beyond = predict_open(post, age=0, horizon=13, due_week=3)
+    assert paid.sum() + never + beyond == pytest.approx(1.0)
+    assert paid[2] > 0.5 and paid[2] > 5 * paid[3]  # week 3 since issue holds most of the mass
 
 
 def test_gibbs_with_pi_zero_matches_conjugate():
