@@ -154,6 +154,13 @@ complete-through date would fix it). The low bin is still under-predicted.
 10. **forecast.shock_state (additive).** It holds z and z_sd at the last week only. Replaying a
     shock path also needs the AR(1) rho and q per sector; propose nullable `rho` and `q`
     columns.
+11. **Calibrated bands (additive).** Propose `forecast.calibrated_bands` (tenant_id, run_id,
+    horizon, target_date, level, lo_paise, hi_paise): the calibration component's band per
+    horizon. `forecast.balance_quantiles` has fixed q05-q95 columns and cannot hold it.
+12. **forecast.calibration_state (additive).** To resume calibration from the table alone it
+    needs the unclipped alpha (alpha_t is a Prob, but ACI's level can go below 0) and somewhere
+    for bands waiting for their outcome. Propose nullable `alpha_raw` and a
+    `forecast.calibration_pending` table; until then the state lives in the runner.
 
 ## Ledger-complete-through watermark and live replay (2026-10-24)
 
@@ -292,6 +299,70 @@ The engine loses to balance-only scores. The unscheduled bootstrap draws each da
 independently, so simulated balances drift like a random walk, while real balances revert
 (income and spending are linked). This is the bar the flow forecaster has to clear. Lead
 time is not measurable (only final loan status is given).
+
+## Calibration component (2026-10-25)
+
+`intelligence/.../calibrate/aci.py`. Adaptive conformal inference per tenant and per horizon
+(1, 7, 14, 30, 60, 90 days), target coverage 0.80 (alpha = 0.20):
+alpha_{t+1} = alpha_t + gamma (alpha - err_t). The band is read off the engine's own path
+distribution at the [a/2, 1 - a/2] quantiles with a = clip(alpha_t, 0, 1); alpha_t itself is
+kept unclipped (a band at a <= 0 is the whole line). Delayed feedback: a horizon-h band issued
+on day t waits until the balance of day t + h is known (as-of read of ledger.balances) and only
+then updates alpha. Option `method="online"`: the Gibbs & Candes (2022) step-size method, one
+expert per gamma in the constants grid with exponential weights on the pinball loss (eta, sigma
+from the paper with T = 365, an assumption in the constants file). The replay carries a
+`Calibrator` from step to step: score bands whose outcome became known, run with the current
+state, issue the new bands, write `forecast.calibration_state`.
+
+**Benchmark (report only: gamma is not chosen on synthetic data for production).** Replays
+from 2025-10-01 to each world's end (about 300 daily steps, 2,000 paths). The engine's paths
+do not depend on calibration, so every method is replayed offline on the same paths (the
+offline online-method replay reproduces the live run exactly, checked). The "off" column is the
+same engine runs without calibration, i.e. the before numbers. The earlier 30-day learning-curve
+replay (one world, 90% band) is not comparable and is not repeated here.
+
+Coverage of the 80% band, three borderline worlds, targets from 2026-01-01, n = 630 per horizon
+(210 per world; consecutive outcomes overlap and are strongly correlated, so the effective n is
+far smaller):
+
+| horizon (days) | off (before) | ACI 0.005 | ACI 0.01 | ACI 0.02 | ACI 0.05 | ACI 0.1 | online | split conformal |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 0.786 | 0.792 | 0.790 | 0.794 | 0.795 | 0.797 | 0.787 | 0.789 |
+| 7 | 0.733 | 0.752 | 0.768 | 0.779 | 0.790 | 0.795 | 0.752 | 0.702 |
+| 14 | 0.716 | 0.741 | 0.754 | 0.775 | 0.778 | 0.784 | 0.738 | 0.687 |
+| 30 | 0.757 | 0.717 | 0.711 | 0.735 | 0.767 | 0.783 | 0.656 | 0.673 |
+| 60 | 0.817 | 0.760 | 0.717 | 0.671 | 0.665 | 0.624 | 0.617 | 0.817 |
+| 90 | 0.803 | 0.778 | 0.757 | 0.725 | 0.575 | 0.517 | 0.649 | 0.803 |
+
+Short horizons (7, 14 days): the engine under-covers and ACI brings it to 0.78-0.80, more with
+larger gamma. Long horizons (60, 90): the engine's own band is already right and ACI makes it
+worse, more with larger gamma. With 60-90 days of delay and overlapping targets, misses arrive
+in long runs about events that are already over, and ACI keeps reacting to them. The online
+method sits in between at short horizons and is poor at long ones.
+
+Shock: one world (past seed 0), every buyer's weekly payment chances x 0.3 from 2026-02-02;
+n = 178 scored outcomes per horizon after the shock (7 per week). Weeks to recover = weeks
+after the shock until trailing 4-week coverage is back at >= 0.75 after falling below it:
+
+| horizon | off | ACI 0.005 | ACI 0.05 | online | split conformal (fitted before the shock, fixed) |
+|---|---|---|---|---|---|
+| 7 days | 4 | 4 | 4 | 4 | 4 |
+| 14 days | never | 5 | 5 | 5 | never |
+| 30 days | never | 17 | 10 | 15 | never |
+
+At 14 days the uncalibrated band and split conformal stay at zero coverage for most of March to
+June; ACI at gamma 0.05 holds at about 1.0 from March. One world and 7 outcomes a week, so the
+recovery times are illustrative, not estimates.
+
+**What this suggests (not a production choice):** calibrate short horizons only, or use a
+horizon-dependent step (larger gamma short, little or none at 60-90 days), and treat ACI's
+long-run guarantee as weak at these sample sizes. To decide on the Berka shock replay or on
+real tenants, not here.
+
+Contract gaps (questions 11 and 12 below): the calibrated band has nowhere to go
+(`forecast.balance_quantiles` has fixed q05-q95 columns and the target is an 80% band), and
+`forecast.calibration_state` cannot carry the state needed to resume (unclipped alpha_t, online
+weights, bands waiting for their outcome). The replay carries the `Calibrator` object instead.
 
 ## Requests to Track A
 

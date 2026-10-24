@@ -25,6 +25,7 @@ OBLIGATION = schema("features.obligations")
 INVOICE_TIMING = schema("features.invoice_timing")
 SALES_PROCESS = schema("features.sales_process")
 SHOCK_STATE = schema("forecast.shock_state")
+CALIBRATION_STATE = schema("forecast.calibration_state")  # written by replay / live runs with history
 RUN = schema("forecast.runs")
 BALANCE_QUANTILE = schema("forecast.balance_quantiles")
 SHORTFALL = schema("forecast.shortfall")

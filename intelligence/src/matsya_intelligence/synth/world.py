@@ -311,6 +311,8 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
             p = b["p_early"] if early else b["p"]
             if changed and d >= bc.at:
                 p = min(max(p * bc.p_multiplier, 1e-4), 1 - 1e-4)
+            if c.payment_shock is not None and d >= c.payment_shock[0]:
+                p = min(max(p * c.payment_shock[1], 1e-4), 1 - 1e-4)
             return _sigmoid(_logit(p) + b["loading"] * z[b["sector_idx"], week_of(d)])
 
         def draw(r: np.random.Generator, stop: date) -> tuple[bool, int | None, date | None]:

@@ -28,6 +28,8 @@ import polars as pl
 from matsya_contracts.events import NewCredit, NewInvoice
 from matsya_contracts.validate import schema, validate
 
+from matsya_intelligence.calibrate import Calibrator
+from matsya_intelligence.io import adapters
 from matsya_intelligence.io.sink import write_outputs
 from matsya_intelligence.run import run_tenant
 from matsya_intelligence.synth.world import Truth, contract_tables_at
@@ -45,6 +47,9 @@ class StepResult:
     events: pl.DataFrame  # ops.events revealed in this step
     forecast: dict[str, pl.DataFrame]  # KEEP tables of this step's run
     buyer: dict  # payment-time range of the tracked buyer
+    calibration: dict[str, pl.DataFrame] | None = None  # scored (outcomes known this step), bands, state
+    paths: np.ndarray | None = None  # (n_paths, len(SCORE_HORIZONS)) balances at the scored horizons
+    engine: object = field(default=None, repr=False)  # EngineResult of this step; dropped once used
 
 
 @dataclass
@@ -53,12 +58,15 @@ class Replay:
     n_paths: int = PATHS["demo"]
     buyer_id: str | None = None  # tracked buyer; default the one with most invoices
     out_dir: Path | None = None  # if set, every step's output tables are written here
+    start: datetime | None = None  # first as_of; default the world's as_of (earlier is fine: truth has the past)
+    calibrator: Calibrator | None = None  # calibration state carried from step to step
+    keep_paths: bool = False  # keep each step's simulated balances at SCORE_HORIZONS (offline benchmarks)
     as_of: datetime = field(init=False)
     tables: dict[str, pl.DataFrame] = field(init=False)
     steps: list[StepResult] = field(init=False, default_factory=list)
 
     def __post_init__(self):
-        self.as_of = self.truth.config.as_of
+        self.as_of = self.start or self.truth.config.as_of
         self.tables = contract_tables_at(self.truth, self.as_of)
         self.tenant_id = self.truth.config.tenant_id
         if self.buyer_id is None:
@@ -103,18 +111,36 @@ class Replay:
         return validate(ev, "ops.events")
 
     def run_step(self) -> StepResult:
-        """Forecast at the current as_of with the normal pipeline."""
-        out, inp = run_tenant(self.tables, self.tenant_id, self.as_of, "replay", self.n_paths, return_inputs=True)
+        """Forecast at the current as_of with the normal pipeline (no calibration side effects)."""
+        out, inp, eng = run_tenant(self.tables, self.tenant_id, self.as_of, "replay", self.n_paths, return_inputs=True)
         if self.out_dir is not None:
             write_outputs(out, Path(self.out_dir) / "runs" / self.as_of.date().isoformat())
+        cols = [h for h in SCORE_HORIZONS if h < eng.balance.shape[1]]
         return StepResult(as_of=self.as_of, events=pl.DataFrame(schema=schema("ops.events")),
-                          forecast={k: out[k] for k in KEEP}, buyer=self._buyer_range(inp))
+                          forecast={k: out[k] for k in KEEP}, buyer=self._buyer_range(inp),
+                          paths=eng.balance[:, cols].copy() if self.keep_paths else None, engine=eng)
+
+    def known_balances(self) -> dict:
+        """Closing balance per date known at the current as_of (as-of read, summed over accounts)."""
+        b = adapters.as_of_read(self.tables["ledger.balances"], ["tenant_id", "account_id", "date"], self.as_of)
+        b = b.filter(pl.col("date") <= self.as_of.date()).group_by("date").agg(pl.col("closing_paise").sum())
+        return dict(zip(b["date"], b["closing_paise"]))
 
     def step(self) -> StepResult:
-        """Advance one day, reveal, run, keep the result."""
+        """Advance one day and reveal; score the calibration bands whose outcome is now known;
+        run with the current calibration state; issue this run's bands; keep the result."""
         events = self.reveal(self.as_of + timedelta(days=1))
+        day = self.as_of.date()
+        scored = self.calibrator.update(day, self.known_balances()) if self.calibrator else None
         res = self.run_step()
         res.events = events
+        if self.calibrator is not None:
+            bands = self.calibrator.issue(day, res.engine.balance)
+            state = self.calibrator.state_table(self.tenant_id, day)
+            res.calibration = {"scored": scored, "bands": bands, "forecast.calibration_state": state}
+            if self.out_dir is not None:
+                write_outputs({"forecast.calibration_state": state}, Path(self.out_dir) / "runs" / day.isoformat())
+        res.engine = None
         self.steps.append(res)
         return res
 

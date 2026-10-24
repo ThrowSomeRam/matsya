@@ -126,6 +126,9 @@ class WorldConfig:
     lateness: str = "geometric"  # "geometric" | "lognormal"
     lognormal_sigma: float = 0.6
     behaviour_change: BehaviourChange | None = None
+    # Sector-wide payment shock: from this date every buyer's weekly chances (p and p_early) are
+    # multiplied by the factor. None keeps every draw unchanged.
+    payment_shock: tuple[date, float] | None = None
     month_end_clustering: bool = False
     month_end_prob: float = 0.7
 
