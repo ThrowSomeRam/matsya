@@ -162,6 +162,20 @@ complete-through date would fix it). The low bin is still under-predicted.
     for bands waiting for their outcome. Propose nullable `alpha_raw` and a
     `forecast.calibration_pending` table; until then the state lives in the runner.
 
+13. **Scenario transforms in forecast.runs (additive).** `overrides_json` is validated as a list
+    of `events.OverrideItem`, which only has `one_off` (kind, on, amount_paise; extra fields
+    forbidden). The scenario engine's transforms (rate_multiplier, date_shift, cash_event with a
+    window, terms_change, freeze) do not fit. Propose new `OverrideKind` values and
+    `OverrideItem` as a tagged union matching `scenarios.transforms`. Until then a scenario
+    run's `forecast.runs` row carries `scenario_id`, and the full list (canonical JSON and its
+    sha256) is in `forecast.scenarios.params_json` and the run record.
+14. **forecast.scenario_effects (additive).** `forecast.scenarios` holds one row per scenario
+    (params_json, breaking_magnitude). The per-day comparison has nowhere to go. Propose
+    `forecast.scenario_effects` (tenant_id, scenario_id, base_run_id, run_id, date, day,
+    p_short_base, p_short, d_p_short, d_es_cond_paise, d_es_uncond_paise). The same numbers can
+    be derived from `forecast.shortfall` for the two run_ids; the scenario row's params_json
+    also carries runway_lost_days.
+
 ## Ledger-complete-through watermark and live replay (2026-10-24)
 
 **Watermark rule (proposed to Track A as the answer to question 1).** Per account, let L be
@@ -417,6 +431,81 @@ in week 1. Code removed; the result rows stay.
 Note: the bootstrap seeds for each model's C-index CI come from one shared stream, so adding a
 model shifted the later models' CIs by about 0.001; the random survival forest's C-index moved
 0.790 to 0.789 between runs (not bit-identical).
+
+## Scenario engine (2026-10-25)
+
+`intelligence/.../scenarios/`. One primitive: a typed list of transforms (pydantic, tagged on
+`type`) applied at run time to a copy of the simulation engine's inputs, never to stored tables
+or fitted components.
+
+| transform | what it changes | magnitude |
+|---|---|---|
+| rate_multiplier | weekly payment chance x factor for buyers, sectors or all buyers (weeks starting after as_of only; survival to the cut keeps the posterior); or the order rate x factor | factor |
+| date_shift | fixed obligations by kind (salary, rent, emi, ...) or obligation_id, or every future supplier payment, by N days (earliest day 1). GST is refused: statutory date, and its amount depends on the month | days |
+| cash_event | signed amount on a date, or on a day drawn per path uniformly in [on, window_end] | amount_paise |
+| terms_change | buyer terms -> to_days: the due week of open and future invoices for future weeks; supplier terms from -> to: every supplier payment moves by to - from days | to_days |
+| freeze | a fraction of each path's balance on the day before start is unusable for N days (out and back as two flows, so balances still add up from flows) | fraction |
+
+Transforms compose: multipliers multiply, shifts add, the last buyer terms win, cash events and
+freezes accumulate. The engine's old `OneOffEvent` stays (it is what `forecast.runs`
+accepts); `cash_event` is its generalisation.
+
+**Order rate.** The sales forecaster draws its base orders exactly as before, then thins them
+(k < 1, each order kept with chance k) or adds Poisson((k - 1) lambda) orders a week (k > 1)
+from a separate generator. Purchases are generated per order, so they follow at the purchase
+ratio and are a subset of the baseline's on every path; fixed obligations are untouched.
+
+**Common random numbers.** `run_engine(..., seed_id=base_run_id)`: a scenario run has its own
+run_id (`<base>:scenario:<scenario_id>`) but every stream derives from the baseline's. The
+scenario's own randomness (window days, extra orders) uses a separate `engine:scenario`
+stream, so baseline streams are unchanged. Exact consequences, tested: a one-off moves every
+path by exactly its amount from its date; the "unexpected expense" preset changes only the
+scenario cash flow and "revised payment schedule" only fixed obligations. Not exact: when a
+scenario changes how many draws a stream makes (payment chances change how many weekly
+trials run; fewer orders change which invoices exist), the later draws in that stream line
+up differently, so the difference also carries some noise.
+
+**Overrides never update learned parameters.** Tested: after running every preset, the inputs'
+posterior draws, open invoices, fixed obligations and features pickle identically, and a refit
+gives byte-identical payment timing, obligations and sales features.
+
+**Outputs.** Per day: d_p_short, change in conditional and unconditional expected shortfall;
+runway lost = baseline runway - scenario runway, with a runway beyond the horizon counted as
+H + 1 (so it is a lower bound then, flagged). Written: `forecast.scenarios` (params_json = full
+transform list, its hash, base and scenario run_ids, runway lost, breaking-point grid) and the
+scenario run's `forecast.runs` / `balance_quantiles` / `shortfall`. The per-day frame waits for
+a table (question 14).
+
+**Presets** (`intelligence/config/scenario_presets.yaml`, dates as `+Nd` after as_of; magnitudes
+are placeholders): delayed customer payments (all buyers x 0.5), unexpected expense (Rs 2 lakh
+out in 14 days), reduced sales (orders x 0.7), supplier tightens terms (30 -> 15 days), revised
+payment schedule (EMI 7 days earlier). Owner edits are the same list, built ad hoc.
+
+**Breaking point.** For one transform in a list (others held), a grid of runs on the same seed
+from a benign magnitude to a severe one (defaults per type: factor 1 -> 0, fraction 0 -> 1, cash
+0 -> 10x the amount, buyer terms from -> 4x to, supplier terms from -> 0, shifts 0 -> 4x days).
+The grid checks that p_short(day) rises with the magnitude and brackets the first crossing of
+the owner's target; bisection narrows it to tol. Drops on the grid are reported, not hidden.
+Tested on a closed form: for an outflow A on day D, p_short(90) is the share of baseline paths
+that breach before D or whose minimum from D on is below |A|; bisection lands within tolerance.
+
+**Default world (past seed 0, 2,000 paths, target 0.5 at day 90; baseline p_short(90) 0.141,
+runway beyond 90 days).** One world, so illustrative only:
+
+| preset | d_p_short day 30 / 90 | runway lost (days) | breaking magnitude | monotone |
+|---|---|---|---|---|
+| delayed customer payments | +0.320 / +0.729 | >= 60 | factor 0.70 | yes |
+| unexpected expense | +0.016 / +0.032 | >= 0 | Rs 15.8 lakh on day 14 | yes |
+| reduced sales | -0.035 / -0.114 | >= 0 | none: p_short falls | no |
+| supplier tightens terms | +0.492 / +0.497 | >= 71 | 18 days (from 30) | yes |
+| revised payment schedule | +0.004 / +0.018 | >= 0 | not reached by 28 days earlier | yes |
+
+**Reduced sales lowers shortfall risk within 90 days here.** Purchases are paid about the
+purchase lag before each invoice and the invoice is paid weeks after it, so over 90 days new
+orders cost cash before they bring it in; fewer orders means less working capital tied up.
+The model is doing what it should; for this world the brief's "reduced sales" stress only
+shows beyond the horizon, or with fixed costs that scale. The breaking-point search reports it
+as not monotone (p_short falls along the whole grid) rather than inventing a number.
 
 ## Requests to Track A
 

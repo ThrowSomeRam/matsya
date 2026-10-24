@@ -1,0 +1,35 @@
+# Scenario presets (scenarios component): saved transform lists covering the F-03 brief.
+# Quote the key "on" (YAML 1.1 reads a bare on as true).
+# Dates are "+Nd" = N days after the run's as_of, resolved when the preset is used.
+# Magnitudes are placeholders (status: assumption): the owner edits them, and the
+# breaking-point search reports the magnitude at which each one breaks the business.
+
+delayed_customer_payments:
+  description: Every buyer's weekly chance of paying halves from tomorrow.
+  status: assumption
+  transforms:
+    - {type: rate_multiplier, target: all_buyers, factor: 0.5}
+
+unexpected_expense:
+  description: A Rs 2 lakh outflow in two weeks (repair, penalty, one-off bill).
+  status: assumption
+  transforms:
+    - {type: cash_event, "on": "+14d", amount_paise: -20000000, label: unexpected expense}
+
+reduced_sales:
+  description: Orders fall 30%. Purchases follow via the purchase ratio; fixed costs do not change.
+  status: assumption
+  transforms:
+    - {type: rate_multiplier, target: orders, factor: 0.7}
+
+supplier_tightens_terms:
+  description: Suppliers cut credit from 30 to 15 days, so every future supplier payment is 15 days earlier.
+  status: assumption
+  transforms:
+    - {type: terms_change, party: supplier, from_days: 30, to_days: 15}
+
+revised_payment_schedule:
+  description: The EMI moves 7 days earlier (edit ids to salary, rent, ... or days to move it).
+  status: assumption
+  transforms:
+    - {type: date_shift, target: obligation_kind, ids: [emi], days: -7}

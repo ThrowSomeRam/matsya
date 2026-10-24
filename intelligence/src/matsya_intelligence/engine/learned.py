@@ -132,12 +132,12 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
     if with_sales:
         sm = fit_sales(inv, txns, categories, as_of)
 
-        def sales_fn(n_paths: int, H: int, rng: np.random.Generator):
+        def sales_fn(n_paths: int, H: int, rng: np.random.Generator, **scenario):
             if demand_ar1:
-                fut, pur = sm.sample(n_paths, H, rng, param_draws=sales_uncertainty, demand="ar1")
+                fut, pur = sm.sample(n_paths, H, rng, param_draws=sales_uncertainty, demand="ar1", **scenario)
             else:
                 fut, pur = sm.sample(n_paths, H, rng, level=sm.demand_levels(n_paths, rng),
-                                     param_draws=sales_uncertainty)
+                                     param_draws=sales_uncertainty, **scenario)
             b = np.array([bidx[x] for x in fut["buyer_id"]], dtype=np.int64)
             gross = fut["gross_paise"].to_numpy()
             tds = np.round(gross * np.array([sm.tds_ratio.get(x, 0.0) for x in fut["buyer_id"]])).astype(np.int64)
@@ -150,14 +150,17 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
             return invoices, purchases
 
     obligations = detect_obligations(txns, categories, as_of, horizon)
-    fixed = [((d - as_of).days, int(a)) for d, a in zip(obligations["due_date"], obligations["amount_paise"])
-             if a is not None]
+    fixed_rows = obligations.filter(pl.col("amount_paise").is_not_null())
+    fixed = [((d - as_of).days, int(a)) for d, a in zip(fixed_rows["due_date"], fixed_rows["amount_paise"])]
+    fixed_kinds, fixed_ids = fixed_rows["kind"].cast(pl.String).to_list(), fixed_rows["obligation_id"].to_list()
     if naive_purchases and not with_sales:
         sp = txns.join(categories.select("txn_uid", "category"), on="txn_uid").filter(
             (pl.col("category") == "supplier_payment") & (pl.col("value_date") <= as_of))
         span = (as_of - txns["value_date"].min()).days + 1
         daily = int(round(abs(sp["amount_paise"].sum()) / span))
         fixed += [(d, daily) for d in range(1, horizon + 1)]
+        fixed_kinds += ["naive_supplier"] * horizon
+        fixed_ids += [f"naive_supplier-{d}" for d in range(1, horizon + 1)]
 
     features = {"features.obligations": obligations, "features.invoice_timing": tm.predict((horizon + 6) // 7)}
     if with_sales:
@@ -193,4 +196,5 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         + [f"opening_balance:{obs['opening_balance']['closing_paise']}@{obs['opening_balance']['date']}",
            f"complete_through:{through}"],
         features=features,
+        buyer_sectors=buyers["sector"].cast(pl.String).to_list(), fixed_kinds=fixed_kinds, fixed_ids=fixed_ids,
     )

@@ -15,6 +15,11 @@ Per path:
      first; future invoices: the same from age 0;
   4. linked purchases; GST per month from that path's sales and purchases;
   5. fixed obligations, unscheduled flows, overrides; cumulative balance.
+
+Scenario effects (scenarios component) are applied here at run time, never to stored
+tables. Their own randomness (cash event days in a window, extra orders) comes from a
+separate "engine:scenario" stream, so the baseline streams are untouched: a scenario run
+with the baseline's seed_id differs from the baseline only by the scenario.
 """
 
 import hashlib
@@ -69,8 +74,30 @@ class OneOffEvent:
     kind: str = "one_off"
 
 
-SalesSampler = Callable[[int, int, np.random.Generator], tuple[Invoices, pl.DataFrame]]
-# (n_paths, horizon, rng) -> (future invoices with path set, purchases: path, day, amount_paise > 0)
+@dataclass(frozen=True)
+class ScenarioEffects:
+    """Run-time changes from the scenarios component that are not edits of the inputs themselves.
+
+    pay_mult, due_week: per buyer (index-aligned with buyer_ids); they apply to weeks starting
+    on day >= 1 only, so survival to the cut (the past) keeps the posterior and the old terms.
+    due_week -1 = unchanged. order_mult scales the sales forecaster's order rate (purchases
+    follow per invoice). purchase_shift_days moves every future supplier payment (earliest day 1).
+    cash: (first_day, last_day, amount_paise), the day drawn per path uniformly in the window.
+    freezes: (start_day, days, fraction): that share of each path's balance on start_day - 1
+    (if positive) is unusable from start_day for `days` days.
+    """
+
+    pay_mult: np.ndarray | None = None
+    due_week: np.ndarray | None = None
+    order_mult: float = 1.0
+    purchase_shift_days: int = 0
+    cash: tuple[tuple[int, int, int], ...] = ()
+    freezes: tuple[tuple[int, int, float], ...] = ()
+
+
+SalesSampler = Callable[..., tuple[Invoices, pl.DataFrame]]
+# (n_paths, horizon, rng[, order_mult=, extra_rng=]) -> (future invoices with path set, purchases: path, day,
+# amount_paise > 0). order_mult/extra_rng are passed only when a scenario changes the order rate.
 UnscheduledSampler = Callable[[int, int, np.random.Generator], np.ndarray]
 # (n_paths, horizon, rng) -> int64 (n_paths, horizon + 1) net flows, column 0 unused
 ShiftFn = Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]
@@ -100,6 +127,10 @@ class EngineInputs:
     model_versions: dict = field(default_factory=dict)
     input_snapshot_ids: list[str] = field(default_factory=list)
     features: dict[str, pl.DataFrame] = field(default_factory=dict)  # component outputs, contract tables
+    buyer_sectors: list[str] = field(default_factory=list)  # index-aligned with buyer_ids
+    fixed_kinds: list[str] = field(default_factory=list)  # index-aligned with fixed (obligation kind)
+    fixed_ids: list[str] = field(default_factory=list)  # index-aligned with fixed (obligation_id)
+    scenario: ScenarioEffects | None = None
 
 
 def month_key(d: date) -> int:
@@ -143,6 +174,9 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     pe = np.concatenate(inp.timing.p_early)[_flat_index(inp, b, d)]
     p = np.concatenate(inp.timing.p)[_flat_index(inp, b, d)]
     pi = np.concatenate(inp.timing.pi)[_flat_index(inp, b, d)]
+    sc = inp.scenario
+    mult = None if sc is None or sc.pay_mult is None else sc.pay_mult[b]
+    due_new = due if sc is None or sc.due_week is None else np.where(sc.due_week[b] >= 0, sc.due_week[b], due)
     based = shift_fn is not None and inp.timing.p_base is not None
     if based:
         pe_b = np.concatenate(inp.timing.p_early_base)[_flat_index(inp, b, d)]
@@ -163,7 +197,13 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
         base = np.where(k[a] < due[a], pe[a], p[a])
         if based:
             base = np.where(week_start >= 1, np.where(k[a] < due[a], pe_b[a], p_b[a]), base)
+        if due_new is not due:  # new terms: future weeks use the new due week
+            base = np.where(week_start >= 1, np.where(k[a] < due_new[a], pe[a], p[a]), base)
+            if based:
+                base = np.where(week_start >= 1, np.where(k[a] < due_new[a], pe_b[a], p_b[a]), base)
         h = _sigmoid_shift(base, None if shift_fn is None else shift_fn(path[a], b[a], week_start))
+        if mult is not None:
+            h = np.where(week_start >= 1, np.minimum(h * mult[a], 1.0), h)
         ff = f[a]
         hit = rng.random(a.size) < h * (1 - ff) / (1 - h * ff)
         off = _pick_offset(rng, probs[a], start[a])
@@ -227,9 +267,15 @@ class EngineResult:
 
 
 def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: int = 90,
-               overrides: list[OneOffEvent] | None = None, keep_flows: bool = False) -> EngineResult:
+               overrides: list[OneOffEvent] | None = None, keep_flows: bool = False,
+               seed_id: str | None = None) -> EngineResult:
+    """seed_id: the id the random streams derive from (default run_id). A scenario run passes its
+    baseline's run_id, so both use the same random numbers."""
     overrides = overrides or []
-    rng = {s: rng_for(run_id, f"engine:{s}") for s in STREAMS}
+    seed_id = seed_id or run_id
+    rng = {s: rng_for(seed_id, f"engine:{s}") for s in STREAMS}
+    sc = inp.scenario
+    rng_sc = rng_for(seed_id, "engine:scenario")
     H = horizon
     flows: dict[str, np.ndarray] = {}
 
@@ -262,7 +308,8 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
     month_of_day = np.array([month_key(inp.as_of + timedelta(days=d)) for d in range(H + 1)])
     path_month_net: dict[int, np.ndarray] = {}
     if inp.sales is not None:
-        fut, purch = inp.sales(n_paths, H, rng["sales"])
+        extra = {} if sc is None or sc.order_mult == 1.0 else {"order_mult": sc.order_mult, "extra_rng": rng_sc}
+        fut, purch = inp.sales(n_paths, H, rng["sales"], **extra)
         if len(fut.buyer):
             ones = np.ones(len(fut.buyer))
             pay = _simulate_payments(inp, rng["sales_timing"], fut.path, np.arange(len(fut.buyer)), fut,
@@ -275,6 +322,8 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
                     fut.path[sel], weights=fut.taxable[sel], minlength=n_paths)
         if purch.height:
             pp, pd_, pa = purch["path"].to_numpy(), purch["day"].to_numpy(), purch["amount_paise"].to_numpy()
+            if sc is not None and sc.purchase_shift_days:
+                pd_ = np.maximum(pd_ + sc.purchase_shift_days, 1)
             add("purchases", pp, pd_, -pa)
             for m in np.unique(month_of_day):
                 sel = month_of_day[np.clip(pd_, 0, H)] == m
@@ -303,18 +352,33 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
     for ev in overrides:
         day = (ev.on - inp.as_of).days
         add("overrides", None, np.array([day]), np.array([ev.amount_paise], dtype=np.int64))
+    for first, last, amount in (sc.cash if sc is not None else ()):
+        days = rng_sc.integers(first, last + 1, n_paths) if last > first else np.full(n_paths, first)
+        add("scenario_cash", np.arange(n_paths), days, np.full(n_paths, amount, dtype=np.int64))
 
-    # 8. Balance.
-    total = sum(flows.values()) if flows else np.zeros((n_paths, H + 1), dtype=np.int64)
-    balance = inp.opening_balance_paise + np.cumsum(total, axis=1)
-    balance[:, 0] = inp.opening_balance_paise
+    # 8. Balance. A freeze takes a share of the balance before it starts out of use and gives it
+    # back after `days` days, as two flows, so balances still add up from the flows.
+    def _balance():
+        total = sum(flows.values()) if flows else np.zeros((n_paths, H + 1), dtype=np.int64)
+        bal = inp.opening_balance_paise + np.cumsum(total, axis=1)
+        bal[:, 0] = inp.opening_balance_paise
+        return bal
+
+    balance = _balance()
+    for start, days, frac in (sc.freezes if sc is not None else ()):
+        if not 1 <= start <= H:
+            continue
+        frozen = np.round(frac * np.maximum(balance[:, start - 1], 0)).astype(np.int64)
+        add("freeze", np.arange(n_paths), np.full(n_paths, start), -frozen)
+        add("freeze", np.arange(n_paths), np.full(n_paths, start + days), frozen)
+        balance = _balance()
 
     run = {
         "run_id": run_id,
         "tenant_id": inp.tenant_id,
         "as_of": inp.as_of,
-        "seed": seed_from_run_id(run_id),
-        "seed_streams": {s: seed_from_run_id(run_id, f"engine:{s}") for s in STREAMS},
+        "seed": seed_from_run_id(seed_id),
+        "seed_streams": {s: seed_from_run_id(seed_id, f"engine:{s}") for s in STREAMS},
         "model_versions": inp.model_versions,
         "input_snapshot_ids": inp.input_snapshot_ids,
         "scenario_id": None,

@@ -36,6 +36,12 @@ so rho = gamma_2 / gamma_1 and s2 = gamma_1 / (rho m^2); k is refitted from
 what is left, m^2 / k = Var - m - m^2 s2. The current x_T comes from a Kalman
 filter on y_t = log((n_t + 0.5) / m) with noise 1/m + 1/k. With ~50 weeks the
 autocovariances are noisy; when they are not positive, x is switched off.
+
+Scenario order rate (order_mult in sample, from the scenarios component): the base orders
+are drawn exactly as without it, then thinned (k < 1, each order kept with chance k) or
+topped up (k > 1, extra Poisson((k - 1) lambda) orders per week) with a separate generator,
+so the base draws are common to baseline and scenario. Purchases are generated per order,
+so they follow at the purchase ratio.
 """
 
 from dataclasses import dataclass
@@ -108,7 +114,8 @@ class SalesModel:
 
     def sample(self, n_paths: int, horizon_days: int, rng: np.random.Generator,
                level: np.ndarray | None = None, param_draws: bool = False,
-               demand: str = "none") -> tuple[pl.DataFrame, pl.DataFrame]:
+               demand: str = "none", order_mult: float = 1.0,
+               extra_rng: np.random.Generator | None = None) -> tuple[pl.DataFrame, pl.DataFrame]:
         """Future invoices issued in (as_of, as_of + horizon] and purchases paid in that window, per path.
 
         Invoices are drawn L days past the horizon too, so purchases near its end
@@ -133,18 +140,17 @@ class SalesModel:
             mult = np.ones((n_paths, n_weeks)) * (1.0 if level is None else level[:, None])
             k = self._dispersion(m, v, 0.0)
         lam = rng.gamma(k[:, None], (m / k)[:, None] * mult, size=(n_paths, n_weeks))
-        counts = rng.poisson(lam)
-        path = np.repeat(np.repeat(np.arange(n_paths), n_weeks), counts.ravel())
-        week = np.repeat(np.tile(np.arange(n_weeks), n_paths), counts.ravel())
-        day = week * 7 + rng.integers(0, 7, size=path.size) + 1  # days after as_of
-        buyer = rng.choice(len(self.buyer_ids), size=path.size, p=self.mix)
-        gross = np.empty(path.size, dtype=np.int64)
-        terms = np.empty(path.size, dtype=np.int32)
-        for i, b in enumerate(self.buyer_ids):
-            idx = np.flatnonzero(buyer == i)
-            amounts, t = self.pools[b]
-            pick = rng.integers(0, amounts.size, size=idx.size)
-            gross[idx], terms[idx] = amounts[pick], t[pick]
+        path, day, buyer, gross, terms = self._orders(rng.poisson(lam), rng)
+        if order_mult != 1.0:
+            if extra_rng is None:
+                raise ValueError("order_mult needs extra_rng (the scenario stream)")
+            if order_mult < 1.0:
+                keep = extra_rng.random(path.size) < order_mult
+                path, day, buyer, gross, terms = path[keep], day[keep], buyer[keep], gross[keep], terms[keep]
+            else:
+                more = self._orders(extra_rng.poisson(lam * (order_mult - 1.0)), extra_rng)
+                path, day, buyer, gross, terms = (np.concatenate([x, y]) for x, y in
+                                                  zip((path, day, buyer, gross, terms), more))
         as_of = np.datetime64(self.as_of, "D")
         issue = as_of + day.astype("timedelta64[D]")
         invoices = pl.DataFrame({
@@ -162,6 +168,22 @@ class SalesModel:
             "amount_paise": np.round(ratio[path[keep]] * gross[keep]).astype(np.int64),
         })
         return invoices, purchases
+
+    def _orders(self, counts: np.ndarray, rng: np.random.Generator):
+        """(path, day, buyer index, gross, terms) for weekly order counts (n_paths, n_weeks)."""
+        n_paths, n_weeks = counts.shape
+        path = np.repeat(np.repeat(np.arange(n_paths), n_weeks), counts.ravel())
+        week = np.repeat(np.tile(np.arange(n_weeks), n_paths), counts.ravel())
+        day = week * 7 + rng.integers(0, 7, size=path.size) + 1  # days after as_of
+        buyer = rng.choice(len(self.buyer_ids), size=path.size, p=self.mix)
+        gross = np.empty(path.size, dtype=np.int64)
+        terms = np.empty(path.size, dtype=np.int32)
+        for i, b in enumerate(self.buyer_ids):
+            idx = np.flatnonzero(buyer == i)
+            amounts, t = self.pools[b]
+            pick = rng.integers(0, amounts.size, size=idx.size)
+            gross[idx], terms[idx] = amounts[pick], t[pick]
+        return path, day, buyer, gross, terms
 
 
 def _daily(df: pl.DataFrame, date_col: str, amount_col: str, start: date, end: date) -> np.ndarray:
