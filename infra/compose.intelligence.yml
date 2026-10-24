@@ -1,0 +1,7 @@
+# Track B services. Extends infra/compose.base.yml.
+services:
+  intelligence:
+    build:
+      context: ../intelligence
+    environment:
+      DATA_SOURCE: fixtures  # switch to "platform" at the gate
