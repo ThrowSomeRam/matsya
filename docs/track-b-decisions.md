@@ -208,6 +208,30 @@ this path. Tracked buyer (most invoices, true weeks to pay once due 6.6): the 90
 truth throughout. The real benchmark needs many worlds and futures at 10,000 paths, with
 steps scored independently.
 
+## Shock correction on the current pipeline (2026-10-25)
+
+Re-run of the base-logit shock correction (`shock_base`) on the current pipeline: contract
+adapters, bank-reported opening balance, watermark-cut labels. Same 100 borderline pasts,
+oracle 200 futures each, 4,000 paths.
+
+| shock_base | mean gap | mean \|gap\| | corr | 0.05-0.20 pred / oracle | 0.20-0.40 | median gap day 30 / 90 (Rs) | receipts gap day 30 / 90 (Rs) |
+|---|---|---|---|---|---|---|---|
+| on (default) | -0.033 | 0.133 | 0.770 | 0.132 / 0.199 | 0.297 / 0.349 | -24,649 / -84,165 | +13,794 / -27,213 |
+| off | -0.068 | 0.142 | 0.763 | 0.122 / 0.235 | 0.302 / 0.373 | +1,45,063 / +2,34,257 | +1,85,148 / +2,99,170 |
+
+**Default stays on.** On this pipeline it is less wrong on every summary: mean |gap| 0.133 vs
+0.142, mean gap -0.033 vs -0.068, and receipts within Rs 0.3 lakh at day 90 instead of
+Rs 3.0 lakh over. The overshoot measured on 24 Oct came from the old 3-day label cut and the
+reconstructed opening balance, not from the correction alone. The low bins are still
+under-predicted by about 0.03 to 0.07.
+
+**Stretch item: shock offset in the payment-timing likelihood.** The principled fix is still
+to fit p with past z as a logit offset, so the posterior is a base chance by construction.
+Caveat: the z estimates come from residuals against posteriors fitted without shocks, so
+the fit has to alternate (fit timing with the current z offsets, recompute residuals and z,
+refit, until stable) or fit both jointly. Worked through before coding; the base-logit
+correction stays as the default until then.
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).

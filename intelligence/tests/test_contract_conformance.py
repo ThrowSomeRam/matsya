@@ -208,3 +208,35 @@ def test_transactions_known_after_as_of_are_invisible(world):
     out = adapters.outcomes(tables, early)
     assert out["issue_date"].max() <= early.date()
     assert np.all(out["censored_at"].drop_nulls().to_numpy() <= np.datetime64(early.date()))
+
+
+def test_opening_balance_sums_each_accounts_own_latest_date(world):
+    """An account last updated a day earlier still counts; the date is the stalest account's."""
+    cfg, (tables, _) = world
+    bal = tables["ledger.balances"]
+    d = cfg.as_of_date
+    other = (bal.filter(pl.col("date") <= d - timedelta(days=1))
+             .with_columns(pl.lit("acc_second").alias("account_id"), pl.lit(5_00_000_00, pl.Int64).alias("closing_paise")))
+    two = {**tables, "ledger.balances": pl.concat([bal, other])}
+    validate(two["ledger.balances"], "ledger.balances")
+    day1, one_acc, _ = adapters.opening_balance(tables, cfg.as_of)
+    day2, both, _ = adapters.opening_balance(two, cfg.as_of)
+    assert day1 == d and day2 == d - timedelta(days=1)
+    assert both == one_acc + 5_00_000_00
+
+
+def test_datetime_as_of_is_not_widened_to_end_of_day(world):
+    """A datetime as_of reads exactly to that instant, through to the engine inputs."""
+    from matsya_intelligence.engine import build_learned_inputs
+
+    cfg, (tables, truth) = world
+    noon = datetime.combine(cfg.as_of_date, datetime.min.time(), tzinfo=timezone.utc) + timedelta(hours=12)
+    late = tables["ledger.transactions"].filter(pl.col("known_at") > noon)
+    assert late.height > 0  # rows known between noon and the world's 18:00 cut
+    assert adapters.as_of_cutoff(noon) == noon
+    cats = truth.transactions.select("txn_uid", "category")
+    at_noon = build_learned_inputs(tables, cats, noon, "dt", sales_uncertainty=False)
+    end_of_day = build_learned_inputs(tables, cats, cfg.as_of_date, "dt", sales_uncertainty=False)
+    snap = lambda inp: dict(s.split(":", 1) for s in inp.input_snapshot_ids)
+    assert snap(at_noon)["transactions"] != snap(end_of_day)["transactions"]
+    assert at_noon.as_of == end_of_day.as_of == cfg.as_of_date

@@ -33,13 +33,13 @@ Flags (each was a calibration step; see eval/models/engine_calibration.py):
 
 import hashlib
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import numpy as np
 import polars as pl
 
 from matsya_intelligence.engine.core import EngineInputs, Invoices, TimingDraws, month_key
-from matsya_intelligence.io.adapters import track_b_inputs
+from matsya_intelligence.io.adapters import as_of_date, track_b_inputs
 from matsya_intelligence.obligations import detect_obligations
 from matsya_intelligence.sales import fit_sales
 from matsya_intelligence.shocks import base_chance, fit_sector_shocks
@@ -99,13 +99,14 @@ def bootstrap_unscheduled(txns: pl.DataFrame, categories: pl.DataFrame, as_of: d
     return sample
 
 
-def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFrame, as_of: date, run_id: str,
+def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFrame, as_of: date | datetime, run_id: str,
                          threshold_paise: int = 0, gst_rate: float = 0.18, horizon: int = 90,
                          with_sales: bool = True, sales_uncertainty: bool = True,
                          sector_shocks: bool = True, demand_ar1: bool = True, full_unscheduled: bool = True,
                          naive_purchases: bool = False, timing_priors: dict | None = None,
                          timing_hierarchical: bool = True, shock_base: bool = True) -> EngineInputs:
-    obs = track_b_inputs(tables, as_of, gst_rate)
+    obs = track_b_inputs(tables, as_of, gst_rate)  # reads at the full as_of (datetime if given)
+    as_of = as_of_date(as_of)  # everything below is day arithmetic
     inv, out, buyers, txns = obs["invoices"], obs["invoice_outcomes"], obs["buyers"], obs["transactions"]
     tenant = obs["tenant_id"]
     buyer_ids = buyers["buyer_id"].to_list()

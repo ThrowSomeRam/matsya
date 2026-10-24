@@ -29,10 +29,17 @@ from matsya_intelligence.synth.world import load_constants
 
 
 def as_of_cutoff(as_of: date | datetime) -> datetime:
-    """A date means the end of that day, UTC."""
+    """The one place a date becomes a read cutoff: a date means the end of that day, UTC.
+    VERIFY: UTC or IST business day (question 8 to Track A). A datetime passes unchanged,
+    so callers should pass the real fetch time whenever they have it."""
     if isinstance(as_of, datetime):
         return as_of
     return datetime.combine(as_of, time(23, 59, 59, 999999), tzinfo=timezone.utc)
+
+
+def as_of_date(as_of: date | datetime) -> date:
+    """The calendar day of as_of, for day arithmetic (never for filtering rows)."""
+    return as_of.date() if isinstance(as_of, datetime) else as_of
 
 
 def as_of_read(df: pl.DataFrame, key: list[str], as_of: date | datetime) -> pl.DataFrame:
@@ -47,21 +54,22 @@ def transactions(tables: dict[str, pl.DataFrame], as_of: date | datetime) -> pl.
 
 
 def opening_balance(tables: dict[str, pl.DataFrame], as_of: date | datetime) -> tuple[date, int, str]:
-    """(date, closing_paise summed over accounts, balance_source) for the latest balance date <= as_of.
+    """(date, closing_paise summed over accounts, balance_source) as known by as_of.
 
-    Contract as-of read per (tenant, account, date): the latest known_at wins whatever its
-    balance_source. A bank_reported row known at fetch time includes transactions not yet
-    reported to us, so when it is the latest it is the better opening balance.
+    Each account contributes its own latest balance date <= as_of, so an account last
+    updated earlier than another still counts. The returned date is the earliest of those
+    (the figure is no fresher than its stalest account). Contract as-of read per (tenant,
+    account, date): the latest known_at wins whatever its balance_source; a bank_reported
+    row known at fetch time includes transactions not yet reported to us.
     """
-    d = as_of.date() if isinstance(as_of, datetime) else as_of
+    d = as_of_date(as_of)
     b = as_of_read(tables["ledger.balances"], ["tenant_id", "account_id", "date"], as_of).filter(pl.col("date") <= d)
     if b.is_empty():
         raise ValueError("no balance known by as_of")
-    last = b["date"].max()
-    rows = b.filter(pl.col("date") == last)
+    rows = b.sort("date").group_by("tenant_id", "account_id", maintain_order=True).last()
     srcs = set(rows["balance_source"])
     src = srcs.pop() if len(srcs) == 1 else "mixed"
-    return last, int(rows["closing_paise"].sum()), src
+    return rows["date"].min(), int(rows["closing_paise"].sum()), src
 
 
 def resolve_terms(terms_source: str, terms_days: int | None) -> tuple[int, int]:
@@ -120,7 +128,7 @@ def ledger_complete_through(tables: dict[str, pl.DataFrame], as_of: date | datet
     """The ledger-complete-through watermark, read back from the labels: open labels are
     re-stamped at each fetch with censored_at = watermark, so it is their latest censored_at.
     With no open label (or no watermark from Track A yet), as_of itself."""
-    d = as_of.date() if isinstance(as_of, datetime) else as_of
+    d = as_of_date(as_of)
     out = as_of_read(tables["labels.invoice_outcomes"], ["tenant_id", "invoice_id"], as_of)
     w = out.filter(pl.col("paid_date").is_null())["censored_at"].max()
     return min(w, d) if w is not None else d
