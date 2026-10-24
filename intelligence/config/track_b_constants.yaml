@@ -1,0 +1,207 @@
+# Track B constants and backed-up facts
+# Fact-checked: 2026-10-24
+# status values:
+#   verified     - checked against a source on the date above
+#   logic        - follows from a derivation, not from data
+#   assumption   - our choice; justify or tune before relying on it
+#   tune         - set by an experiment, value here is only the starting point
+#   decide       - not set yet, needs a decision
+#   verify       - stated from general knowledge, not checked yet
+
+# ---------------------------------------------------------------
+# 1. LEGAL AND STATUTORY (India)
+# ---------------------------------------------------------------
+
+rbi_bank_rate:
+  status: verified
+  note: >
+    MSMED interest uses the bank rate in force at EACH monthly rest
+    (Calcutta HC, 2024). Store as a dated series, not one constant.
+  history:   # effective_from: annual rate (decimal)
+    - {effective_from: "2026-10-07", rate: 0.0575, src: "RBI MPC, 7 Oct 2026 (repo 5.25 -> 5.50, MSF/Bank Rate -> 5.75)"}
+    - {effective_from: "TODO", rate: 0.0550, src: "RBI current-rates page, Jun-Aug 2026"}
+  todo: "Backfill full bank-rate history from RBI for any delay older than Oct 2026."
+  sources:
+    - https://www.scconline.com/blog/post/2026/10/09/rbi-hikes-repo-rate-to-5-50-percent-october-2026/
+    - https://www.taxtmi.com/rss_feed_blog?id=763883
+
+msmed_act:
+  status: verified
+  section_15:
+    max_payment_days_with_agreement: 45
+    payment_days_without_agreement: 15
+    clock_starts: "acceptance or deemed acceptance of goods/services"
+  section_16:
+    rate_multiplier: 3            # x RBI bank rate
+    compounding: monthly_rests
+    overrides_agreements: true
+    interest_starts: "appointed day, or day after agreed date if earlier"
+  formula: "I = P * (prod_k (1 + 3*r_k/12) - 1), r_k = bank rate at month k"
+  applies_to: [micro, small]      # supplier must be Udyam-registered
+  sources:
+    - https://taxmann.com/post/blog/a-study-of-provisions-of-the-msmed-act-related-disclosure-under-schedule-iii-of-companies-act
+    - https://www.dcmsme.gov.in/publications/LegalFramework.pdf
+
+section_43b_h:
+  status: verified
+  old_ref: "Income-tax Act 1961, s.43B(h)"
+  new_ref: "Income-tax Act 2025, s.37(2)(g) (from 1 Apr 2026)"
+  covers: [micro, small]          # medium excluded
+  effect: "buyer's deduction allowed only on actual payment if paid after MSMED s.15 limit"
+  sources:
+    - https://busy.in/tds/section-43bh-msme-payment-rule-and-45-day-limit-explained/
+
+tds:
+  status: verified
+  note: >
+    Income-tax Act 2025 in force from 1 Apr 2026. Old 194-series sections
+    are now Section 393(1) table entries. Rates unchanged. Use the old
+    section for payments/credits up to 31 Mar 2026, new one after.
+  matcher_candidate_rates: [0.0, 0.001, 0.01, 0.02, 0.10]   # 0.0 added: below-threshold invoices carry no TDS
+  rates:
+    contractor_individual_huf: {rate: 0.01, old: "194C", new: "393(1) Table Sl.6(i)"}
+    contractor_other:          {rate: 0.02, old: "194C", new: "393(1) Table Sl.6(i)"}
+    professional_fees:         {rate: 0.10, old: "194J", new: "393(1) Table Sl.6"}
+    technical_fees:            {rate: 0.02, old: "194J", new: "393(1) Table Sl.6"}
+    purchase_of_goods:
+      rate: 0.001
+      old: "194Q"
+      new: "393(1) Table Sl.8(ii)"
+      condition: "buyer turnover > Rs 10 crore AND purchases from that seller > Rs 50 lakh in the year"
+  thresholds_status: verify   # contractor and 194J thresholds under the 2025 Act not re-checked
+  sources:
+    - https://blog.tdsman.com/2026/05/tds-on-payments-to-contractors-section-3931-section-194c/
+    - https://www.taxheal.com/?p=120666
+    - https://corpready.in/articles/207-tds-compliance-guide
+
+statutory_calendar:
+  status: verified
+  monthly:
+    tds_deposit:      {day: 7, exception: "March TDS due 30 April"}
+    pf_deposit:       {day: 15}
+    esi_deposit:      {day: 15}
+    gstr3b_monthly:   {day: 20}
+  quarterly:
+    gstr3b_qrmp:      {day: "22 or 24 of month after quarter", by: "state group 1 / 2"}
+  rules:
+    - "GST due dates shift to next working day when they fall on Sunday (seen Sep 2026)."
+    - "PF/ESI treated as hard deadlines; model as due on the 15th."
+  sources:
+    - https://treelife.in/?p=16782
+    - https://treelife.in/?p=16358
+
+e_invoicing:
+  status: verified
+  threshold_aato_paise: 5000000000   # Rs 5 crore
+  rule: "mandatory if aggregate turnover exceeded Rs 5 crore in ANY FY since 2017-18; stays on after"
+  implication: "many micro suppliers have no IRN data; Tally/Zoho/CSV ingest is the main path for them"
+  sources:
+    - https://www.gimbooks.com/blog/5-crore-e-invoice-turnover-rule-2026/amp/
+
+treds:
+  status: verified
+  onboarding_mandate:
+    companies_turnover_above_paise: 2500000000000   # Rs 250 crore (S.O. 4845(E), 7 Nov 2024; was Rs 500 crore)
+    all_cpses: true
+  cpse_settlement_mandate:
+    since: "2026-06"
+    rule: "all operating CPSEs must route MSME invoice settlement through TReDS"
+    discounting_optional_for_supplier: true
+    impacts:
+      - "A6 matcher: credit may come from a bank/NBFC financier, not the buyer"
+      - "B3 priors: CPSE type default = TReDS settlement behaviour"
+      - "B9: TReDS discount always available for CPSE invoices"
+  fy26_discounting_volume: "Rs 3.47 lakh crore (Rs 40,000 crore in FY22)"
+  discount_rate: {status: decide, note: "no source yet for typical TReDS discount rates; needed for B9 cost"}
+  sources:
+    - https://www.taxmann.com/post/blog/companies-with-turnover-above-rs-250-crore-must-get-onboarded-on-trade-receivables-discounting-platforms/
+    - https://knnindia.co.in/news/newsdetails/msme/msme-payment-reforms-gain-momentum-as-treds-discounting-reaches-rs-347-lakh-crore-cii
+
+schedule_iii_ageing:
+  status: verified
+  measured_from: "due date of payment"
+  buckets: [not_due, lt_1y, y1_2, y2_3, gt_3y]
+  rows: [msme, others, disputed_msme, disputed_others]
+  layout_variants:
+    - "some reports add an 'Unbilled' column (Tata Chemicals, Crisil)"
+    - "some omit 'Not due' (Crisil)"
+  msmed_interest_rows: [interest_due_unpaid, interest_accrued_unpaid, further_interest_succeeding_years]
+  sources:
+    - https://www.mahindra.com/annual-report-FY2026/429/
+    - https://www.crisil.com/crisil-annual-report-flipbook/crisil-annual-report2024/files/basic-html/page202.html
+
+gstin:
+  status: verify
+  pan_chars: "3-12 (1-indexed)"
+
+# ---------------------------------------------------------------
+# 2. DATASETS AND LICENCES
+# ---------------------------------------------------------------
+
+berka:
+  status: verified
+  loans: 682
+  good: 606       # status A or C
+  bad: 76         # status B or D
+  leakage_rule: "features only from transactions before loan.date; else min(balance)>=0 separates perfectly"
+  source: https://relational.fel.cvut.cz/dataset/Financial
+
+kaggle_payment_dataset:
+  status: verify
+  todo: "confirm origin and licence before citing"
+
+chronos_2:
+  status: verified
+  licence: Apache-2.0
+  hf_repo: amazon/chronos-2
+
+# ---------------------------------------------------------------
+# 3. MODEL CONSTANTS
+# ---------------------------------------------------------------
+
+simulation:          # B6
+  n_paths: {value: 10000, status: logic, why: "SE of p_short = sqrt(p(1-p)/N) ~ 0.002 at p=0.05"}
+  horizon_days: {value: 90, status: assumption, why: "covers 45-day statutory max plus typical delays"}
+  seed: {rule: "derived from run_id", status: logic}
+
+decision:            # B9
+  milp_path_subsample: {value: 1000, status: logic, why: "SE ~ 0.007 at p=0.05, so re-check chosen plan on all 10,000 paths (mandatory)"}
+  shortfall_target_eps: {status: decide, note: "owner-set; pick a labelled default"}
+  relationship_penalty: {status: decide, note: "owner-set; ask a few MSME owners"}
+
+payment_timing:      # B4
+  time_step: {value: week, status: assumption, test: "compare C-index vs daily model on Kaggle"}
+  week_origin: {value: issue_date, status: assumption, why: "T >= 1 always; terms_days as covariate"}
+  never_paid_cutoff_days: {value: 365, status: assumption, note: "proposed, not yet agreed"}
+  prior_strength: {value: 8, status: tune, method: "empirical Bayes per sector; check on synthetic first 3-5 invoices"}
+  pi_prior: {status: tune, note: "derive stock-to-flow correction from steady-state equation; keep wide. Weakest number."}
+  gibbs_sweeps: {value: 20, status: tune, check: "R-hat < 1.01 across chains on synthetic data"}
+
+flows:               # B5
+  quantiles: [0.05, 0.25, 0.50, 0.75, 0.95]
+  quantile_crossing_fix: sort_per_day
+  chronos_fallback_below_weeks: {value: 8, status: tune, method: "Berka backtest at 2..16 weeks, CRPS crossover"}
+
+calibration:         # B7
+  target_coverage: {value: 0.80, status: assumption}
+  aci_gamma:
+    status: tune
+    paper_value: 0.005   # Gibbs & Candes 2021, chosen for long series
+    grid: [0.005, 0.01, 0.02, 0.05, 0.1]
+    note: >
+      At ~90 daily outcomes per tenant, gamma=0.005 barely adapts
+      (coverage bound ~ (1+gamma)/(gamma*N) is vacuous). Tune on the Berka
+      shock replay or use the online step-size version (Gibbs & Candes 2022).
+      Horizon-h intervals get feedback only after h days.
+    sources:
+      - https://arxiv.org/pdf/2106.00170
+      - https://arxiv.org/pdf/2208.08401
+
+shocks:              # B8
+  kalman_rho: {status: tune, method: "MLE on sector lateness residuals; must recover planted value on synthetic"}
+  kalman_noise_scales: {status: tune, method: "MLE"}
+  bocpd_hazard: {status: tune, method: "detection-delay vs false-alarm curve on injected shifts"}
+
+privacy_gate:        # A8, listed for reference
+  k_min_suppliers: {status: decide}
+  laplace_epsilon: {status: decide}

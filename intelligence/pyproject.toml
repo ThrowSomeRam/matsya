@@ -5,6 +5,8 @@ description = "Track B intelligence plane for the matsya cash-flow engine"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.26",
+    "polars>=1.0",
+    "pyyaml>=6",
 ]
 
 [project.optional-dependencies]
