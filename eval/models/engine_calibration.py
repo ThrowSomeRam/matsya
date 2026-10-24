@@ -10,13 +10,14 @@ import sys
 
 from matsya_intelligence.engine.evaluate import learned_calibration, print_calibration
 
-OFF = dict(sales_uncertainty=False, sector_shocks=False, demand_ar1=False, full_unscheduled=False)
+OFF = dict(sales_uncertainty=False, sector_shocks=False, demand_ar1=False, full_unscheduled=False, shock_base=False)
 STEPS = [
     ("0. before (point estimates, z = 0, one demand level, 8-week unscheduled)", {}),
     ("1. + sales parameter uncertainty", {"sales_uncertainty": True}),
     ("2. + sector shocks", {"sector_shocks": True}),
     ("3. + demand AR(1)", {"demand_ar1": True}),
     ("4. + full-history unscheduled bootstrap", {"full_unscheduled": True}),
+    ("5. + base logit under shocks (no double counting)", {"shock_base": True}),
 ]
 
 

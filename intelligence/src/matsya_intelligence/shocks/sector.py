@@ -21,6 +21,18 @@ posterior of z at the last full week and runs forward. The engine applies
 shift = -z to logit p of every buyer in the sector (loading 1; per-buyer
 loadings are not estimated yet).
 
+Base logit. The posterior p is already the marginal weekly chance, averaged
+over the shocks seen in the past. Applying the shock on top of logit p would
+count them twice: for small p, E[sigmoid(logit p - z)] > p (Jensen), so
+receipts would arrive early on average. Instead each p is replaced by a base
+chance sigmoid(b), with b solved so that the shock-averaged chance equals p
+under the sector's long-run (stationary) shock distribution z ~ N(0, s^2):
+
+    E_z[sigmoid(b - z)] = p,   s^2 = q / (1 - rho^2)
+
+solved by Newton on Gauss-Hermite quadrature. The filtered current z then
+moves the chance away from p only by what is known now.
+
 Caveat: h comes from posteriors fitted on the same data with no shock term,
 so z measures deviations from each buyer's own average, as intended, but the
 residuals are mildly shrunk toward zero.
@@ -67,9 +79,44 @@ def lateness_residuals(labels: pl.DataFrame, means: dict[str, tuple[float, float
     return out
 
 
+GH_X, GH_W = np.polynomial.hermite.hermgauss(32)
+
+
+def _sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1 / (1 + np.exp(-x))
+
+
+def shock_averaged(b: np.ndarray, var: float) -> np.ndarray:
+    """E[sigmoid(b - z)] for z ~ N(0, var), elementwise in b."""
+    z = np.sqrt(2 * var) * GH_X
+    return (_sigmoid(np.asarray(b, dtype=float)[..., None] - z) * GH_W).sum(axis=-1) / np.sqrt(np.pi)
+
+
+def base_chance(p: np.ndarray, var: float, iters: int = 50) -> np.ndarray:
+    """sigmoid(b) with E[sigmoid(b - z)] = p, z ~ N(0, var). Identity when var = 0."""
+    p = np.clip(np.asarray(p, dtype=float), 1e-9, 1 - 1e-9)
+    if var <= 0:
+        return p
+    z = np.sqrt(2 * var) * GH_X
+    b = np.log(p / (1 - p))
+    for _ in range(iters):
+        sg = _sigmoid(b[..., None] - z)
+        f = (sg * GH_W).sum(axis=-1) / np.sqrt(np.pi) - p
+        fp = (sg * (1 - sg) * GH_W).sum(axis=-1) / np.sqrt(np.pi)
+        step = f / np.maximum(fp, 1e-300)
+        b = b - step
+        if np.abs(step).max() < 1e-12:
+            break
+    return _sigmoid(b)
+
+
 @dataclass
 class SectorShocks:
     fits: dict[str, AR1Fit]
+
+    def stationary_var(self, sector: str) -> float:
+        """Long-run variance of the sector's z; 0 for sectors without a fit (no shock applied)."""
+        return self.fits[sector].stationary_var if sector in self.fits else 0.0
 
     def shift_sampler(self, buyer_sector: list[str]):
         """Engine hook: (n_paths, horizon, rng) -> shift(path, buyer, week_start_day) = -z."""

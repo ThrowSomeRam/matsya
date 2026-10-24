@@ -12,9 +12,12 @@ the whole history, so rare large flows can appear.
 
 Flags (each was a calibration step; see eval/models/engine_calibration.py):
   sales_uncertainty: per-path bootstrap draws of order rate, dispersion, purchase ratio
-  sector_shocks:     per-path sector lateness paths from the shock component
+  sector_shocks:     per-path sector lateness paths from the shock component, applied
+                     to base chances solved so the shock-averaged chance is the posterior
   demand_ar1:        AR(1) on log order rate instead of one persistent level per path
   full_unscheduled:  bootstrap unscheduled flows from the full history
+  shock_base:        (with sector_shocks) solve base chances; False applies shocks on top
+                     of the posterior, double counting them (diagnostic)
   naive_purchases:   (only with with_sales=False) supplier payments as a flat daily
                      outflow at their historical mean, as a naive tool would
   timing_priors, timing_hierarchical: diagnostics only (e.g. the generator's true
@@ -22,6 +25,7 @@ Flags (each was a calibration step; see eval/models/engine_calibration.py):
 """
 
 import hashlib
+from dataclasses import replace
 from datetime import date, timedelta
 
 import numpy as np
@@ -30,7 +34,7 @@ import polars as pl
 from matsya_intelligence.engine.core import EngineInputs, Invoices, TimingDraws, month_key
 from matsya_intelligence.obligations import detect_obligations
 from matsya_intelligence.sales import fit_sales
-from matsya_intelligence.shocks import fit_sector_shocks
+from matsya_intelligence.shocks import base_chance, fit_sector_shocks
 from matsya_intelligence.synth.world import PROCESS_OF_CATEGORY
 from matsya_intelligence.timing import fit_timing
 
@@ -92,7 +96,7 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
                          with_sales: bool = True, label_lag_days: int = 3, sales_uncertainty: bool = True,
                          sector_shocks: bool = True, demand_ar1: bool = True, full_unscheduled: bool = True,
                          naive_purchases: bool = False, timing_priors: dict | None = None,
-                         timing_hierarchical: bool = True) -> EngineInputs:
+                         timing_hierarchical: bool = True, shock_base: bool = True) -> EngineInputs:
     inv, out, buyers, txns = obs["invoices"], obs["invoice_outcomes"], obs["buyers"], obs["transactions"]
     tenant = inv["tenant_id"][0]
     buyer_ids = buyers["buyer_id"].to_list()
@@ -150,8 +154,11 @@ def build_learned_inputs(obs: dict[str, pl.DataFrame], categories: pl.DataFrame,
         means = {b: (float(tm.posteriors[b].p_early.mean()), float(tm.posteriors[b].p.mean()),
                      float(tm.posteriors[b].pi.mean())) for b in buyer_ids}
         sector_of = dict(zip(buyers["buyer_id"], buyers["sector"]))
-        shock_sampler = fit_sector_shocks(tm.labels, means, sector_of, as_of).shift_sampler(
-            [sector_of[b] for b in buyer_ids])
+        shocks = fit_sector_shocks(tm.labels, means, sector_of, as_of)
+        shock_sampler = shocks.shift_sampler([sector_of[b] for b in buyer_ids])
+        var = [0.0 if not shock_base else shocks.stationary_var(sector_of[b]) for b in buyer_ids]
+        timing = replace(timing, p_early_base=[base_chance(x, v) for x, v in zip(timing.p_early, var)],
+                         p_base=[base_chance(x, v) for x, v in zip(timing.p, var)])
     gst_days = [(d - as_of).days for d, k in zip(obligations["due_date"], obligations["kind"]) if k == "gst"]
     first_base = month_key(as_of + timedelta(days=min(gst_days))) - 1 if gst_days else month_key(as_of)
     supplier = txns.join(categories.select("txn_uid", "category"), on="txn_uid").filter(

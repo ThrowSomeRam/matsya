@@ -104,3 +104,48 @@ def test_learned_mode_report():
     g = gap1(range(3), n_futures=40, n_paths=2000)
     print(g)
     assert len(lv["per_seed"]) == 3
+
+
+def _fixed_z_sampler(inp, z: float):
+    """Shock hook with every sector's z held at a constant value."""
+    from matsya_intelligence.shocks import AR1Fit, SectorShocks
+
+    fit = AR1Fit(rho=1.0 - 1e-12, q=1e-18, mean_T=z, var_T=0.0, loglik=0.0)
+    return SectorShocks({"all": fit}).shift_sampler(["all"] * len(inp.buyer_ids))
+
+
+def test_learned_shock_sign_positive_lateness_delays_receipts(learned):
+    """A large positive lateness z must lower the weekly chance: receipts arrive later."""
+    from dataclasses import replace
+
+    _, _, _, inp = learned
+    on_time = run_engine(replace(inp, shift_sampler=_fixed_z_sampler(inp, 0.0)), "sign", N, keep_flows=True)
+    late = run_engine(replace(inp, shift_sampler=_fixed_z_sampler(inp, 3.0)), "sign", N, keep_flows=True)
+    for comp in ("open_invoice_receipts", "future_invoice_receipts"):
+        a = np.cumsum(on_time.flows[comp], axis=1).mean(axis=0)
+        b = np.cumsum(late.flows[comp], axis=1).mean(axis=0)
+        assert b[30] < 0.8 * a[30], comp
+    assert (late.balance_quantiles["q50"].to_numpy()[:60] <= on_time.balance_quantiles["q50"].to_numpy()[:60]).all()
+
+
+def test_learned_shock_base_preserves_posterior_chance(learned):
+    """Learned inputs carry base chances whose long-run shock average is the posterior p."""
+    from matsya_intelligence.shocks import shock_averaged
+
+    _, _, _, inp = learned
+    assert inp.timing.p_base is not None
+    moved = False
+    for p, pb in zip(inp.timing.p, inp.timing.p_base):
+        lo = np.log(pb / (1 - pb))
+        if np.allclose(pb, p):
+            continue  # sector without a shock fit
+        moved = True
+        # recover the variance used from the draw furthest from 0.5: the shock average moves
+        # toward 0.5 as the variance grows, so bisect on that distance
+        i = int(np.argmax(np.abs(p - 0.5)))
+        a, b = 1e-9, 25.0
+        for _ in range(100):
+            v = (a + b) / 2
+            a, b = (v, b) if abs(shock_averaged(lo[i:i + 1], v)[0] - 0.5) > abs(p[i] - 0.5) else (a, v)
+        assert np.allclose(shock_averaged(lo, v), np.clip(p, 1e-9, 1 - 1e-9), atol=1e-6)
+    assert moved

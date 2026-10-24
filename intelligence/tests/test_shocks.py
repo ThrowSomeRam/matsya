@@ -47,3 +47,24 @@ def test_sector_residuals_track_planted_shock():
     assert abs(pooled.mean()) < 0.1
     shocks = fit_sector_shocks(tm.labels, means, sector_of, cfg.as_of_date)
     assert set(shocks.fits) == set(res)
+
+
+def test_base_chance_shock_averaged_equals_posterior():
+    """E_z[sigmoid(b - z)] = p over the long-run z distribution; the base is less extreme than p."""
+    from matsya_intelligence.shocks import AR1Fit, SectorShocks, base_chance, shock_averaged
+
+    p = np.array([0.02, 0.1, 0.3, 0.5, 0.8])
+    fit = AR1Fit(rho=0.8, q=0.09, mean_T=0.0, var_T=0.09 / (1 - 0.64), loglik=0.0)
+    base = base_chance(p, fit.stationary_var)
+    assert np.allclose(shock_averaged(np.log(base / (1 - base)), fit.stationary_var), p, atol=1e-10)
+    assert (base[p < 0.5] < p[p < 0.5]).all() and abs(base[3] - 0.5) < 1e-9
+    assert np.allclose(base_chance(p, 0.0), p)
+    # Monte Carlo through the engine hook: z starts at its long-run mean (0) with the
+    # stationary spread, so every simulated week has the long-run distribution.
+    sampler = SectorShocks({"s": fit}).shift_sampler(["s"] * len(p))
+    shift = sampler(200_000, 14, np.random.default_rng(0))
+    n = 200_000
+    for i in range(len(p)):
+        sh = shift(np.arange(n), np.full(n, i), np.full(n, 8))
+        h = 1 / (1 + np.exp(-(np.log(base[i] / (1 - base[i])) + sh)))
+        assert abs(h.mean() - p[i]) < 4 * h.std() / np.sqrt(n) + 1e-4, (i, h.mean(), p[i])

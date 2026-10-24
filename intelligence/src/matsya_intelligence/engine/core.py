@@ -32,11 +32,18 @@ STREAMS = ("timing_draws", "open_invoices", "sales", "sales_timing", "unschedule
 
 @dataclass(frozen=True)
 class TimingDraws:
-    """Posterior draws per buyer, index-aligned with EngineInputs.buyer_ids: arrays (n_draws,)."""
+    """Posterior draws per buyer, index-aligned with EngineInputs.buyer_ids: arrays (n_draws,).
+
+    p_early_base, p_base: base chances for future weeks under the shock hook, so that the
+    shock-averaged chance equals the posterior (shocks.sector.base_chance). None = use p.
+    Past weeks (survival, the elapsed part of the current week) always use the posterior.
+    """
 
     p_early: list[np.ndarray]
     p: list[np.ndarray]
     pi: list[np.ndarray]
+    p_early_base: list[np.ndarray] | None = None
+    p_base: list[np.ndarray] | None = None
 
 
 @dataclass(frozen=True)
@@ -134,6 +141,10 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     pe = np.concatenate(inp.timing.p_early)[_flat_index(inp, b, d)]
     p = np.concatenate(inp.timing.p)[_flat_index(inp, b, d)]
     pi = np.concatenate(inp.timing.pi)[_flat_index(inp, b, d)]
+    based = shift_fn is not None and inp.timing.p_base is not None
+    if based:
+        pe_b = np.concatenate(inp.timing.p_early_base)[_flat_index(inp, b, d)]
+        p_b = np.concatenate(inp.timing.p_base)[_flat_index(inp, b, d)]
     elapsed = np.maximum(0, inp.survival_through_day - issue + 1)
     c, r = elapsed // 7, elapsed % 7
     probs = _offset_probs(inp, b, issue)
@@ -148,6 +159,8 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
         a = np.flatnonzero(active)
         week_start = issue[a] + 7 * (k[a] - 1)
         base = np.where(k[a] < due[a], pe[a], p[a])
+        if based:
+            base = np.where(week_start >= 1, np.where(k[a] < due[a], pe_b[a], p_b[a]), base)
         h = _sigmoid_shift(base, None if shift_fn is None else shift_fn(path[a], b[a], week_start))
         ff = f[a]
         hit = rng.random(a.size) < h * (1 - ff) / (1 - h * ff)

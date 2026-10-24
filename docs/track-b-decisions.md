@@ -129,3 +129,52 @@ regress toward the middle. It is not a mean bias (mean gap about -0.015).
    plants per-buyer loadings around -1, sd 0.3).
 4. Whatever remains after 1-3 is the calibration component's job (adaptive conformal on
    real outcomes), not a fit to synthetic data.
+
+## Learned-mode calibration: shock sign and double counting (2026-10-24)
+
+**Sign check (fixed by test, no code change needed).** The lateness residual is
+z = -(sum(y - h)) / sum h(1 - h), so more payments than expected give negative z, and the
+engine applies shift = -z to logit p. A positive lateness shock lowers the weekly chance.
+Test: hold every sector's z at +3 in learned mode; receipts by day 30 fall by more than 20%
+for both open and future invoices, and the median balance is never higher.
+
+**Double counting (fixed as specified).** Each posterior draw p (and p_early) is replaced, for
+future weeks only, by a base chance sigmoid(b) with E_z[sigmoid(b - z)] = p under the
+sector's long-run shock distribution z ~ N(0, q / (1 - rho^2)) (Newton on 32-point
+Gauss-Hermite). The filtered current z is then applied on top. Past weeks (survival, the
+elapsed part of the current week) keep the posterior. Sectors without a shock fit are
+unchanged. Tests: the quadrature identity and a 200,000-path Monte Carlo through the engine
+hook. Note on the requested test wording: with z held at its long-run mean (0) the chance
+is sigmoid(b), not p; it is the average over the long-run z distribution that equals p,
+which is what the test checks.
+
+**Re-run (100 borderline pasts, oracle 200 futures, 4,000 paths, same cache as above).**
+
+| variant | mean gap | mean \|gap\| | corr | 0.05-0.20 pred / oracle | 0.40-0.60 | receipts gap day 30 / 90 (Rs) |
+|---|---|---|---|---|---|---|
+| before: shocks on top of the posterior | -0.016 | 0.143 | 0.733 | 0.121 / 0.205 | 0.482 / 0.413 | +72,823 / +1,35,374 |
+| after: base logit | +0.021 | 0.143 | 0.738 | 0.136 / 0.193 | 0.494 / 0.356 | -97,101 / -1,91,601 |
+| after + true opening (diagnostic) | -0.012 | 0.132 | 0.771 | 0.129 / 0.188 | 0.486 / 0.393 | same as above |
+
+Mean |gap| does not move. The low bin improves (gap 0.084 to 0.057); the middle bin gets
+worse (0.069 to 0.138). Receipts flip from over-forecast to a larger under-forecast.
+
+**Why it overshoots (hypothesis, not yet tested).** The target E_z[h] = p assumes p is the
+plain average of the weekly chance over shocks. It is not: a constant-hazard fit gives
+p roughly equal to payments / at-risk weeks, and with persistent shocks (rho about 0.8)
+invoices spend more at-risk weeks in slow periods, so p already sits below the
+shock-averaged chance. Lowering it further double-corrects. The consistent fix is to put
+the past z estimates into the timing likelihood as a logit offset (estimate b directly from
+labels with known offsets), so the posterior is a base chance by construction. That
+changes the payment-timing model's Gibbs step and should be worked through before coding.
+`shock_base=False` restores the previous behaviour for comparison.
+
+**What remains.**
+1. The shock/timing interaction above (offset in the likelihood).
+2. Opening balance (product issue, request to Track A already listed).
+3. Components without parameter uncertainty: invoice amounts resampled from history,
+   unscheduled flows bootstrapped from history, and equal shock sensitivity (loading 1)
+   for every buyer in a sector, where the generator plants per-buyer loadings around 1
+   in magnitude with sd 0.3.
+4. Whatever remains after these is left to the calibration component (adaptive conformal
+   on real outcomes), not fitted to synthetic data.
