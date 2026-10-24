@@ -418,6 +418,40 @@ Note: the bootstrap seeds for each model's C-index CI come from one shared strea
 model shifted the later models' CIs by about 0.001; the random survival forest's C-index moved
 0.790 to 0.789 between runs (not bit-identical).
 
+## Payment-timing model: per-buyer empirical timing kept (2026-10-25)
+
+**Mode.** For buyers with >= 8 paid bills, timing comes from their own history by week relative
+to the due week, j = k - d (j = 0 holds the due date), as a discrete weekly hazard: e_j payments
+and r_j invoices at risk in bin j, each invoice entering at j = 1 - d and censored open invoices
+counted at risk up to c - d. Each bin is shrunk Beta-Binomial style toward the group's pooled
+hazard g_j = (E_j + 0.5) / (R_j + 1): h_j = (e_j + s g_j) / (r_j + s), s = prior_strength (8).
+A hazard rather than a histogram so censoring and the bins before issue are handled exactly. The
+never-paid share is unchanged: open invoices count at risk with weight 1 - P(dead | open) from the
+Beta-geometric posterior, and predictions use its P(dead). Buyers with fewer bills, and unseen
+buyers, keep the Beta-geometric model. Code: `timing/empirical.py`, `fit_timing(empirical=True)`
+is now the default. Rule set in advance: keep it only if it beats the current model on Kaggle.
+
+**Kaggle result** (same split, n = 5,955 test invoices, baseline due date, rows in
+`eval/results/results.parquet`, model `payment_timing_model_empirical`):
+
+| model | C-index (95% CI) | integrated Brier, weeks 1-15 | 4w pred / obs, ECE | 8w | 12w |
+|---|---|---|---|---|---|
+| Beta-geometric only | 0.735 (0.727-0.744) | 0.0313 | 0.874 / 0.903, 0.033 | 0.949 / 0.961, 0.014 | 0.978 / 0.989, 0.013 |
+| with empirical mode | 0.743 (0.731-0.751) | 0.0274 | 0.878 / 0.903, 0.026 | 0.950 / 0.961, 0.011 | 0.981 / 0.989, 0.010 |
+| Cox | 0.770 (0.763-0.777) | 0.0386 | 0.881 / 0.903, 0.064 | 0.947 / 0.961, 0.016 | 0.969 / 0.989, 0.023 |
+
+Share paid by week since issue, predicted / observed (weeks 1-6): Beta-geometric 0.127 / 0.015,
+0.136 / 0.258, 0.524 / 0.594, 0.087 / 0.037, 0.038 / 0.024, 0.017 / 0.016; empirical 0.027 / 0.015,
+0.259 / 0.258, 0.541 / 0.594, 0.052 / 0.037, 0.031 / 0.024, 0.018 / 0.016; Cox 0.014 / 0.015,
+0.304 / 0.258, 0.515 / 0.594, 0.048 / 0.037, 0.029 / 0.024, 0.020 / 0.016.
+
+**Kept:** better than the current model on every metric, and fixes the pre-due misfit recorded
+above (week 1 and week 2). Better than Cox on Brier and calibration, still behind it on ranking
+(C-index 0.743 vs 0.770). Still under-predicts the due week (0.541 vs 0.594). Open points: the
+scenario engine's logit shock hook is not applied to empirical hazards yet (the hook is unused,
+shift 0); s is the config value, not tuned; the day-of-month add-on for within-week placement is
+not built (the weekly Kaggle metrics cannot score it).
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).

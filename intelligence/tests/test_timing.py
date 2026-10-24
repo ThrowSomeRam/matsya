@@ -170,3 +170,32 @@ def test_rhat_four_chains():
     r = rhat_check(WorldConfig(shock_sigma=0.0, part_payment_prob=0.0), range(5))
     for name in ("p_early", "p", "pi"):
         assert r[f"max_rhat_{name}"] < 1.01, r
+
+
+def test_empirical_counts_and_shrinkage():
+    from matsya_intelligence.timing.empirical import J_LO, buyer_hazard, counts, predict_open_empirical
+
+    # due week 3: paid in week 2 (j=-1) and week 3 (j=0); open after 1 full week (at risk j=-2 only)
+    e, r = counts([2, 3], [3, 3], [1], [3])
+    at = lambda j: j - J_LO  # noqa: E731
+    assert e[at(-1)] == 1 and e[at(0)] == 1 and e.sum() == 2
+    assert (r[at(-2)], r[at(-1)], r[at(0)], r[at(1)]) == (3, 2, 1, 0)
+    g = np.full_like(e, 0.3)
+    h = buyer_hazard(e, r, g, 8.0)
+    assert h[at(1)] == pytest.approx(0.3)  # no data: group hazard
+    assert h[at(0)] == pytest.approx((1 + 2.4) / 9)
+    paid, never, beyond = predict_open_empirical(h, 0.05, age=0, horizon=13, due_week=3)
+    assert paid.sum() + never + beyond == pytest.approx(1.0)
+
+
+def test_empirical_mode_reproducible_and_valid():
+    tables, _ = generate_world(WorldConfig(), past_seed=2, future_seed=0)
+    obs = track_b_inputs(tables, WorldConfig().as_of)
+    args = (obs["invoice_outcomes"], obs["invoices"], obs["buyers"], obs["complete_through"])
+    tm = fit_timing(*args, run_id="r1", empirical=True)
+    assert tm.hazards
+    a, b = tm.predict(13), fit_timing(*args, run_id="r1", empirical=True).predict(13)
+    validate(a, "features.invoice_timing")
+    assert a.equals(b)
+    sums = a.group_by("invoice_id").agg(pl.col("p_paid").sum() + pl.col("p_never").first() + pl.col("p_beyond").first())
+    assert (sums["p_paid"] - 1).abs().max() < 1e-9
