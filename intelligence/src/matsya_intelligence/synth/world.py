@@ -81,7 +81,10 @@ class Truth:
     invoices: pl.DataFrame  # invoices issued in [start, end] with never_paid, pay_week, paid dates
     payments: pl.DataFrame  # one row per receipt: invoice_id, part, txn_uid, value_date, amounts
     purchases: pl.DataFrame  # purchases dated in [start, end]; invoice may be issued after end
-    transactions: pl.DataFrame  # every txn incl. future, Txn columns + category + rail + process
+    # Every txn incl. future: contract columns + category, rail, process, plus for renderers
+    # bank_txn_id (the synthetic bank txnId behind txn_uid, key path txn:<id>|<date>|<amount>)
+    # and day_seq (0-based posting order within value_date, for running balances).
+    transactions: pl.DataFrame
     balances: pl.DataFrame  # daily closing from all txns
     obligations: pl.DataFrame  # every scheduled outflow, Obligation schema
     buyer_records: list[dict] = field(default_factory=list)  # full buyer draws (PAN, GSTIN, name), for re-cuts
@@ -476,11 +479,14 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
     uid_of = {}
     rk_past, rk_future = streams("known_at")
     rows = []
+    day_seq = 0
     for n, i in enumerate(order):
         t = txns[i]
         rk = rk_past if t["value_date"] <= t0 else rk_future
+        bank_txn_id = f"SYN{n:07d}"
         uid_of[i] = ids.txn_uid(c.tenant_id, c.account_id,
-                                ids.txn_key_bank_id(f"SYN{n:07d}", t["value_date"], t["amount_paise"]))
+                                ids.txn_key_bank_id(bank_txn_id, t["value_date"], t["amount_paise"]))
+        day_seq = day_seq + 1 if rows and rows[-1]["value_date"] == t["value_date"] else 0
         known_at = datetime.combine(t["value_date"], time(), tzinfo=timezone.utc) + timedelta(
             days=int(rk.integers(3)), seconds=int(rk.integers(6 * 3600, 23 * 3600)))
         rows.append({
@@ -489,8 +495,10 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
             "direction": "credit" if t["amount_paise"] > 0 else "debit",
             "narration_raw": t["narration_raw"], "source": "synth", "dq_score": 1.0, "dup_group_id": None,
             "category": t["category"], "rail": t["rail"], "process": PROCESS_OF_CATEGORY[t["category"]],
+            "bank_txn_id": bank_txn_id, "day_seq": day_seq,
         })
-    all_txns = pl.DataFrame(rows, schema={**TXN, "category": pl.String, "rail": pl.String, "process": pl.String})
+    all_txns = pl.DataFrame(rows, schema={**TXN, "category": pl.String, "rail": pl.String, "process": pl.String,
+                                          "bank_txn_id": pl.String, "day_seq": pl.Int32})
     opening = c.as_of_balance_paise - int(all_txns.filter(pl.col("value_date") <= t0)["amount_paise"].sum())
 
     # Contract invoice ids; the generator's invoice number stays in truth and narrations.

@@ -28,7 +28,27 @@ def test_observed_tables_validate(world):
             assert df.height > 0, name
         validate(df, name)
     validate(truth.obligations, "features.obligations")
-    validate(truth.transactions.drop("category", "rail", "process"), "ledger.transactions")
+    validate(truth.transactions.drop("category", "rail", "process", "bank_txn_id", "day_seq"), "ledger.transactions")
+
+
+def test_truth_has_bank_txn_id_and_day_order(world):
+    """Renderers can rebuild txn_uid from bank_txn_id and running balances from day_seq."""
+    from matsya_contracts import ids
+
+    truth = world[1]
+    t, c = truth.transactions, truth.config
+    rebuilt = [ids.txn_uid(c.tenant_id, c.account_id, ids.txn_key_bank_id(b, d, a))
+               for b, d, a in zip(t["bank_txn_id"], t["value_date"], t["amount_paise"])]
+    assert rebuilt == t["txn_uid"].to_list()
+    assert t["bank_txn_id"].n_unique() == t.height
+    seq = t.group_by("value_date").agg(pl.col("day_seq").sort().alias("s"), pl.len().alias("n"))
+    assert all(list(s) == list(range(n)) for s, n in zip(seq["s"], seq["n"]))
+    # Running balance in (value_date, day_seq) order ends each day at the daily closing.
+    run = t.sort("value_date", "day_seq").with_columns(
+        (truth.opening_balance_paise + pl.col("amount_paise").cum_sum()).alias("running"))
+    last = run.group_by("value_date").agg(pl.col("running").last()).rename({"value_date": "date"})
+    j = last.join(truth.balances, on="date")
+    assert (j["running"] == j["closing_paise"]).all()
 
 
 def test_validate_rejects_bad_sign(world):

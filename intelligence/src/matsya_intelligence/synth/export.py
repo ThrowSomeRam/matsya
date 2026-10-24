@@ -2,7 +2,9 @@
 
 write_contract_parquet(world, out_dir) writes:
   out_dir/<namespace>.<table>.parquet   every table Track A would produce at as_of
-  out_dir/truth/<name>.parquet          generator truth (never shown to the models)
+  out_dir/truth/<name>.parquet          generator truth (never shown to the models);
+                                        truth/transactions carries bank_txn_id and day_seq
+                                        so renderers can rebuild txn_uid and running balances
 Every contract table is validated (all rows) before it is written.
 """
 
