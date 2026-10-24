@@ -25,6 +25,16 @@ Constants and their sources live in `intelligence/config/track_b_constants.yaml`
 | GST | obligations detector (statutory calendar) | sales forecaster: gst_rate x (taxable sales - taxable purchases) for the period, credit carried forward |
 | Unscheduled flows (refunds, misc income, cash, owner transfers, bank charges) | flow forecaster | flow forecaster |
 
+In the obligations output, `amount_owner` says who owns each row's amount. GST rows carry the
+obligations detector's date with `amount_paise` null and `amount_owner = "sales_forecaster"`;
+the simulation engine fills the amount per path from `sales.gst_by_month`. Supplier payments
+never appear in the obligations output, even when perfectly regular.
+
+Known limits of the sales forecaster: weekly counts are sampled independently (demand
+autocorrelation is not modelled), and when purchase-to-invoice lags vary by a few days the
+dispersion estimate is biased upward (counts smear across week boundaries), so weekly sales
+look less lumpy than they are.
+
 The synthetic generator tags every true transaction with its generating process (`sales`,
 `purchase`, `fixed_obligation`, `unscheduled`) so tests can check this mapping.
 

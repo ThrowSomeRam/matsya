@@ -123,7 +123,9 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         return rng_for(past_id, name), rng_for(future_id, name)
 
     rn_past, rn_future = streams("narration")
-    st = nr.Style(variants=c.narration_variants, banks=c.narration_banks)
+    # One account, one bank format: the template family is drawn once per world.
+    family = c.narration_variants[int(rng_for(past_id, "style").integers(len(c.narration_variants)))]
+    st = nr.Style(variants=(family,), banks=c.narration_banks)
 
     def rn(d: date) -> np.random.Generator:
         return rn_past if d <= t0 else rn_future
@@ -370,7 +372,8 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
     def scheduled(kind: str, d: date, amount: int, category: str, rail_narr: tuple[str, str]):
         if add_txn(d, -amount, category, rail_narr) is not None:
             obligations.append({"obligation_id": f"OB-{kind}-{d:%Y%m}", "kind": kind,
-                                "due_date": d, "amount_paise": amount, "confidence": 1.0})
+                                "due_date": d, "amount_paise": amount, "confidence": 1.0,
+                                "amount_owner": "sales_forecaster" if kind == "gst" else "obligations_detector"})
 
     for y, m in _months(c.start, end):
         py, pm = _prev_month(y, m)

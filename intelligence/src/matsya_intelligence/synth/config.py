@@ -102,8 +102,9 @@ class WorldConfig:
     cash_withdrawals_per_week: float = 0.5
     owner_transfers_per_month: float = 1.0
 
-    # Narration templates: which variants (0 hyphenated, 1 slashed) and bank
-    # codes this world uses. Restrict to hold templates out for the categoriser.
+    # Narration templates: which variants (0 hyphenated, 1 slashed) this world
+    # may use (one is drawn per world, as one account has one bank's format),
+    # and counterparty bank codes. Restrict to hold templates out for the categoriser.
     narration_variants: tuple[int, ...] = (0, 1)
     narration_banks: tuple[str, ...] = ("HDFC", "ICIC", "SBIN", "UTIB", "KKBK", "PUNB", "BARB", "CNRB")
 

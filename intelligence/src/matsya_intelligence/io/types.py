@@ -74,8 +74,9 @@ OBLIGATION = {
     "obligation_id": pl.String,
     "kind": pl.String,
     "due_date": pl.Date,
-    "amount_paise": pl.Int64,
+    "amount_paise": pl.Int64,  # null when amount_owner is the sales forecaster (GST)
     "confidence": pl.Float64,
+    "amount_owner": pl.String,  # "obligations_detector" | "sales_forecaster"
 }
 
 TXN_CATEGORY = {
@@ -97,6 +98,14 @@ INVOICE_TIMING = {
     "past_cutoff": pl.Boolean,  # extra: open longer than never_paid_cutoff_days
 }
 
+SALES_PROCESS = {
+    "tenant_id": pl.String,
+    "as_of": pl.Date,
+    "name": pl.String,  # order_mean_per_week, order_dispersion, purchase_ratio, purchase_lag_days, buyer_share, ...
+    "key": pl.String,  # buyer_id for per-buyer rows, else null
+    "value": pl.Float64,
+}
+
 SCHEMAS = {
     "Txn": TXN,
     "Invoice": INVOICE,
@@ -106,6 +115,7 @@ SCHEMAS = {
     "Obligation": OBLIGATION,
     "TxnCategory": TXN_CATEGORY,
     "InvoiceTiming": INVOICE_TIMING,
+    "SalesProcess": SALES_PROCESS,
 }
 
 NOT_NULL = {
@@ -114,9 +124,10 @@ NOT_NULL = {
     "InvoiceOutcome": ["tenant_id", "invoice_id", "buyer_id", "issue_date", "paid_fraction"],
     "Buyer": ["tenant_id", "buyer_id", "type", "sector"],
     "Balance": ["tenant_id", "account_id", "date", "closing_paise"],
-    "Obligation": ["tenant_id", "obligation_id", "kind", "due_date", "amount_paise"],
+    "Obligation": ["tenant_id", "obligation_id", "kind", "due_date", "amount_owner"],
     "TxnCategory": ["tenant_id", "txn_uid", "category", "confidence", "source", "needs_llm"],
     "InvoiceTiming": ["tenant_id", "invoice_id", "week", "p_paid", "p_never", "p_beyond", "past_cutoff"],
+    "SalesProcess": ["tenant_id", "as_of", "name", "value"],
 }
 
 ENUMS = {
@@ -124,6 +135,7 @@ ENUMS = {
     ("Invoice", "status"): {"open", "part_paid", "paid"},
     ("Buyer", "type"): {"cpse", "listed", "unlisted"},
     ("TxnCategory", "source"): {"rule", "model", "llm", "owner"},
+    ("Obligation", "amount_owner"): {"obligations_detector", "sales_forecaster"},
 }
 
 
@@ -158,6 +170,9 @@ def validate(df: pl.DataFrame, name: str) -> pl.DataFrame:
         )
         if wrong.height:
             raise SchemaError("Txn: amount_paise sign disagrees with direction, or is zero")
+    if name == "Obligation":
+        if df.filter(pl.col("amount_paise").is_null() & (pl.col("amount_owner") != "sales_forecaster")).height:
+            raise SchemaError("Obligation.amount_paise: null without the sales forecaster owning it")
     if name == "InvoiceOutcome":
         if df.filter(~pl.col("paid_fraction").is_between(0.0, 1.0)).height:
             raise SchemaError("InvoiceOutcome.paid_fraction outside [0, 1]")
