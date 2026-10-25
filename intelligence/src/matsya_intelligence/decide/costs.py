@@ -21,10 +21,9 @@ from datetime import date, timedelta
 from decimal import Decimal
 from fractions import Fraction
 
+from matsya_intelligence.statutory import msmed_rate_multiplier
 from matsya_intelligence.synth.world import load_constants
 
-MSMED_RATE_MULTIPLIER = 3  # s.16: three times the bank rate
-MSMED_SUPPLIERS = ("micro", "small")  # s.15/16 and 43B(h) cover micro and small, not medium
 ENTITY_TYPES = ("proprietor", "partnership", "company")
 
 
@@ -111,17 +110,18 @@ def msmed_interest(principal_paise: int, start: date, end: date,
     if end <= start or principal_paise <= 0:
         return 0
     history = history if history is not None else bank_rate_history()
+    mult = msmed_rate_multiplier()
     factor = Fraction(1)
     k = 0
     while add_months(start, k + 1) <= end:
         rest = add_months(start, k + 1)
-        factor *= 1 + MSMED_RATE_MULTIPLIER * rate_on(history, rest) / 12
+        factor *= 1 + mult * rate_on(history, rest) / 12
         k += 1
     p_start = add_months(start, k)
     if p_start < end:
         p_end = add_months(start, k + 1)
         share = Fraction((end - p_start).days, (p_end - p_start).days)
-        factor *= 1 + MSMED_RATE_MULTIPLIER * rate_on(history, end) / 12 * share
+        factor *= 1 + mult * rate_on(history, end) / 12 * share
     return to_paise(principal_paise * (factor - 1))
 
 

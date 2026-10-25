@@ -25,6 +25,8 @@ import polars as pl
 from matsya_contracts.enums import PayerKind, TermsSource
 
 from matsya_intelligence.io.types import BUYER_IN, INVOICE_IN, OUTCOME_IN
+from matsya_intelligence.statutory import gst_rate as standard_gst_rate
+from matsya_intelligence.statutory import s15_days
 from matsya_intelligence.synth.world import load_constants
 
 
@@ -72,11 +74,18 @@ def opening_balance(tables: dict[str, pl.DataFrame], as_of: date | datetime) -> 
     return rows["date"].min(), int(rows["closing_paise"].sum()), src
 
 
+def known_balances(tables: dict[str, pl.DataFrame], as_of: date | datetime) -> dict[date, int]:
+    """Closing balance per date known at as_of (as-of read, summed over accounts): the outcomes
+    the calibration component scores its bands against."""
+    b = as_of_read(tables["ledger.balances"], ["tenant_id", "account_id", "date"], as_of)
+    b = b.filter(pl.col("date") <= as_of_date(as_of)).group_by("date").agg(pl.col("closing_paise").sum())
+    return dict(zip(b["date"], b["closing_paise"]))
+
+
 def resolve_terms(terms_source: str, terms_days: int | None) -> tuple[int, int]:
     """(terms_days, MSMED deadline days) from the contract's terms fields."""
-    s15 = load_constants()["msmed_act"]["section_15"]
-    cap, no_agreement = int(s15["max_payment_days_with_agreement"]), int(s15["payment_days_without_agreement"])
-    unknown = int(s15["unknown_terms_default_days"]["value"])
+    cap, no_agreement = s15_days()
+    unknown = int(load_constants()["msmed_act"]["section_15"]["unknown_terms_default_days"]["value"])
     if terms_source == TermsSource.DEFAULT_15D.value:
         return (terms_days if terms_days is not None else no_agreement), no_agreement
     if terms_source in (TermsSource.WRITTEN_AGREEMENT.value, TermsSource.DOCUMENT_TERMS.value) and terms_days is not None:
@@ -84,7 +93,8 @@ def resolve_terms(terms_source: str, terms_days: int | None) -> tuple[int, int]:
     return unknown, unknown  # unknown, an unseen enum member, or stated terms missing
 
 
-def invoices(tables: dict[str, pl.DataFrame], as_of: date | datetime, gst_rate: float = 0.18) -> pl.DataFrame:
+def invoices(tables: dict[str, pl.DataFrame], as_of: date | datetime, gst_rate: float | None = None) -> pl.DataFrame:
+    gst_rate = standard_gst_rate() if gst_rate is None else gst_rate
     inv = as_of_read(tables["ledger.invoices"], ["tenant_id", "invoice_id"], as_of)
     resolved = [resolve_terms(s, t) for s, t in zip(inv["terms_source"], inv["terms_days"])]
     terms = pl.Series([r[0] for r in resolved], dtype=pl.Int32)
@@ -144,7 +154,7 @@ def buyers(tables: dict[str, pl.DataFrame], tenant_id: str) -> pl.DataFrame:
         .cast(BUYER_IN).sort("buyer_id")
 
 
-def track_b_inputs(tables: dict[str, pl.DataFrame], as_of: date | datetime, gst_rate: float = 0.18) -> dict:
+def track_b_inputs(tables: dict[str, pl.DataFrame], as_of: date | datetime, gst_rate: float | None = None) -> dict:
     """Every internal input, from contract tables for one tenant."""
     txns = transactions(tables, as_of)
     tenant = txns["tenant_id"][0]

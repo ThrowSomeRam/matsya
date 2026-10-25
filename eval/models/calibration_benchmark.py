@@ -3,13 +3,14 @@
     uv run --project intelligence python eval/models/calibration_benchmark.py
 
 Each world is replayed day by day from START to the end of its simulated future (about 300
-steps, 2,000 paths) with live calibration (online method), keeping each step's simulated
+steps, 2,000 paths) with live calibration (ACI at the paper gamma), keeping each step's simulated
 balances at the scored horizons. The engine's paths do not depend on calibration, so every
 method is then replayed offline on the same paths with the same delayed feedback: "off"
-(the engine's own 80% band), ACI at each gamma in the constants grid, the online step-size
-method, and split conformal (CQR-style: widen the nominal band by the 80% quantile of
-max(lo - y, y - hi) over a fixed calibration set, never updated). The offline online-method
-replay must reproduce the live run exactly (checked).
+(the engine's own 80% band), ACI at each gamma in the constants grid, and split conformal
+(CQR-style: widen the nominal band by the 80% quantile of max(lo - y, y - hi) over a fixed
+calibration set, never updated). The offline ACI replay at the paper gamma must reproduce the
+live run exactly (checked). The online step-size method was removed after this benchmark showed
+it worse than plain ACI at every horizon; its last numbers stay in results.parquet.
 
 1. Three borderline worlds (past seeds 0, 1, 2): coverage of the 80% band per horizon, outcomes
    with target date >= EVAL_FROM (warm-up excluded).
@@ -54,7 +55,7 @@ def _replay(name: str) -> dict:
     seed, shock = WORLDS[name]
     cfg = replace(WorldConfig(), payment_shock=shock)
     _, truth = generate_world(cfg, seed, 0)
-    r = Replay(truth, n_paths=N_PATHS, start=START, keep_paths=True, calibrator=Calibrator(method="online", adapt_max_horizon=ALL))
+    r = Replay(truth, n_paths=N_PATHS, start=START, keep_paths=True, calibrator=Calibrator(method="aci", adapt_max_horizon=ALL))
     r.run((r.last_day - START).days)
     live = pl.concat([s.calibration["scored"] for s in r.steps if s.calibration["scored"].height])
     return {"name": name, "days": [s.as_of.date() for s in r.steps], "paths": [s.paths for s in r.steps],
@@ -114,11 +115,10 @@ def methods(run: dict, cal_until: date | None) -> dict[str, pl.DataFrame]:
     out = {"off": _offline(run, Calibrator(method="off"))}
     for g in c["aci_gamma"]["grid"]:
         out[f"aci_gamma_{g}"] = _offline(run, Calibrator(method="aci", gamma=g, adapt_max_horizon=ALL))
-    out["online"] = _offline(run, Calibrator(method="online", adapt_max_horizon=ALL))
     out["split_conformal"] = _split_conformal(run, 1 - float(c["target_coverage"]["value"]), cal_until)
     live = run["live"].select("horizon", "made_on", "target_date", "miss").sort("horizon", "target_date", "made_on")
-    mine = out["online"].select("horizon", "made_on", "target_date", "miss").sort("horizon", "target_date", "made_on")
-    assert live.equals(mine), "offline online-method replay differs from the live replay"
+    mine = out[f"aci_gamma_{c['aci_gamma']['paper_value']}"].select("horizon", "made_on", "target_date", "miss").sort("horizon", "target_date", "made_on")
+    assert live.equals(mine), "offline ACI replay differs from the live replay"
     return {k: v.select("horizon", "made_on", "target_date", "miss") for k, v in out.items()}
 
 
@@ -174,7 +174,7 @@ def main() -> None:
     shock = methods(runs["shock_0"], SHOCK_AT)
     rec_rows = []
     for h in (7, 14, 30):
-        for mname in ("off", "aci_gamma_0.005", "aci_gamma_0.05", "online", "split_conformal"):
+        for mname in ("off", "aci_gamma_0.005", "aci_gamma_0.05", "split_conformal"):
             wk, mn, n = _recovery(shock[mname], h)
             rec_rows.append({"horizon_days": h, "method": mname, "weeks_to_recover": wk,
                              "min_trailing_4w_coverage": mn, "n_after_shock": n})
@@ -183,7 +183,7 @@ def main() -> None:
                                     note=f"shock {SHOCK_AT} p x {SHOCK_FACTOR}; trailing 4w coverage >= 0.75; "
                                          f"min trailing {mn:.3f}" + ("; never recovered" if wk is None else "")))
     weekly = []
-    for mname in ("off", "aci_gamma_0.05", "online", "split_conformal"):
+    for mname in ("off", "aci_gamma_0.05", "split_conformal"):
         w = _weekly(shock[mname], 14).rename({"coverage": mname})
         weekly.append(w.select("week", mname, "n"))
     wk = weekly[0]

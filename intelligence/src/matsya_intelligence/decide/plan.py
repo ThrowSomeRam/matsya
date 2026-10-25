@@ -106,7 +106,8 @@ def _columns(inp: EngineInputs, active: list, acts: list[Action], base: EngineRe
     stretch = {j: run(a) for j, a in enumerate(acts) if a.kind == "supplier_stretch" and j in want}
     inv_acted = {a.invoice for j, a in enumerate(acts) if a.invoice is not None and j in want}
     oi = inp.open_invoices
-    y = [(j, int(i)) for j in sorted(chase) for i in np.flatnonzero(oi.buyer == acts[j].buyer) if int(i) in inv_acted]
+    y = [(j, int(i)) for j in sorted(chase) for i in np.flatnonzero(oi.buyer == acts[j].buyer) if int(i) in inv_acted] \
+        if C.constants()["chase"]["interaction"]["value"] else []
     return Columns(acts, y, base, chase, stretch, inp, day)
 
 

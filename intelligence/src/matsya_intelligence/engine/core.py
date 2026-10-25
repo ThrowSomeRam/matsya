@@ -37,6 +37,7 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.seeding import rng_for, seed_from_run_id
+from matsya_intelligence.statutory import runway_p_short
 from matsya_intelligence.timing.empirical import J_HI, J_LO, N_BINS
 
 # Bumped whenever the same seed gives different draws. v2: payment simulation draws a uniform
@@ -81,6 +82,7 @@ class Invoices:
     gross: np.ndarray  # int64 paise, for GST
     taxable: np.ndarray  # float paise, for GST
     path: np.ndarray | None = None  # per-path invoices (sales); None = every path (open invoices)
+    due_day: np.ndarray | None = None  # due date relative to as_of (open invoices; attribution)
 
 
 @dataclass(frozen=True)
@@ -520,6 +522,6 @@ def summarise(balance: np.ndarray, threshold: int, as_of: date, run_id: str, ten
         "expected_shortfall_cond_paise": cond,  # average depth over paths short by date
         "expected_shortfall_uncond_paise": np.round(p_short * cond).astype(np.int64),
     })
-    over = np.flatnonzero(p_short >= 0.5)
+    over = np.flatnonzero(p_short >= runway_p_short())
     runway = int(over[0] + 1) if over.size else None
     return bq, sf, runway

@@ -122,9 +122,7 @@ class Replay:
 
     def known_balances(self) -> dict:
         """Closing balance per date known at the current as_of (as-of read, summed over accounts)."""
-        b = adapters.as_of_read(self.tables["ledger.balances"], ["tenant_id", "account_id", "date"], self.as_of)
-        b = b.filter(pl.col("date") <= self.as_of.date()).group_by("date").agg(pl.col("closing_paise").sum())
-        return dict(zip(b["date"], b["closing_paise"]))
+        return adapters.known_balances(self.tables, self.as_of)
 
     def step(self) -> StepResult:
         """Advance one day and reveal; score the calibration bands whose outcome is now known;

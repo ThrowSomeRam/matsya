@@ -16,7 +16,8 @@ import polars as pl
 from matsya_intelligence.io.types import INVOICE_TIMING
 from matsya_intelligence.seeding import rng_for
 from matsya_intelligence.synth.world import load_constants
-from matsya_intelligence.timing.hierarchy import TYPE_DEFAULTS, group_prior
+from matsya_intelligence.timing.hierarchy import group_prior
+from matsya_intelligence.timing.hierarchy import type_defaults as _type_defaults
 from matsya_intelligence.timing.empirical import buyer_hazard, counts, data_extent, parametric_chance, predict_open_empirical
 from matsya_intelligence.timing.labels import timing_labels
 from matsya_intelligence.timing.model import Posterior, TimingPrior, gibbs, p_dead_given_open, predict_open, shift_logit
@@ -70,7 +71,7 @@ def fit_timing(outcomes: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFr
     cap = float(consts["prior_strength"]["value"])
     burn_in = int(consts["gibbs_sweeps"]["value"])
     n_draws = n_draws or int(consts["gibbs_draws"]["value"])
-    defaults = type_defaults or TYPE_DEFAULTS
+    defaults = type_defaults or _type_defaults()
     labels = timing_labels(outcomes, invoices, as_of, consts["never_paid_cutoff_days"]["value"])
     data = {b: split_buyer(labels, b) for b in buyers["buyer_id"]}
     btype = dict(zip(buyers["buyer_id"], buyers["type"]))

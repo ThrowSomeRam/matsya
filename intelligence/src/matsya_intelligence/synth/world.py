@@ -425,7 +425,7 @@ def generate_world(config: WorldConfig, past_seed: int, future_seed: int) -> tup
         d = date(y, m, c.salary_day)
         scheduled("salary", d, c.salary_paise, "salary", nr.salary(rn(d), st, d))
         d = date(y, m, c.professional_fee_day)
-        tds = int(round(0.10 * c.professional_fee_paise))  # 194J professional fees
+        tds = int(round(float(consts["tds"]["rates"]["professional_fees"]["rate"]) * c.professional_fee_paise))  # 194J
         scheduled("professional_fee", d, c.professional_fee_paise - tds, "professional_fee",
                   nr.debit_to_party(rn(d), st, ca_firm, d, "PROF FEES", c.professional_fee_paise))
         if c.start <= d <= end:

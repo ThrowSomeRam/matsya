@@ -41,7 +41,7 @@ STRATEGIES = ("do_nothing", "discount_all_eligible", "chase_largest_buyer", "pla
 
 
 def one_world(args) -> dict:
-    preset, seed = args
+    preset, seed, overrides = args
     from matsya_intelligence.decide import Supplier, decide, decision_inputs
     from matsya_intelligence.engine import build_learned_inputs, run_engine
     from matsya_intelligence.synth import WorldConfig, generate_world
@@ -57,7 +57,7 @@ def one_world(args) -> dict:
     dinp = decision_inputs(obs, inp, "small", overdraft_limit_paise=OVERDRAFT_LIMIT, suppliers=suppliers,
                            entity_type="company", eps=EPS, day=DAY)
     t = time.perf_counter()
-    res = decide(inp, dinp, run, n_sub=N_SUB, n_verify=N_VER)
+    res = decide(inp, dinp, run, n_sub=N_SUB, n_verify=N_VER, constants_overrides=overrides)
     elapsed = time.perf_counter() - t
     b = {r["baseline"]: r for r in res.baselines.iter_rows(named=True)}
     clamped = {"do_nothing": 0, "plan": sum(max(a.cost(k), 0) for a, k in res.chosen)}
@@ -159,18 +159,25 @@ def summarise(worlds: list[dict]) -> tuple[str, list[dict]]:
     return "\n".join(lines) + "\n", rows
 
 
-def main(n_per_preset: int = 10, workers: int = 4) -> None:
+def main(n_per_preset: int = 10, workers: int = 4, variant: str | None = None) -> None:
+    """variant: JSON of decision constants overrides (e.g. '{"chase.max_buyers": 3}'). A variant run
+    prints its summary and keeps its per-world JSON next to the results, but does not write the
+    results table or the markdown (those hold the default settings)."""
     os.environ.setdefault("POLARS_MAX_THREADS", "1")
     os.environ.setdefault("OMP_NUM_THREADS", "1")
-    jobs = [(p, s) for p in PRESETS for s in range(n_per_preset)]
+    overrides = json.loads(variant) if variant else None
+    jobs = [(p, s, overrides) for p in PRESETS for s in range(n_per_preset)]
     with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn")) as ex:
         worlds = list(ex.map(one_world, jobs))
-    raw = Path(__file__).resolve().parents[1] / "results" / "decision_baselines_worlds.json"
+    tag = "" if not overrides else "_" + "_".join(f"{k}-{v}" for k, v in sorted(overrides.items())).replace(".", "-")
+    raw = Path(__file__).resolve().parents[1] / "results" / f"decision_baselines{tag}_worlds.json"
     raw.write_text(json.dumps(worlds, indent=1, default=str))
     md, rows = summarise(worlds)
-    write(rows, md, "decision_baselines")
+    if not overrides:
+        write(rows, md, "decision_baselines")
     print(md)
 
 
 if __name__ == "__main__":
-    main(*(int(a) for a in sys.argv[1:]))
+    a = sys.argv[1:]
+    main(*(int(x) for x in a[:2]), *(a[2:3]))

@@ -15,16 +15,16 @@ spread and s comes out too large; the cap limits the damage.
 
 import numpy as np
 
+from matsya_intelligence.synth.world import load_constants
 from matsya_intelligence.timing.model import TimingPrior
 
-# Placeholders until the buyer priors component supplies disclosure-based
-# defaults. decide: replace with ref.buyer_priors type rows.
-# p_early: 0.05 at strength 8 for all types.
-TYPE_DEFAULTS = {
-    "cpse": TimingPrior(alpha=2.4, beta=5.6, a=0.08, b=7.92, alpha_e=0.4, beta_e=7.6),  # p 0.30, pi 0.01
-    "listed": TimingPrior(alpha=2.0, beta=6.0, a=0.16, b=7.84, alpha_e=0.4, beta_e=7.6),  # p 0.25, pi 0.02
-    "unlisted": TimingPrior(alpha=1.6, beta=6.4, a=0.4, b=7.6, alpha_e=0.4, beta_e=7.6),  # p 0.20, pi 0.05
-}
+
+
+def type_defaults() -> dict[str, TimingPrior]:
+    """Type default priors from the constants file (payment_timing.type_default_priors, status
+    placeholder until the buyer priors component supplies disclosure-based rows)."""
+    rows = load_constants()["payment_timing"]["type_default_priors"]
+    return {t: TimingPrior(**{k: float(v) for k, v in p.items()}) for t, p in rows.items() if t != "status"}
 
 
 def _mom(means: np.ndarray, cap: float, floor: float = 2.0) -> tuple[float, float]:

@@ -9,20 +9,18 @@ components read, so two table histories with the same view give the same run.
 
 Payment-timing model -> posterior draws, empirical hazards (buyers with enough paid bills)
 and open invoices; sales forecaster ->
-future invoices and purchases (with a persistent demand level per path);
+future invoices and purchases;
 obligations detector -> fixed obligations and GST dates; GST amounts per path
-from sales and purchases (sales forecaster owns them); unscheduled flows from
-the placeholder below until the flow forecaster exists.
+from sales and purchases (sales forecaster owns them); unscheduled flows from the
+same-weekday bootstrap below (the default) or the flow forecaster (flow_forecaster="quantile").
 
-Unscheduled placeholder: for each future day, the net unscheduled flow of a
-random past day with the same weekday, from the last 8 weeks or (full_unscheduled)
-the whole history, so rare large flows can appear.
+Unscheduled bootstrap: for each future day, the net unscheduled flow of a random past day with
+the same weekday, from the whole history (full_unscheduled, the default) or the last 8 weeks,
+so rare large flows can appear.
 
 Flags (each was a calibration step; see eval/models/engine_calibration.py):
-  sales_uncertainty: per-path bootstrap draws of order rate, dispersion, purchase ratio
   sector_shocks:     per-path sector lateness paths from the shock component, applied
                      to base chances solved so the shock-averaged chance is the posterior
-  demand_ar1:        AR(1) on log order rate instead of one persistent level per path
   full_unscheduled:  bootstrap unscheduled flows from the full history
   shock_base:        (with sector_shocks) solve base chances; False applies shocks on top
                      of the posterior, double counting them (diagnostic)
@@ -45,6 +43,7 @@ from matsya_intelligence.io.adapters import as_of_date, track_b_inputs
 from matsya_intelligence.obligations import detect_obligations
 from matsya_intelligence.sales import fit_sales
 from matsya_intelligence.shocks import base_chance, fit_sector_shocks
+from matsya_intelligence.statutory import gst_rate as standard_gst_rate
 from matsya_intelligence.synth.world import PROCESS_OF_CATEGORY
 from matsya_intelligence.timing import fit_timing
 from matsya_intelligence.timing.empirical import beyond_data_as_nan
@@ -103,9 +102,9 @@ def bootstrap_unscheduled(txns: pl.DataFrame, categories: pl.DataFrame, as_of: d
 
 
 def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFrame, as_of: date | datetime, run_id: str,
-                         threshold_paise: int = 0, gst_rate: float = 0.18, horizon: int = 90,
-                         with_sales: bool = True, sales_uncertainty: bool = True,
-                         sector_shocks: bool = True, demand_ar1: bool = True, full_unscheduled: bool = True,
+                         threshold_paise: int = 0, gst_rate: float | None = None, horizon: int = 90,
+                         with_sales: bool = True,
+                         sector_shocks: bool = True, full_unscheduled: bool = True,
                          naive_purchases: bool = False, timing_priors: dict | None = None,
                          timing_hierarchical: bool = True, shock_base: bool = True,
                          flow_forecaster: str = "bootstrap") -> EngineInputs:
@@ -113,6 +112,7 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
     component; Chronos-2 or the bootstrap under 8 weeks of history). The default stays the
     bootstrap until the quantile model stops under-forecasting lumpy inflows (Berka outside check,
     docs/track-b-decisions.md "Flow forecaster")."""
+    gst_rate = standard_gst_rate() if gst_rate is None else gst_rate
     obs = track_b_inputs(tables, as_of, gst_rate)  # reads at the full as_of (datetime if given)
     as_of = as_of_date(as_of)  # everything below is day arithmetic
     inv, out, buyers, txns = obs["invoices"], obs["invoice_outcomes"], obs["buyers"], obs["transactions"]
@@ -136,6 +136,7 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         cash=cash.to_numpy(),
         gross=open_["gross_paise"].to_numpy(),
         taxable=(open_["gross_paise"] - open_["gst_paise"]).to_numpy().astype(float),
+        due_day=np.array([(d - as_of).days for d in open_["due_date"]], dtype=np.int64),
     )
 
     sales_fn = None
@@ -143,11 +144,7 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         sm = fit_sales(inv, txns, categories, as_of)
 
         def sales_fn(n_paths: int, H: int, rng: np.random.Generator, **scenario):
-            if demand_ar1:
-                fut, pur = sm.sample(n_paths, H, rng, param_draws=sales_uncertainty, demand="ar1", **scenario)
-            else:
-                fut, pur = sm.sample(n_paths, H, rng, level=sm.demand_levels(n_paths, rng),
-                                     param_draws=sales_uncertainty, **scenario)
+            fut, pur = sm.sample(n_paths, H, rng, **scenario)
             b = np.array([bidx[x] for x in fut["buyer_id"]], dtype=np.int64)
             gross = fut["gross_paise"].to_numpy()
             tds = np.round(gross * np.array([sm.tds_ratio.get(x, 0.0) for x in fut["buyer_id"]])).astype(np.int64)
