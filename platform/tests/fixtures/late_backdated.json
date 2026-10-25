@@ -1,0 +1,23 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-02",
+      "Transaction": [
+        {
+          "type": "CREDIT",
+          "mode": "FT",
+          "amount": "300.00",
+          "transactionTimestamp": "2026-06-02T09:00:00+05:30",
+          "valueDate": "2026-04-25",
+          "narration": "NEFT CR-REVERSAL ADJ",
+          "txnId": "A007",
+          "currentBalance": "13384.50"
+        }
+      ]
+    }
+  }
+}

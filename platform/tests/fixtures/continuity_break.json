@@ -1,0 +1,33 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2026-04-01",
+      "endDate": "2026-04-30",
+      "Transaction": [
+        {
+          "type": "CREDIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "transactionTimestamp": "2026-04-01T10:00:00+05:30",
+          "valueDate": "2026-04-01",
+          "narration": "NEFT CR-ONE",
+          "txnId": "B001",
+          "currentBalance": "11000.00"
+        },
+        {
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "200.00",
+          "transactionTimestamp": "2026-04-03T10:00:00+05:30",
+          "valueDate": "2026-04-03",
+          "narration": "NEFT DR-THREE",
+          "txnId": "B003",
+          "currentBalance": "11300.00"
+        }
+      ]
+    }
+  }
+}

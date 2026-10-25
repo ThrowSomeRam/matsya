@@ -1,0 +1,31 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2025-04-01",
+      "endDate": "2025-04-07",
+      "Transaction": [
+        {
+          "txnId": "U1",
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "100.00",
+          "transactionTimestamp": "2025-04-02T10:00:00+05:30",
+          "valueDate": "2025-04-02",
+          "narration": "UPI/CR/U1"
+        },
+        {
+          "txnId": "U2",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "40.00",
+          "transactionTimestamp": "2025-04-03T10:00:00+05:30",
+          "valueDate": "2025-04-03",
+          "narration": "UPI/DR/U2"
+        }
+      ]
+    }
+  }
+}

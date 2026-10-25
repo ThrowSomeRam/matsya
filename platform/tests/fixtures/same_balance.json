@@ -1,0 +1,40 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2026-04-01",
+      "endDate": "2026-04-30",
+      "Transaction": [
+        {
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "100.00",
+          "transactionTimestamp": "2026-04-01T10:00:00+05:30",
+          "valueDate": "2026-04-01",
+          "narration": "UPI/CR/SAME",
+          "currentBalance": "10100.00"
+        },
+        {
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "100.00",
+          "transactionTimestamp": "2026-04-02T10:00:00+05:30",
+          "valueDate": "2026-04-02",
+          "narration": "UPI/DR/SAME",
+          "currentBalance": "10000.00"
+        },
+        {
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "100.00",
+          "transactionTimestamp": "2026-04-03T10:00:00+05:30",
+          "valueDate": "2026-04-03",
+          "narration": "UPI/CR/SAME",
+          "currentBalance": "10100.00"
+        }
+      ]
+    }
+  }
+}

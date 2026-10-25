@@ -27,6 +27,9 @@ will build to. Section D lists facts nobody may code against until they are veri
      - A running balance repeats across dates, hence the date and amount.
      - Two identical same-day UPI credits must not collapse into one row, and an ordinal
        alone shifts when a later fetch covers a different window.
+     - One `utr:` key per payload: a second row with the same UTR/RRN and amount in the
+       same payload is a second transaction and takes its own `bal:` or `ord:` key.
+       Merging would lose money, which cannot be recovered; a false duplicate is visible.
    - `invoice_id` = sha256(tenant | supplier GSTIN | normalised invoice no | FY), truncated
      the same way. It never depends on IRN.
 3. **Buyers.** `ref.buyers` holds public facts and has no `tenant_id`. It has a nullable
@@ -49,11 +52,23 @@ will build to. Section D lists facts nobody may code against until they are veri
    - Zero-amount rows and sign/direction mismatches are quarantined with a dq flag and an
      alert, not written to `ledger.transactions`.
    - Only a balance-continuity break fails the batch.
+   - A break is dated by the IST posting date of the anchor that reveals it, not by any
+     value date. Its uncertainty window runs from the earlier of the last consistent
+     anchor's posting date and the value dates of the rows posted since, through the
+     break; an accepted break marks every reconstructed date in that window
+     `continuity_ok = false`.
+   - Unverifiable payloads (no `currentBalance` on any row and no Summary) are stored, not
+     refused: their rows get a lowered `dq_score` and the payload is reported as
+     `unverified_payload` (an `ops.events` kind once F7 lands).
    - `validate()` on read raises and never drops or fixes rows.
 6. **Balances.** `ledger.balances` adds `known_at` and `balance_source`
    (`bank_reported | reconstructed`).
    - Bank-reported: `known_at` = `fetched_at` of the payload that carried the balance.
-   - Reconstructed: `known_at` = the latest `known_at` among the transactions behind it.
+   - Reconstructed: `known_at` = the fetch time of the build that produced the version,
+     the moment the figure became known. Not the latest `known_at` of the rows behind it:
+     a closing can change with no new row behind its date (an accepted gap resolved, an
+     opening re-derived), and that correction must supersede the stale version. The old
+     rule left stale closings in place, some still marked `continuity_ok = true`.
    - Append-only, key `(tenant_id, account_id, date, known_at)`. An as-of read takes the
      latest row with `known_at <= as_of`.
 7. **Categories.** `features.txn_category.category` is a closed enum: the 15 existing
@@ -130,5 +145,177 @@ appear in the demo until verified.
   columns and `forecast.calibration_state.as_of`. In Track A's: `ops.owner_inputs`,
   `ops.dq_quarantine` and the 11 `ops.events` payload models.
 - Set the CPSE/TReDS constant to `verify`.
+- Use link evidence strength in payment-timing fitting: a label settled only by an
+  arithmetic-only link (no invoice reference) is weaker evidence and should move a buyer's
+  estimate less than a referenced one (`docs/matcher-design.md`; label field pending F14).
 - Send links for the 393(1) and 37(2)(g) sources.
 - Confirm the hackathon deadline.
+
+## F. Contract problems found while building A4 (proposed for v0.2)
+
+1. **`ledger.balances` key has no `balance_source`.** A bank-reported row and a
+   reconstructed row for the same account and date, learned from the same fetch, share
+   `(tenant_id, account_id, date, known_at)`. A4 keeps the bank-reported row (Track B uses
+   it as the opening balance) and drops that reconstructed version. Proposal: key
+   `(tenant_id, account_id, date, balance_source, known_at)`, with as-of reads per source.
+   A strict xfail test in `platform/tests/ledger/test_build.py` pins this.
+2. **`ledger.transactions` cannot be rebuilt into A4's working state.** Detecting
+   `txn_id_conflict` and re-running continuity need the bank txnId, the key path, the
+   payload id, the posting timestamp and the bank's running balance. None of these are in
+   the contract, so A4 keeps them in private state. Proposal: an A-only `ledger.txn_lineage`
+   table (txn_uid, payload_id, key_path, bank_txn_id, posted_at, balance_after_paise), or
+   nullable columns on `ledger.transactions`.
+3. **The ordinal path can collapse real transactions.** If one fetch window ends mid-day
+   and the next begins on the same day, identical rows on either side both get ordinal 0
+   and the same `txn_uid`. Proposal: include transactionTimestamp in the `ord:` key when
+   the payload carries it.
+4. **No table for coverage.** A4 computes, per account, `complete_through`: the end of the
+   unbroken run of fetched date ranges (ReBIT `Transactions.startDate..endDate`). It comes
+   from fetch ranges only, so backdated rows never move it, and a gap between ranges stops it
+   until a fetch fills the gap. It is the right `censored_at` for open labels. The contract has
+   nowhere to publish it, so `build()` returns it as a plain frame. Proposal: an additive
+   `ledger.coverage` table (tenant_id, account_id, complete_through, known_at), append-only,
+   read as of like balances.
+5. **No home for invoice ingest rejects.** `ops.dq_quarantine` has transaction-shaped
+   columns (account_id, value_date, direction) and only two reasons (`zero_amount`,
+   `sign_direction_mismatch`). Invoice lines rejected as `unresolved_buyer`,
+   `ambiguous_buyer`, `total_mismatch`, `bad_amount`, `bad_date`, `missing_field` or
+   `invalid_row` are returned by `ingest()` but cannot be written. Proposal: additive
+   `QuarantineReason` members plus nullable `source_file`, `source_row` and `detail`
+   columns, or a separate `ops.ingest_rejects` table.
+6. **Reconstructed `known_at` is defined the old way in the contract.** `contracts/tables.py`
+   (`Balance.known_at` comment) says reconstructed `known_at` is "the latest known_at among
+   the transactions behind it". A4 now stamps the build's fetch time instead (section A6).
+   The stress sweep showed the old rule makes a corrected closing unversionable, leaving
+   silently wrong balances. Proposal: change the comment and the README's balances rule;
+   no schema change.
+7. **No `ops.events` kind for unverified payloads.** `EventKind` is closed and has no
+   `unverified_payload`, so A4 returns these payloads as a plain `unverified` frame from
+   `build()` and cannot write the event. Proposal: additive `EventKind.UNVERIFIED_PAYLOAD`
+   with a payload model (payload_id, account_id, rows).
+8. **`ledger.invoices` has no invoice number.** Only the hashed `invoice_id` is stored, so
+   the matcher resolves a narration reference by hashing its spelling variants for the
+   plausible fiscal years (`match/references.py`). Proposal: an additive nullable
+   `invoice_no` (normalised) on `ledger.invoices`.
+9. **`MatchMethod` has no member per cascade stage.** Exact, TDS-explained, TReDS and
+   part-payment matches are all written as `amount_window`, and bundles as `ip_assignment`;
+   the real stage lives only in the matcher's own output. Proposal: additive members
+   `exact`, `tds`, `treds`, `partial`, `bundle`.
+10. **`ledger.matches` has no TReDS discount fee.** Settled = allocated + TDS + fee, but the
+    fee cannot be written, so a reader cannot recompute that a discounted invoice is
+    settled. Proposal: additive nullable `discount_fee_paise` (agreed earlier as the answer
+    to Track B's question 7, not yet in the contract).
+11. **Review-set invoices have no legal label.** The contract forbids `settlement_kind` on an
+    open label and has no way to mark a label as excluded from training, so invoices in a
+    review item get no new `labels.invoice_outcomes` version and are listed in the review
+    set instead. Proposal: allow `settlement_kind = unknown` while open, or add a nullable
+    `review` flag.
+
+Matcher design, decisions and rejected approaches: `docs/matcher-design.md`.
+
+## G. Stress sweep after the A4 balance-versioning fix (2026-10-25)
+
+Sweep: 4 worlds (Track B generator seeds 0, 1, 2 and a denser seed-0 world), fault seeds
+0 to 2, levels 0 to 100 percent, partial_mode batch_fails and accept_gap, open and closed
+loop. Before = the sweep that exposed the bug (open loop only). After = the same grid once
+these landed: breaks dated by posting date with an uncertainty window marked
+`continuity_ok = false` (section A5), reconstructed versions stamped with the build's
+fetch time (section A6), unverified payloads flagged, and rows sharing a UTR and amount in
+one payload kept as two transactions. Thresholds are the lowest level at which any run
+turns SILENT, as min/median/max over world x seed.
+
+| mode | fault | SILENT before | SILENT after (open and closed loop alike) |
+|---|---|---|---|
+| batch_fails | combined | 50/50/100 | 50/75/75 (3 of 12 runs never) |
+| accept_gap | partial_window | 5/37.5/75 | never |
+| accept_gap | combined | 5/50/75 | 50/50/75 (5 of 12 runs never) |
+
+- Combined at 100 percent went from SILENT in all 12 runs to loud in all 12: with no
+  identifiers and no anchors, the payloads are now flagged unverified, so the rows lost to
+  identity collisions are flagged rather than silently missing.
+- Every single fault on its own stays exact at every level in both loops; no_anchors stays
+  exact to 75 percent and correct (rows right, no reconstructed balances) at 100.
+- Open loop and closed loop give the same thresholds. Closed loop changes completeness, not
+  silence: at combined 75 percent, mean transactions-exact share is 1.0 closed against
+  0.077 open. The open-loop loud levels are therefore largely a harness artifact (A2 cannot
+  re-fetch there).
+- The remaining SILENT cases at 50 to 75 percent combined are undiagnosed. What is known
+  only: they are mostly reconstructed balances inconsistent with the rows held while marked
+  `continuity_ok = true`, plus about one silently missing row per run. Nothing beyond that
+  is claimed.
+12. **No `ops.events` kind for a settled-invoice contradiction.** When a referenced payment
+    displaces an earlier arithmetic-only link, A6 records `settled_invoice_contradiction`
+    (displaced txn_uid, invoice_id, referenced txn_uid, both value dates) in its own output;
+    `EventKind` is closed, so it cannot be written. Proposal: additive
+    `EventKind.SETTLED_INVOICE_CONTRADICTION` with that payload.
+13. **No home for matcher quality metrics.** Review-set size and unexplained credit rupees
+    are computed only in scoring, yet they are the only signal for mislinks no referenced
+    payment contradicts. Proposal, not built: an A-written `ops.match_runs` table, one row per
+    tenant per matcher run: tenant_id, run_at, credits_considered, credits_matched,
+    review_items, review_share, at_risk_paise, top10_coverage, unexplained_credit_paise,
+    contradiction_events, credits_gated_by_category, known_at. A9 alerts on a jump in
+    review_share or unexplained_credit_paise against the tenant's own trailing level.
+14. **Labels cannot carry link evidence strength.** `labels.invoice_outcomes` has no field
+    saying whether a paid label rests on a referenced link or on arithmetic alone;
+    `ledger.matches.method` carries it per link, but the label does not. Proposal: additive
+    nullable `evidence` (`referenced | arithmetic_only | arithmetic_no_basis_signal |
+    mixed`) on `labels.invoice_outcomes`. `arithmetic_no_basis_signal` is the weakest: an
+    arithmetic-only link whose TDS basis cannot tell an advance from a payment (0 percent
+    TDS, or the two bases within the basis tolerance). It still settles the invoice.
+15. **`erasure_completed` cannot say what was erased.** Its payload is `consent_id` and
+    `keys_destroyed` only. When a consent ends while another of the tenant's consents is
+    live, the key survives (`keys_destroyed = 0`) and only that consent's payloads go, and
+    the event cannot record how many. Proposal: additive `payloads_erased` and
+    `derived_rows_erased` counts.
+16. **`ledger.invoices` has no taxable value.** Only `gross_paise` and `gst_paise` are
+    stored, so a reader takes taxable value as gross minus GST. An e-invoice round-off
+    (`RndOffAmt`) or other charge (`OthChrg`), or a Tally round-off ledger, makes that wrong
+    by the charge, and the matcher computes TDS on taxable value. Ingest now reads
+    `other_paise` but cannot write it (`docs/invoice-ingest.md`). Proposal: additive nullable
+    `taxable_paise` on `ledger.invoices`.
+
+## H. Persistence, raw store, consent and fetch (2026-10-25)
+
+**Decision: no Iceberg, MinIO, Trino, Redpanda or Temporal.** The handbook's full stack is
+the scaling story: table format, object store, query engine, event bus, workflow engine. None
+of it changes a single number in the output, nobody looking at a forecast or a review set
+can see it, and each adds a service to run, configure and debug. What the output does depend
+on is narrower: tables written and read back exactly, raw payloads encrypted per tenant so
+erasure is real, a consent state machine, and a fetch path that a real AA client can drop
+into. That is what is built. Do not re-add the stack without a requirement the output can
+show, such as data volume one process cannot hold or more than one writer.
+
+- **Tables: Parquet on disk plus DuckDB, not Postgres.** The Compose base
+  (`infra/compose.base.yml`) does not exist; `infra/` holds only Track B's
+  `compose.intelligence.yml`, so there is no Postgres container to reuse. Parquet keeps the
+  Polars frames as they are (no type mapping), and DuckDB queries them in process. Layout
+  `tables/<schema>/<name>/<tenant_id>/part-*.parquet`; partitioning by tenant makes erasure a
+  directory removal. Contract tables are validated on every write, on every row; outputs
+  with no contract table go to `aux.*` with the producing `run_id`
+  (`platform/src/matsya_platform/store/`). `build()` and `match()` stay pure:
+  `store/persist.py` takes their results and writes them.
+- **A3 raw store.** Each payload is AES-256-GCM under its tenant's 256-bit data key, with
+  tenant and payload id as associated data. Tenant keys are stored only wrapped (RFC 3394
+  AES key wrap) under a master key read from `MATSYA_MASTER_KEY` (see `.env.example`); unset
+  or malformed, the store refuses to start, with no default. Destroying a tenant key
+  overwrites and deletes its wrapped file, which makes every object of that tenant
+  unreadable, copies included. Home-made crypto (an HMAC keystream) was rejected: the erasure
+  claim is only as credible as the cipher behind it, so it uses the `cryptography`
+  library's audited primitives.
+- **A1 consent.** States pending, active, paused, revoked, expired; transitions in
+  `consent/service.py`. A terminal state triggers erasure. When no other consent of the tenant
+  is live, the key is destroyed and the tenant's derived rows are removed; `ops.consents`
+  and `ops.events` are kept as the record. A change during a fetch makes the in-flight
+  payloads be discarded, not stored.
+- **A2 fetch is a stub.** There is no AA sandbox. `fetch/adapter.py` reads a local folder of
+  rendered payloads; a real AA client replaces that one adapter. Retries with backoff, and
+  idempotency by payload sha256, are in the runner.
+
+Limitations:
+- A revoke while another consent of the tenant is live deletes that consent's raw payloads
+  but not the ledger rows built from them: rows carry no payload lineage. Fixing it needs a
+  contract change.
+- Tenant key files must never be included in backups: a backup of the wrapped key plus the
+  master key would undo an erasure.
+- The mid-fetch discard holds only within a single process: the consent generation that
+  detects a change during a fetch is held in memory.

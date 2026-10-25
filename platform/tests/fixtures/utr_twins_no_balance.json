@@ -1,0 +1,31 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2025-04-01",
+      "endDate": "2025-04-07",
+      "Transaction": [
+        {
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "500.00",
+          "transactionTimestamp": "2025-04-02T10:00:00+05:30",
+          "valueDate": "2025-04-02",
+          "narration": "UPI/CR/612345678901/RAVI",
+          "reference": "612345678901"
+        },
+        {
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "500.00",
+          "transactionTimestamp": "2025-04-02T10:05:00+05:30",
+          "valueDate": "2025-04-02",
+          "narration": "UPI/CR/612345678901/RAVI",
+          "reference": "612345678901"
+        }
+      ]
+    }
+  }
+}

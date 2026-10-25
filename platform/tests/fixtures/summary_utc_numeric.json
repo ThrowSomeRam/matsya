@@ -1,0 +1,28 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Summary": {
+      "currentBalance": 10750.25,
+      "currency": "INR",
+      "balanceDateTime": "2026-04-30T19:00:00Z"
+    },
+    "Transactions": {
+      "startDate": "2026-04-01",
+      "endDate": "2026-04-30",
+      "Transaction": [
+        {
+          "txnId": "N001",
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": 750.25,
+          "currentBalance": 10750.25,
+          "transactionTimestamp": "2026-04-10T10:00:00+05:30",
+          "valueDate": "2026-04-10",
+          "narration": "UPI/CR/NUMERIC"
+        }
+      ]
+    }
+  }
+}

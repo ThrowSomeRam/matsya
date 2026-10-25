@@ -1,0 +1,58 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2025-10-25",
+      "endDate": "2025-11-03",
+      "Transaction": [
+        {
+          "txnId": "V2",
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "500.00",
+          "transactionTimestamp": "2025-10-26T09:00:00+05:30",
+          "valueDate": "2025-10-26",
+          "narration": "UPI/CR/R",
+          "currentBalance": "10600.00"
+        },
+        {
+          "txnId": "V3",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "50.00",
+          "transactionTimestamp": "2025-10-26T12:00:00+05:30",
+          "valueDate": "2025-10-24",
+          "narration": "UPI/DR/Y",
+          "currentBalance": "10550.00"
+        },
+        {
+          "txnId": "V4",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "20.00",
+          "transactionTimestamp": "2025-10-27T10:00:00+05:30",
+          "valueDate": "2025-10-25",
+          "narration": "UPI/DR/W",
+          "currentBalance": "10530.00"
+        },
+        {
+          "txnId": "V5",
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "10.00",
+          "transactionTimestamp": "2025-11-01T10:00:00+05:30",
+          "valueDate": "2025-11-01",
+          "narration": "UPI/CR/Z",
+          "currentBalance": "10540.00"
+        }
+      ]
+    },
+    "Summary": {
+      "currentBalance": "10540.00",
+      "currency": "INR",
+      "balanceDateTime": "2025-11-03T23:59:59.999999+05:30"
+    }
+  }
+}

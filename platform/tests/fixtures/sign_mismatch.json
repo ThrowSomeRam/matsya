@@ -1,0 +1,51 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2026-04-01",
+      "endDate": "2026-04-30",
+      "Transaction": [
+        {
+          "type": "CREDIT",
+          "mode": "OTHERS",
+          "amount": "-500.00",
+          "transactionTimestamp": "2026-04-01T10:00:00+05:30",
+          "valueDate": "2026-04-01",
+          "narration": "BAD SIGN CREDIT",
+          "txnId": "A101"
+        },
+        {
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "0.00",
+          "transactionTimestamp": "2026-04-01T11:00:00+05:30",
+          "valueDate": "2026-04-01",
+          "narration": "ZERO ROW",
+          "txnId": "A102"
+        },
+        {
+          "type": "CREDIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "transactionTimestamp": "2026-04-02T10:00:00+05:30",
+          "valueDate": "2026-04-02",
+          "narration": "NEFT CR-OK",
+          "txnId": "A103",
+          "currentBalance": "11000.00"
+        },
+        {
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "-200.00",
+          "transactionTimestamp": "2026-04-03T10:00:00+05:30",
+          "valueDate": "2026-04-03",
+          "narration": "UPI/DR/NEGATIVE DEBIT IS FINE",
+          "txnId": "A104",
+          "currentBalance": "10800.00"
+        }
+      ]
+    }
+  }
+}

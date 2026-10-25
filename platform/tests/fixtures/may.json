@@ -1,0 +1,38 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2026-05-01",
+      "endDate": "2026-05-31",
+      "Transaction": [
+        {
+          "type": "DEBIT",
+          "mode": "FT",
+          "amount": "4000.00",
+          "transactionTimestamp": "2026-05-03T10:00:00+05:30",
+          "valueDate": "2026-05-03",
+          "narration": "NEFT DR-SUPPLIER X",
+          "txnId": "A005",
+          "currentBalance": "12284.50"
+        },
+        {
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "800.00",
+          "transactionTimestamp": "2026-05-10T12:00:00+05:30",
+          "valueDate": "2026-05-10",
+          "narration": "UPI/CR/612000000001/GAMMA",
+          "txnId": "A006",
+          "currentBalance": "13084.50"
+        }
+      ]
+    },
+    "Summary": {
+      "currentBalance": "13084.50",
+      "currency": "INR",
+      "balanceDateTime": "2026-05-31T23:59:59+05:30"
+    }
+  }
+}

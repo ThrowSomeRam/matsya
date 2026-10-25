@@ -1,0 +1,23 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2026-05-01",
+      "endDate": "2026-05-31",
+      "Transaction": [
+        {
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "700.00",
+          "transactionTimestamp": "2026-05-15T10:00:00+05:30",
+          "valueDate": "2026-05-15",
+          "narration": "UPI/CR/613000000009/DELTA",
+          "txnId": "A001",
+          "currentBalance": "16984.50"
+        }
+      ]
+    }
+  }
+}

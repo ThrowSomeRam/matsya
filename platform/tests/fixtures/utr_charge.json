@@ -1,0 +1,33 @@
+{
+  "Account": {
+    "linkedAccRef": "LINK-ACC-1",
+    "maskedAccNumber": "XXXXXXXX4321",
+    "type": "deposit",
+    "Transactions": {
+      "startDate": "2026-04-01",
+      "endDate": "2026-04-30",
+      "Transaction": [
+        {
+          "type": "CREDIT",
+          "mode": "FT",
+          "amount": "100000.00",
+          "transactionTimestamp": "2026-04-04T10:00:00+05:30",
+          "valueDate": "2026-04-04",
+          "narration": "RTGS CR-OMEGA LTD",
+          "currentBalance": "110000.00",
+          "reference": "UTR998877"
+        },
+        {
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "11.80",
+          "transactionTimestamp": "2026-04-04T10:00:01+05:30",
+          "valueDate": "2026-04-04",
+          "narration": "RTGS CHARGES",
+          "currentBalance": "109988.20",
+          "reference": "UTR998877"
+        }
+      ]
+    }
+  }
+}
