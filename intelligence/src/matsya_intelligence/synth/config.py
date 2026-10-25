@@ -41,7 +41,8 @@ class WorldConfig:
     # True balance at as_of; the opening balance is back-solved to hit it.
     # Default is about 1.5 months of fixed costs (salary, rent, EMI, fee, PF, ESI ~ Rs 19 lakh/month).
     as_of_balance_paise: int = 28_60_000_00
-    # Short = balance below this. 0 for now; later -(overdraft limit) + owner cushion.
+    # Short = balance below this: the owner cushion (>= 0). Overdraft headroom is never part of
+    # it; the decision engine adds overdraft only as explicit draws with their interest cost.
     shortfall_threshold_paise: int = 0
 
     # Sector shock: z_t = rho z_{t-1} + eps, eps ~ N(0, sigma), weekly.

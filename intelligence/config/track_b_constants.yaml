@@ -196,7 +196,13 @@ decision:            # B9
   stretch:
     days: {value: [7, 14, 30], status: assumption}
     penalty_paise: {status: decide, note: "owner-set per supplier; default Rs 2,000 per stretch", value: 200000}
-    income_tax_rate: {value: 0.2517, status: verify, why: "s.115BAA company rate with surcharge and cess; proprietors differ. Values the lost 43B(h) / 37(2)(g) deduction"}
+    # Income-tax rate by entity type: an owner input. Values the deferred 43B(h) / 37(2)(g)
+    # deduction. Only the company rate has a default; the others must come from the owner.
+    income_tax_rate:
+      company: {value: 0.2517, status: verify, why: "s.115BAA rate (22%) with 10% surcharge and 4% cess"}
+      partnership: {value: null, status: decide, note: "owner input; 30% plus surcharge and cess, depends on income"}
+      proprietor: {value: null, status: decide, note: "owner input; the proprietor's marginal slab rate"}
+    cost_of_funds_annual: {value: null, status: decide, note: "owner input; null = the tenant's overdraft rate (the marginal source of funds). Values a year's delay in the tax saving"}
 
 payment_timing:      # B4
   time_step: {value: week, status: assumption, test: "compare C-index vs daily model on Kaggle"}

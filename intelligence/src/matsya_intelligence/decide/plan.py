@@ -209,7 +209,7 @@ def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
 class DecisionResult:
     run_id: str
     tenant_id: str
-    plan: pl.DataFrame  # decisions.plans
+    plan: pl.DataFrame  # decisions.plans plus net_cost_paise (signed; claims can be negative)
     chosen: list[tuple[Action, int]]
     transforms: list
     target_met: bool
@@ -232,7 +232,9 @@ class DecisionResult:
         return sum(a.cost(k) for a, k in self.chosen)
 
     def contract_tables(self) -> dict[str, pl.DataFrame]:
-        return {"decisions.plans": self.plan}
+        from matsya_contracts.validate import schema
+
+        return {"decisions.plans": self.plan.select(list(schema("decisions.plans")))}
 
 
 def _baseline_row(name: str, bal: np.ndarray, theta: int, day: int, cost: int, n_actions: int) -> dict:
@@ -252,6 +254,9 @@ def decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tra
     if not 1 <= day <= horizon:
         raise ValueError("shortfall day outside the horizon")
     theta = inp.threshold_paise
+    if theta < 0:
+        raise ValueError("the shortfall threshold is the owner cushion and cannot be negative; overdraft "
+                         "headroom enters only as overdraft draws, so a negative threshold would count it twice")
     inp_a = apply_transforms(inp, active)
     run_id = f"{base_run_id}:decide"
     sub_id, ver_id = f"{run_id}:subsample", f"{run_id}:verify"
@@ -293,9 +298,10 @@ def decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tra
         a = acts[j]
         rows.append({"tenant_id": inp.tenant_id, "run_id": run_id, "rank": rank, "action": a.kind,
                      "target_id": a.target_id if a.kind != "overdraft" else f"{a.target_id}:{int(x[j]) * a.unit_paise}",
-                     "cost_paise": max(a.cost(int(x[j])), 0), "p_short_after": p_after})
+                     "cost_paise": max(a.cost(int(x[j])), 0), "p_short_after": p_after,
+                     "net_cost_paise": a.cost(int(x[j]))})
     from matsya_contracts.validate import schema
-    plan = pl.DataFrame(rows, schema=schema("decisions.plans"))
+    plan = pl.DataFrame(rows, schema={**schema("decisions.plans"), "net_cost_paise": pl.Int64})
 
     # Baselines on the same fresh paths.
     treds = [a for a in acts if a.kind == "treds_discount"]

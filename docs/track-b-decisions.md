@@ -41,8 +41,9 @@ The synthetic generator tags every true transaction with its generating process 
 ## Shortfall definitions
 
 Let $B^{(n)}_t$ be the simulated closing balance on day t after as_of in path n, N paths, and
-$\theta$ the shortfall threshold (`shortfall_threshold_paise`, default 0; later
-$-\text{overdraft limit} + \text{owner cushion}$).
+$\theta$ the shortfall threshold (`shortfall_threshold_paise`): the owner cushion, default 0,
+never negative. Overdraft headroom is not part of it. The decision engine offers overdraft
+only as explicit draws with their interest cost, so the limit is counted once.
 
 - **Shortfall:** the balance is below the threshold, $B_t < \theta$.
 - **Probability of shortfall by day t:** the share of paths whose balance has been below the
@@ -588,10 +589,18 @@ not built (the weekly Kaggle metrics cannot score it).
 | chase a buyer | `rate_multiplier` buyer x 1.5 for 2 weeks (new `weeks` field) | Rs 500 |
 | MSMED claim (micro/small tenant, invoice past its s.15 deadline) | `invoice_cash` if_unpaid: principal + interest on day 90, only on paths still unpaid then | penalty (10% of principal) - recovery (0.5) x P(unpaid by day 90) x interest |
 | overdraft draw | `cash_event` + k x limit / 10 on day d in {1, 15, 30, 45, 60, 75} | A r (H + 1 - d) / 365 (repaid after the horizon) |
-| stretch a supplier | `date_shift` supplier_payments, share s (new field), N in {7, 14, 30} days | owner penalty; micro/small and terms + N > 45: MSMED interest on the expected stretched amount for the days past 45, plus the lost s.43B(h) / 37(2)(g) deduction where the payment moves into the next FY |
+| stretch a supplier | `date_shift` supplier_payments, share s (new field), N in {7, 14, 30} days | owner penalty; micro/small and terms + N > 45: MSMED interest on the expected stretched amount for the days past 45 (full cost: s.23 makes it non-deductible), plus the delay in the s.43B(h) / 37(2)(g) deduction: tax rate x amount x cost of funds x FYs moved (0 for a late payment in the same FY) |
 
 Rates without a source are config defaults with status verify: TReDS 9%, overdraft 11%, claim
-cash lag 90 days (s.18(5) award window), income-tax rate 25.17%. Interest is
+cash lag 90 days (s.18(5) award window). The income-tax rate is an owner input by entity type
+(proprietor, partnership, company); only the company rate has a default (25.17%, verify), and a
+stretch that can pass 45 days for a micro/small supplier without a rate is refused. The cost of
+funds for the deduction delay is an owner input, defaulting to the overdraft rate. Worked
+example (tested): as_of 1 Mar 2026, half of Rs 1 lakh a day, 30-day terms stretched 30 days:
+Rs 30 lakh of deductions move one FY, cost 0.2517 x 30 lakh x 10% = Rs 75,510 (the earlier
+full-tax rule gave Rs 7,55,100). The shortfall threshold is the owner cushion and is never
+negative (decide refuses one); the overdraft limit enters only as draws with their interest,
+so it is counted once (tested). Interest is
 P (prod_k (1 + 3 r_k / 12) - 1) with r_k the bank rate in force on each monthly rest date; an
 incomplete last month accrues pro rata by days (VERIFY both). The bank-rate entry dated TODO is
 read as in force from the earliest date. The issue date stands in for acceptance. Suppliers are
@@ -646,7 +655,9 @@ calibration script's input path needs checking against the pipeline the earlier 
 `<run>:decide:verify`) against the same-seed baseline. `decisions.plans`: rank by leave-one-out
 importance on the subsample (p_short rise when the action is dropped), then cost;
 `p_short_after` is cumulative on the fresh paths, adding the actions in rank order, and the last
-row is the full plan's run. The plans table holds max(cost, 0) (claims can have negative net cost).
+row is the full plan's run. The plans table holds max(cost, 0) (claims can have negative net cost);
+the decision result's plan frame keeps the signed figure in `net_cost_paise`, dropped from the
+contract write until question 16 is answered.
 The run record keeps both seed ids, the active and plan transform lists (canonical JSON and hash),
 eps, day and threshold; a rerun gives an identical plan, record and baselines (tested). The amount
 owed under MSMED on every overdue invoice is reported whether or not a claim is chosen.
