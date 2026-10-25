@@ -617,6 +617,31 @@ that buyer's payments (tested). Same distribution as before, different draws: ea
 numbers are not reproduced bit for bit at this commit. Remaining non-additivity (GST on stretched
 purchases; a claim on a chased invoice) is covered by the fresh-path check.
 
+**Engine stream change check.** The run record now carries `engine_version` (`mc-v2`, also in
+`model_versions` as `simulation_engine`); v1 is the stream before this change. Same scripts and
+seeds at 43b54b5 (v1) and here (v2); error bars are Monte Carlo standard errors of the
+difference (independent streams) and a paired bootstrap over pasts (5,000 resamples).
+
+| check | n | v1 | v2 | v2 - v1 | se | z |
+|---|---|---|---|---|---|---|
+| true-parameter p_short, 3 curated pasts x days 30/60/90 | 10,000 paths, oracle 200 futures | | | +0.0004 to +0.0094 | 0.002-0.007 | max +1.69 |
+| learned mean gap p_short(90) | 100 pasts, 4,000 paths | -0.1490 | -0.1489 | +0.0001 | 0.0007 | +0.21 |
+| learned mean \|gap\| | same | 0.1799 | 0.1792 | -0.0007 | 0.0007 | -1.08 |
+| learned corr | same | 0.736 | 0.739 | +0.003 | 0.003 | +1.07 |
+| breaking point, delayed payments (factor) | default world, 10,000 paths, target 0.5 | 0.612 | 0.612 | 0 | 0.003 | 0 |
+| breaking point, supplier terms (days) | same | 15 | 15 | 0 | 0.17 | 0 |
+
+Per past, |z| > 2 in 2 of 100 learned pasts (4.5 expected by chance). Unexpected expense,
+reduced sales and revised schedule reach no breaking point at either version. Nothing moves
+beyond its error: the stream change alters draws, not distributions. All nine true-parameter
+differences are positive; they share paths within a past (three independent pasts), and the
+pooled day-90 z is +1.3.
+
+Note: `engine.evaluate._learned_one` (used here and by `eval/models/engine_calibration.py`)
+gives mean gap -0.149 and mean |gap| 0.180 on the 100 pasts, against -0.033 and 0.133 recorded
+for the current pipeline above. Same at both versions, so not from the stream; the
+calibration script's input path needs checking against the pipeline the earlier table used.
+
 **Verification and outputs.** The chosen transforms run on 10,000 fresh paths (seed
 `<run>:decide:verify`) against the same-seed baseline. `decisions.plans`: rank by leave-one-out
 importance on the subsample (p_short rise when the action is dropped), then cost;

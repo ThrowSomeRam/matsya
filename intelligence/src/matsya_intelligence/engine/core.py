@@ -38,6 +38,10 @@ import polars as pl
 from matsya_intelligence.seeding import rng_for, seed_from_run_id
 from matsya_intelligence.timing.empirical import J_HI, J_LO, N_BINS
 
+# Bumped whenever the same seed gives different draws. v2: payment simulation draws a uniform
+# for every row every week (v1 drew only for active rows).
+ENGINE_VERSION = "mc-v2"
+
 STREAMS = ("timing_draws", "open_invoices", "sales", "sales_timing", "unscheduled", "shocks")
 
 
@@ -448,7 +452,8 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
         "as_of": inp.as_of,
         "seed": seed_from_run_id(seed_id),
         "seed_streams": {s: seed_from_run_id(seed_id, f"engine:{s}") for s in STREAMS},
-        "model_versions": inp.model_versions,
+        "engine_version": ENGINE_VERSION,
+        "model_versions": {**inp.model_versions, "simulation_engine": ENGINE_VERSION},
         "input_snapshot_ids": inp.input_snapshot_ids,
         "scenario_id": None,
         "overrides_json": json.dumps([{**asdict(o), "on": o.on.isoformat()} for o in overrides]),

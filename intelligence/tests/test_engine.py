@@ -80,6 +80,17 @@ def test_outputs_and_run_record(learned):
     assert res.run["overrides_json"] == "[]"
 
 
+def test_run_record_carries_the_engine_version(learned):
+    from matsya_intelligence.engine.core import ENGINE_VERSION, run_table
+
+    _, _, _, inp = learned
+    res = run_engine(inp, "ver", 50)
+    assert res.run["engine_version"] == ENGINE_VERSION
+    assert res.run["model_versions"]["simulation_engine"] == ENGINE_VERSION
+    assert inp.model_versions.get("simulation_engine") is None  # inputs are not mutated
+    assert json.loads(run_table(res.run)["model_versions_json"][0])["simulation_engine"] == ENGINE_VERSION
+
+
 def test_speed_10k_paths(learned):
     _, _, _, inp = learned
     t = time.perf_counter()
