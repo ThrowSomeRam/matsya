@@ -690,6 +690,57 @@ negative net cost (claims) cannot be stored (cost_paise is non-negative); propos
 decision run record (seeds, transform lists); propose `decisions.baselines`,
 `decisions.msmed_owed` and a `decisions.runs` row.
 
+## Decision engine across worlds and claim sensitivity (2026-10-25)
+
+**Across 30 worlds** (`eval/models/decision_baselines.py`, `eval/results/decision_baselines.md`):
+past seeds 0-9 of the healthy, borderline and distressed presets; small company tenant,
+overdraft limit Rs 10 lakh, S1 micro 50% and S2 not MSME 30% on 30-day written terms; eps 0.05
+at day 90; 1,000 solve and 10,000 fresh paths per world. Each world's opening balance is lowered
+by the median do-nothing 90-day minimum from a pilot run on its own seed (2,000 paths), with the
+threshold left at 0. That is the same arithmetic as a threshold at that median and keeps the
+threshold a cushion. Realised do-nothing p_short 0.482-0.531, 30/30 inside 0.2-0.8.
+
+| strategy | worlds | net cost mean (sd), Rs | median | p_short(90) mean (sd) | days below |
+|---|---|---|---|---|---|
+| do nothing | 30 | 0 | 0 | 0.501 (0.012) | 8.75 |
+| discount every eligible invoice | 21 | 7,222 (5,892) | 2,903 | 0.387 (0.083) | 5.79 |
+| chase the largest buyer | 30 | 500 | 500 | 0.470 (0.021) | 7.92 |
+| plan | 30 | 54,431 (45,193) | 27,059 | 0.054 (0.005) | 0.50 |
+
+The plan reaches the target in 30/30 worlds within Monte Carlo error (fresh p_short <= eps +
+2 x 0.0091) but only 5/30 strictly: fresh-path p_short averages 0.054 against 0.049 in sample.
+This is the usual optimism of a sample-average chance constraint: the solver pushes the
+in-sample count to the cap, so fresh paths land a little above it. No world was unreachable and
+no baseline matched the plan's p_short for less. Net and clamped costs are equal in every world:
+no plan chose a claim. Solve time median 94 s, max 129 s. Plan cost rises with the preset's
+margin pressure (healthy median about Rs 14k, distressed about Rs 1 lakh).
+
+**Claim sensitivity** (`eval/models/decision_sensitivity.py`, `decide(constants_overrides=...)`;
+default world, past seed 0, Rs 20 lakh cushion, same seeds in every run):
+
+| run | claims chosen | net cost (Rs) | vs default | fresh p_short |
+|---|---|---|---|---|
+| default (recovery 0.5, penalty 0.10) | 0 | 28,334 | 0 | 0.0561 |
+| claims off | 0 | 28,334 | 0 | 0.0569 |
+| recovery 0.25 | 0 | 28,977 | +644 | 0.0546 |
+| recovery 0.75 | 6 | 9,043 | -19,291 | 0.0560 |
+| penalty 0.05 | 13 | -25,883 | -54,217 | 0.0568 |
+| penalty 0.20 | 0 | 28,334 | 0 | 0.0561 |
+
+Two findings. (1) Claims are chosen only for their expected net value, never for risk: their
+cash lands on day 90, so they leave p_short unchanged and the rest of the plan stays the same
+(non-claim cost Rs 28,334 in every run with claims). Mixing them into the plan's cost hides that;
+reporting claims separately from the risk plan would be clearer (proposal, not done).
+(2) The solver stops at its 60 s time limit on this world (HiGHS status 13 for both the default
+and the recovery 0.25 runs, checked on a rerun), so these plans are the best found, not proven
+optimal. That explains recovery 0.25 costing Rs 644 more for an identical risk problem (claims
+there are never worth taking) and claims off swapping one chase for another at the same cost:
+the claim columns change the search path. Plan identity and, at the time limit, cost are not
+stable across candidate lists. The 30-world run did not record solver status; 60 s is about
+the median HiGHS time, so some of those plans are likely time-limited too. Options: record the
+status and MIP gap in the run record, raise the limit, or tighten the formulation (fewer chase
+columns, symmetric overdraft days). Not done.
+
 ## Empirical timing in the engine: late bins (2026-10-25)
 
 **What moved.** Learned-mode calibration on the 100 default pasts (oracle 200 futures, 4,000
