@@ -810,6 +810,90 @@ moves more than 0.02 from the reference; `MATSYA_ORACLE_CACHE` reuses the oracle
 0.735, 0.031, 0.033 / 0.014 / 0.013. Still better on every metric, so the mode stays (before the
 fix: 0.743, 0.027, 0.026 / 0.011 / 0.010; the change is within the C-index interval).
 
+## Flow forecaster: unscheduled flows (2026-10-25)
+
+`intelligence/.../flows/`, wired into the engine as `build_learned_inputs(flow_forecaster="quantile")`.
+**The default stays the same-weekday bootstrap**: on the Berka outside check the forecaster lowers
+AUC (below), because it under-forecasts lumpy inflows.
+
+**Scope.** Unscheduled flows only (bank charges, refunds, misc income and expense, cash
+withdrawals, owner transfers). Invoices and purchases belong to the payment-timing model and
+the sales forecaster, GST to the sales forecaster, fixed obligations to the obligations detector.
+
+**Model.** Per category, linear quantile regression (q 0.05/0.25/0.5/0.75/0.95, HiGHS, Rs
+thousand) on weekday, day-of-month band, month-end (last 3 days), an Indian festival window (the
+day and the 7 before; Diwali, Holi, Eid al-Fitr, Dussehra, Christmas, 2022-2027, constants,
+VERIFY) and a mean-reverting term: (yesterday's balance - usual) / spread, usual = median
+closing balance over the 180 days before the day (fixed at as_of in the forecast), spread = the
+interquartile range over the 180 days to as_of, floored at Rs 1 lakh. A 90-day window chased the
+balance: in a recovery the balance sits above its lagging median while flows are still
+positive, and the fit got the sign wrong (tested). Crossing quantiles are sorted per day.
+
+**Persistence.** An AR(1) Gaussian copula per category; rho is the lag-1 correlation of the
+normal scores of the history's PIT values. Sparse flows sit on a repeated quantile (zero) most
+days; such days take a PIT drawn within the tied range (randomised PIT, fixed seed). A mid-point
+made quiet days look persistent (owner transfers rho 0.39 on a world that draws them
+independently); with the randomised PIT the generator's independent flows come out at rho about 0.
+
+**Engine.** Unscheduled flows are simulated last, day by day, after every other flow, so each
+path's own balance feeds the deviation term. A consequence for the decision engine: an action's
+cash is partly offset later by the reverting flows, so its linear deltas are no longer exact
+(within 1% of the action's cash on the default world, tested); the fresh-path run is the check.
+
+**Short history.** Under 8 weeks: Chronos-2 zero-shot quantiles per category (optional extra
+`chronos`, CPU torch; amazon/chronos-2; no balance term), else the bootstrap. Tested on a weekly
+spike, which it places correctly.
+
+**Berka, unscheduled flows** (`eval/models/flows_benchmark.py`, n = 300 accounts with >= 1 year of
+history, origin 90 days before the last transaction, 1,000 sample paths; Kaggle copy of PKDD'99):
+
+| metric | flow forecaster | bootstrap (8 weeks) | same weekday last week |
+|---|---|---|---|
+| CRPS, daily | 792 (0.61) | 879 (0.68) | 1,296 |
+| pinball, daily | 368 (0.57) | 438 (0.68) | 648 |
+| CRPS, 30-day sum | 6,223 (0.37) | 6,101 (0.36) | 16,843 |
+| CRPS, 90-day sum | 12,635 (0.25) | 13,587 (0.27) | 50,369 |
+
+(ratio to same weekday last week in brackets). Against same weekday last week it wins on every
+metric with the paired interval clear of 0. Against the bootstrap: daily CRPS 0.90x (paired CI
+-97 to -77, better in 96% of accounts), pinball 0.84x; the 30- and 90-day sums are level (1.02x
+and 0.93x, intervals across 0). The gain is in day-to-day shape, not yet in the totals that
+move the balance.
+
+**Learned-mode calibration (guard).** 100 pasts: -0.041 / 0.143 / 0.746 (bootstrap: -0.045 /
+0.142 / 0.746; reference -0.033 / 0.133). Unscheduled mean gap at day 90: -Rs 20k (bootstrap
++Rs 21k). Guard passes.
+
+**Berka outside check** (`eval/models/berka_checks.py`, 682 loans, 76 bad, 10,000 paths, both flow
+models on the same seeds, Kaggle copy). The bootstrap engine and every balance-only baseline
+reproduce the recorded AUCs to three decimals on this copy (engine 0.639 / 0.652 / 0.658, best
+baseline 0.808), so its small differences do not move this check.
+
+| score | AUC (95% CI) | minus balance logistic 0.808 |
+|---|---|---|
+| engine, flow forecaster, p_short(90) thr 0 | 0.587 (0.509-0.662) | -0.221 |
+| engine, flow forecaster, p_short(90) thr payment | 0.609 (0.529-0.688) | -0.199 |
+| engine, flow forecaster, p_short(30) thr 0 | 0.653 (0.579-0.722) | -0.155 |
+| engine, bootstrap, p_short(90) thr 0 | 0.639 (0.558-0.716) | -0.170 |
+| engine, bootstrap, p_short(30) thr 0 | 0.658 (0.580-0.733) | -0.150 |
+
+Target (beat 0.808) not met, and the forecaster is worse than the bootstrap at 90 days: paired
+AUC difference -0.051 (CI -0.088 to -0.014); at 30 days -0.005 (CI -0.033 to 0.024). It raises
+good accounts' p_short(90) (0.286 to 0.330) and leaves bad ones' (0.430 to 0.438).
+
+**Cause: lumpy inflows.** On 60 benchmark accounts the forecaster's mean 90-day misc_income
+(salaries, pensions and deposits arrive as transfers in) is Rs 29,120 against Rs 42,009 at the
+historical rate and Rs 48,055 realised; outflow categories are close. Five quantiles cannot carry
+the mass of a flow that happens on a few days a month: the mean of the interpolated quantile
+function falls well below the true mean. Net 90-day sum: forecaster Rs 1,930, bootstrap
+Rs 10,989, realised Rs 14,163. Salaried (mostly good) accounts drift down and look riskier.
+
+**Proposed fix (not done).** A two-part model per category: P(non-zero day | features) by
+logistic regression, and quantile regression of the amount on non-zero days only; sampling
+draws the occurrence, then the amount. That keeps a lumpy flow's mean and is the standard form
+for intermittent series. Recurring income (a salary on a fixed day) may also belong with the
+obligations detector's recurrence detection, which today looks at outflows only.
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).

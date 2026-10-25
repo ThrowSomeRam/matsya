@@ -40,6 +40,7 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.engine.core import EngineInputs, Invoices, TimingDraws, month_key
+from matsya_intelligence.flows import fit_flow_forecaster
 from matsya_intelligence.io.adapters import as_of_date, track_b_inputs
 from matsya_intelligence.obligations import detect_obligations
 from matsya_intelligence.sales import fit_sales
@@ -106,7 +107,12 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
                          with_sales: bool = True, sales_uncertainty: bool = True,
                          sector_shocks: bool = True, demand_ar1: bool = True, full_unscheduled: bool = True,
                          naive_purchases: bool = False, timing_priors: dict | None = None,
-                         timing_hierarchical: bool = True, shock_base: bool = True) -> EngineInputs:
+                         timing_hierarchical: bool = True, shock_base: bool = True,
+                         flow_forecaster: str = "bootstrap") -> EngineInputs:
+    """flow_forecaster: "bootstrap" (same-weekday placeholder, the default) or "quantile" (flows
+    component; Chronos-2 or the bootstrap under 8 weeks of history). The default stays the
+    bootstrap until the quantile model stops under-forecasting lumpy inflows (Berka outside check,
+    docs/track-b-decisions.md "Flow forecaster")."""
     obs = track_b_inputs(tables, as_of, gst_rate)  # reads at the full as_of (datetime if given)
     as_of = as_of_date(as_of)  # everything below is day arithmetic
     inv, out, buyers, txns = obs["invoices"], obs["invoice_outcomes"], obs["buyers"], obs["transactions"]
@@ -182,6 +188,15 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
                          p_base=[base_chance(x, v) for x, v in zip(timing.p, var)],
                          hazard_base=None if timing.hazard is None else
                          [None if h is None else base_chance(h, v) for h, v in zip(timing.hazard, var)])
+    unscheduled = bootstrap_unscheduled(txns, categories, as_of, full=full_unscheduled)
+    unscheduled_version = "bootstrap-8w-v0"
+    if flow_forecaster == "quantile":
+        ff = fit_flow_forecaster(txns, categories, as_of, int(obs["opening_balance"]["closing_paise"]), horizon,
+                                 bootstrap=unscheduled)
+        unscheduled = ff if ff.mode != "bootstrap" else unscheduled
+        unscheduled_version = {"quantile": "quantile-reg-v1", "chronos": "chronos-2", "bootstrap": "bootstrap-8w-v0"}[ff.mode]
+    elif flow_forecaster != "bootstrap":
+        raise ValueError(f"flow_forecaster must be quantile or bootstrap, got {flow_forecaster!r}")
     gst_days = [(d - as_of).days for d, k in zip(obligations["due_date"], obligations["kind"]) if k == "gst"]
     first_base = month_key(as_of + timedelta(days=min(gst_days))) - 1 if gst_days else month_key(as_of)
     supplier = txns.join(categories.select("txn_uid", "category"), on="txn_uid").filter(
@@ -195,9 +210,9 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         weekday_probs=weekday_probs(out, buyer_ids), open_invoices=open_inv,
         survival_through_day=(through - as_of).days, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
         gst_due_days=gst_days, gst_history_net=known, gst_carry_in=carry,
-        unscheduled=bootstrap_unscheduled(txns, categories, as_of, full=full_unscheduled), shift_sampler=shock_sampler,
+        unscheduled=unscheduled, shift_sampler=shock_sampler,
         model_versions={"payment_timing": "beta-geometric-2phase-v1+empirical-v1" if tm.hazards else "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1",
-                        "obligations_detector": "v1", "unscheduled": "bootstrap-8w-v0"},
+                        "obligations_detector": "v1", "unscheduled": unscheduled_version},
         input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(obs.items()) if isinstance(v, pl.DataFrame)]
         + [f"opening_balance:{obs['opening_balance']['closing_paise']}@{obs['opening_balance']['date']}",
            f"complete_through:{through}"],

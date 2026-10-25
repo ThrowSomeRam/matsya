@@ -45,3 +45,11 @@ checked against a pinned sha256 in that script.
 - **Decision (project owner, 2026-10-25):** use as an internal research benchmark, not
   redistributed.
 - Amounts are in CZK, stored as integer hellers (x100) in the `_paise` columns.
+- **Substitute copy (2026-10-25, when the CTU MariaDB server was unreachable over this
+  environment's HTTPS-only network):** Kaggle `marceloventura/the-berka-dataset` (labelled
+  CC0; the original PKDD'99 files with `;` separators and YYMMDD dates), converted to the export
+  format above (`trans.csv`, `loan.csv` only: what the loaders read). `loan.csv` converts to
+  exactly the pinned sha256. `trans.csv` has the same 1,056,320 rows but not the pinned bytes;
+  against the committed outside-check features (682 loan accounts): loan statuses identical,
+  transaction counts differ by up to 4 per account, balances by up to 0.5 CZK (90-day mean by up
+  to 6.6 CZK). Results on this copy are compared only with runs on the same copy.

@@ -163,8 +163,7 @@ def test_target_that_cannot_be_met_returns_the_lowest_p_short(world):
 # ---------------------------------------------------------------- action effects are exact
 
 
-def test_invoice_and_overdraft_deltas_match_engine_runs(world):
-    _, _, inp, dinp = world
+def _delta_gaps(inp, dinp):
     base = run_engine(inp, "d-delta", 300, keep_flows=True)
     acts = candidate_actions(inp, dinp, base, 90, [])
     picks = [next(a for a in acts if a.kind == k) for k in ("treds_discount", "msmed_interest", "overdraft")]
@@ -172,9 +171,29 @@ def test_invoice_and_overdraft_deltas_match_engine_runs(world):
         k = 3 if a.kind == "overdraft" else 1
         res = run_engine(apply_transforms(inp, a.transforms(k)), "d-delta:x", 300, seed_id="d-delta")
         got = res.balance[:, 1:] - base.balance[:, 1:]
-        want = (np.where(np.arange(1, 91) >= a.detail["draw_day"], k * a.unit_paise, 0)[None, :]
-                if a.kind == "overdraft" else invoice_delta(base, inp, a, 90))
-        assert np.array_equal(got, np.broadcast_to(want, got.shape)), a.kind
+        want = np.broadcast_to(np.where(np.arange(1, 91) >= a.detail["draw_day"], k * a.unit_paise, 0)[None, :]
+                               if a.kind == "overdraft" else invoice_delta(base, inp, a, 90), got.shape)
+        yield a, k, got, want
+
+
+def test_invoice_and_overdraft_deltas_match_engine_runs(world):
+    # exact when unscheduled flows do not react to the balance (the transforms themselves)
+    _, _, flat, dinp = world  # default inputs: bootstrap unscheduled flows, no balance feedback
+    assert not getattr(flat.unscheduled, "balance_feedback", False)
+    for a, _, got, want in _delta_gaps(flat, dinp):
+        assert np.array_equal(got, want), a.kind
+
+
+def test_deltas_are_close_when_flows_react_to_the_balance(world):
+    # the flow forecaster pulls the balance back towards usual, so an action's cash is partly offset
+    # later; the decision engine's linear model ignores that and the fresh-path run checks it
+    cfg, obs, _, dinp = world
+    cats = generate_world(cfg, past_seed=0, future_seed=0)[1].transactions.select("txn_uid", "category")
+    inp = build_learned_inputs(obs, cats, cfg.as_of_date, RUN, threshold_paise=THRESHOLD, flow_forecaster="quantile")
+    assert inp.unscheduled.balance_feedback
+    for a, k, got, want in _delta_gaps(inp, dinp):
+        cash = k * a.unit_paise if a.kind == "overdraft" else a.detail.get("cash_paise", a.detail.get("principal_paise"))
+        assert np.abs(got - want).max() <= 0.01 * abs(cash), a.kind
 
 
 def test_chasing_one_buyer_moves_only_its_invoices(world):

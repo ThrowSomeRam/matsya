@@ -17,9 +17,17 @@ dependencies = [
 dev = ["pytest>=8"]
 # Benchmarks on foreign datasets only (eval/models); never used by production components.
 bench = ["scikit-survival>=0.23", "lightgbm>=4.3", "pymysql>=1.1"]
+# Flow forecaster fallback under 8 weeks of history (Chronos-2 zero-shot); CPU torch only.
+chronos = ["chronos-forecasting>=2.2,<3", "torch>=2.2,<3"]
 
 [tool.uv.sources]
 matsya-contracts = { path = "../contracts", editable = true }
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
