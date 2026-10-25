@@ -20,6 +20,10 @@ Scenario effects (scenarios component) are applied here at run time, never to st
 tables. Their own randomness (cash event days in a window, extra orders) comes from a
 separate "engine:scenario" stream, so the baseline streams are untouched: a scenario run
 with the baseline's seed_id differs from the baseline only by the scenario.
+
+Payment simulation draws a uniform for every row in every simulated week, active or not, so
+row r's draws do not depend on whether other rows have been paid. A change to one buyer's
+chances (or to one invoice) then moves only that buyer's (or invoice's) payments.
 """
 
 import hashlib
@@ -103,6 +107,13 @@ class ScenarioEffects:
     purchase_shift_days: int = 0
     cash: tuple[tuple[int, int, int], ...] = ()
     freezes: tuple[tuple[int, int, float], ...] = ()
+    # (buyer mask, factor, last_day): x factor for weeks starting on days 1..last_day
+    pay_windows: tuple[tuple[np.ndarray, float, int], ...] = ()
+    # (open invoice index, day, amount_paise, mode): mode "replace" pays the invoice on day with
+    # amount instead of its timing; "if_unpaid" does so only on paths not paid by then
+    invoice_cash: tuple[tuple[int, int, int, str], ...] = ()
+    # (share, days): that share of every future supplier payment moves by days (earliest day 1)
+    purchase_partial_shifts: tuple[tuple[float, int], ...] = ()
 
 
 SalesSampler = Callable[..., tuple[Invoices, pl.DataFrame]]
@@ -141,6 +152,7 @@ class EngineInputs:
     fixed_kinds: list[str] = field(default_factory=list)  # index-aligned with fixed (obligation kind)
     fixed_ids: list[str] = field(default_factory=list)  # index-aligned with fixed (obligation_id)
     scenario: ScenarioEffects | None = None
+    open_invoice_ids: list[str] = field(default_factory=list)  # index-aligned with open_invoices
 
 
 def month_key(d: date) -> int:
@@ -161,11 +173,11 @@ def _offset_probs(inp: EngineInputs, buyer: np.ndarray, issue_day: np.ndarray) -
     return inp.weekday_probs[buyer[:, None], cols]
 
 
-def _pick_offset(rng: np.random.Generator, probs: np.ndarray, start: np.ndarray) -> np.ndarray:
-    """Offset j >= start, with probability proportional to probs[j]."""
+def _pick_offset(u: np.ndarray, probs: np.ndarray, start: np.ndarray) -> np.ndarray:
+    """Offset j >= start, with probability proportional to probs[j]; u uniform per row."""
     w = np.where(np.arange(7)[None, :] >= start[:, None], probs, 0.0)
     cdf = np.cumsum(w, axis=1)
-    u = rng.random(len(w)) * cdf[:, -1]
+    u = u * cdf[:, -1]
     return (cdf < u[:, None]).sum(axis=1)
 
 
@@ -174,6 +186,7 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
                        shift_fn: ShiftFn | None) -> np.ndarray:
     """Payment day per (path, invoice) row, or -1 if dead or after the horizon.
 
+    Uniforms are drawn for every row each week (see the module docstring).
     survive[row] = survival probability to the cut (1 for invoices with no elapsed time);
     elapsed weeks c and days r come from survival_through_day.
     """
@@ -186,6 +199,7 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     pi = np.concatenate(inp.timing.pi)[_flat_index(inp, b, d)]
     sc = inp.scenario
     mult = None if sc is None or sc.pay_mult is None else sc.pay_mult[b]
+    windows = [(mask[b], factor, last) for mask, factor, last in (sc.pay_windows if sc is not None else ())]
     due_new = due if sc is None or sc.due_week is None else np.where(sc.due_week[b] >= 0, sc.due_week[b], due)
     based = shift_fn is not None and inp.timing.p_base is not None
     if based:
@@ -213,7 +227,9 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     start = r.copy()  # first week: only offsets >= r remain
     f = np.where(start > 0, np.take_along_axis(np.cumsum(probs, axis=1), np.maximum(start - 1, 0)[:, None], 1)[:, 0], 0.0)
     active = alive.copy()
+    n = len(path)
     while active.any():
+        u_hit, u_off = rng.random(n), rng.random(n)
         a = np.flatnonzero(active)
         week_start = issue[a] + 7 * (k[a] - 1)
         # past weeks: posterior and old terms; future weeks: base chances (shock hook) and new terms
@@ -224,9 +240,11 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
         h = _sigmoid_shift(base, None if shift_fn is None else shift_fn(path[a], b[a], week_start))
         if mult is not None:
             h = np.where(week_start >= 1, np.minimum(h * mult[a], 1.0), h)
+        for in_w, factor, last in windows:
+            h = np.where(in_w[a] & (week_start >= 1) & (week_start <= last), np.minimum(h * factor, 1.0), h)
         ff = f[a]
-        hit = rng.random(a.size) < h * (1 - ff) / (1 - h * ff)
-        off = _pick_offset(rng, probs[a], start[a])
+        hit = u_hit[a] < h * (1 - ff) / (1 - h * ff)
+        off = _pick_offset(u_off[a], probs[a], start[a])
         day = week_start + off
         paid = a[hit]
         pay[paid] = day[hit]
@@ -289,6 +307,7 @@ class EngineResult:
     flows: dict[str, np.ndarray] | None  # (n_paths, horizon + 1) per component, when keep_flows
     balance_quantiles: pl.DataFrame  # forecast.balance_quantiles
     shortfall: pl.DataFrame  # forecast.shortfall
+    open_pay: np.ndarray | None = None  # (n_paths, n_open) payment day per open invoice, -1 none; keep_flows only
 
     def contract_tables(self) -> dict[str, pl.DataFrame]:
         return {"forecast.runs": run_table(self.run), "forecast.balance_quantiles": self.balance_quantiles,
@@ -325,13 +344,24 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
 
     # 3. Open invoices.
     oi = inp.open_invoices
+    open_pay = None
     if len(oi.buyer):
         surv = _open_survival(inp, oi)
         path = np.repeat(np.arange(n_paths), len(oi.buyer))
         idx = np.tile(np.arange(len(oi.buyer)), n_paths)
         s = surv[idx, draw_idx[path, oi.buyer[idx]]]
         pay = _simulate_payments(inp, rng["open_invoices"], path, idx, oi, draw_idx, s, H, shift_fn)
-        add("open_invoice_receipts", path, pay, oi.cash[idx])
+        amount = oi.cash[idx]
+        if sc is not None and sc.invoice_cash:
+            amount = amount.copy()
+            for i, day, amt, mode in sc.invoice_cash:
+                rows = idx == i
+                if mode == "if_unpaid":
+                    rows &= (pay < 0) | (pay > day)
+                pay[rows] = day if day <= H else -1
+                amount[rows] = amt
+        add("open_invoice_receipts", path, pay, amount)
+        open_pay = pay.reshape(n_paths, len(oi.buyer))
 
     # 2, 4, 5. Sales: future invoices and linked purchases.
     month_of_day = np.array([month_key(inp.as_of + timedelta(days=d)) for d in range(H + 1)])
@@ -354,11 +384,20 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
             pp, pd_, pa = purch["path"].to_numpy(), purch["day"].to_numpy(), purch["amount_paise"].to_numpy()
             if sc is not None and sc.purchase_shift_days:
                 pd_ = np.maximum(pd_ + sc.purchase_shift_days, 1)
-            add("purchases", pp, pd_, -pa)
-            for m in np.unique(month_of_day):
-                sel = month_of_day[np.clip(pd_, 0, H)] == m
-                path_month_net[m] = path_month_net.get(m, np.zeros(n_paths)) - np.bincount(
-                    pp[sel], weights=pa[sel] / (1 + inp.gst_rate), minlength=n_paths)
+            pieces = [(pd_, pa)]
+            if sc is not None and sc.purchase_partial_shifts:
+                rest, pieces = pa.copy(), []
+                for share, days in sc.purchase_partial_shifts:
+                    moved = np.round(pa * share).astype(np.int64)
+                    pieces.append((np.maximum(pd_ + days, 1), moved))
+                    rest = rest - moved
+                pieces.append((pd_, rest))
+            for p_day, p_amt in pieces:
+                add("purchases", pp, p_day, -p_amt)
+                for m in np.unique(month_of_day):
+                    sel = month_of_day[np.clip(p_day, 0, H)] == m
+                    path_month_net[m] = path_month_net.get(m, np.zeros(n_paths)) - np.bincount(
+                        pp[sel], weights=p_amt[sel] / (1 + inp.gst_rate), minlength=n_paths)
 
     # 6. GST: per path, months in order, credit carried forward.
     if inp.gst_due_days:
@@ -422,7 +461,7 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
     return EngineResult(run=run, balance=balance,
                         component_totals={k: v.sum(axis=1) for k, v in flows.items()},
                         flows=flows if keep_flows else None,
-                        balance_quantiles=bq, shortfall=sf)
+                        balance_quantiles=bq, shortfall=sf, open_pay=open_pay if keep_flows else None)
 
 
 def run_table(run: dict) -> pl.DataFrame:

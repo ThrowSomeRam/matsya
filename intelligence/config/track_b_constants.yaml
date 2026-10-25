@@ -167,8 +167,36 @@ simulation:          # B6
 
 decision:            # B9
   milp_path_subsample: {value: 1000, status: logic, why: "SE ~ 0.007 at p=0.05, so re-check chosen plan on all 10,000 paths (mandatory)"}
-  shortfall_target_eps: {status: decide, note: "owner-set; pick a labelled default"}
+  verify_paths: {value: 10000, status: logic, why: "fresh paths (own seed stream) for the out-of-sample check"}
+  shortfall_target_eps: {value: 0.05, status: decide, note: "owner-set; labelled default, shown to the owner as 'default 5%'"}
+  shortfall_day: {value: 90, status: assumption, why: "the brief: no breach by day 90"}
   relationship_penalty: {status: decide, note: "owner-set; ask a few MSME owners"}
+  milp_time_limit_s: {value: 60, status: assumption}
+  treds:
+    # VERIFY: no source yet for typical TReDS discount rates (see treds.discount_rate).
+    discount_rate_annual: {value: 0.09, status: verify, note: "default only; owner or platform quote replaces it"}
+    acceptance_lag_days: {value: 2, status: assumption, why: "buyer acceptance plus financier bid, about two working days"}
+    buyer_types: {value: [cpse], status: logic, why: "CPSE settlement must go through TReDS since June 2026 (treds.cpse_settlement_mandate); others only if the owner marks the buyer onboarded"}
+  chase:
+    factor: {value: 1.5, status: assumption, why: "weekly payment chance x 1.5 while chased; not measured"}
+    weeks: {value: 2, status: assumption}
+    cost_paise: {value: 50000, status: assumption, why: "Rs 500: owner time, calls, a visit"}
+  msmed_claim:
+    # Claims go to the MSME ODR portal (Samadhaan); MSEFC to decide within 90 days of reference (s.18(5)).
+    cash_lag_days: {value: 90, status: verify, why: "s.18(5) award window; buyers often pay on notice, so this is the slow end"}
+    recovery_share: {value: 0.5, status: assumption, why: "expected share of the interest actually recovered through MSEFC; scales the claim's value in the objective only. The cash effect stays principal + interest on day cash_lag_days (lands on the horizon's last day, so it cannot fix an earlier dip)"}
+    relationship_penalty_share: {value: 0.10, status: decide, why: "owner-set; default 10% of principal as the value of the relationship put at risk"}
+    partial_month: {value: pro_rata_simple, status: verify, note: "monthly rests; the last incomplete month accrues pro rata by days at its rate"}
+    rate_at: {value: rest_date, status: verify, note: "bank rate in force on each monthly rest date (Calcutta HC, 2024)"}
+  overdraft:
+    rate_annual: {value: 0.11, status: verify, note: "default only; the tenant's sanctioned rate replaces it"}
+    draw_days: {value: [1, 15, 30, 45, 60, 75], status: assumption}
+    units: {value: 10, status: assumption, why: "amounts in tenths of the limit"}
+    repay: {value: after_horizon, status: assumption, why: "interest counted from the draw day to day H + 1"}
+  stretch:
+    days: {value: [7, 14, 30], status: assumption}
+    penalty_paise: {status: decide, note: "owner-set per supplier; default Rs 2,000 per stretch", value: 200000}
+    income_tax_rate: {value: 0.2517, status: verify, why: "s.115BAA company rate with surcharge and cess; proprietors differ. Values the lost 43B(h) / 37(2)(g) deduction"}
 
 payment_timing:      # B4
   time_step: {value: week, status: assumption, test: "compare C-index vs daily model on Kaggle"}

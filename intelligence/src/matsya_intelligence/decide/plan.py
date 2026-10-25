@@ -1,0 +1,335 @@
+"""Decision engine: the cheapest set of actions that keeps the chance of a shortfall by day D at or
+below epsilon, as a sample-average MILP solved with HiGHS, then checked on fresh paths.
+
+Formulation, on N subsample paths (seed `<run>:decide`), balance B[n, t] for days t = 1..D:
+
+  minimise   sum_a cost_a x_a
+  subject to B[n, t] + sum_v delta_v[n, t] x_v + M[n, t] z_n >= theta   every kept (n, t)
+             sum_n z_n <= floor(eps N)
+             at most one action per invoice, one stretch length per supplier, overdraft units <= limit
+             y_{c,i} = x_c (1 - sum x_{a on i})   (linearised: a chased invoice that is also discounted
+                                                    or claimed loses its chase effect)
+  x binary (overdraft: integer units), z binary, y in [0, 1].
+
+delta_v is the change in path n's balance on day t from variable v on the baseline's random numbers
+(actions.py). Effects add, except the interaction handled by y; GST on stretched purchases and a
+claim on a chased invoice are the remaining approximations, which the fresh-path check covers.
+
+Row pruning. lo[n, t] = B + sum_v min(0, ub_v delta_v): a row with lo >= theta holds for every plan
+and is dropped; M[n, t] = theta - lo is the tightest valid big-M. A path with
+B + sum_v max(0, ub_v delta_v) < theta on some day cannot be saved: z_n is fixed to 1.
+
+If no plan reaches eps, a first MILP minimises sum z (the smallest achievable shortfall share) and a
+second finds the cheapest plan at that share; the result says the target was not met.
+
+Verification: the chosen transforms run on N_verify fresh paths (seed `<run>:verify`) against the
+same-seed baseline (common random numbers). The baselines (do nothing, discount every eligible
+invoice, chase the largest buyer) run on the same fresh paths.
+"""
+
+import json
+import math
+from dataclasses import dataclass
+
+import numpy as np
+import polars as pl
+from scipy.optimize import Bounds, LinearConstraint, milp
+from scipy.sparse import coo_matrix, csr_matrix
+
+from matsya_intelligence.decide import costs as C
+from matsya_intelligence.decide.actions import (Action, DecisionInputs, candidate_actions, chase_invoice_delta,
+                                                invoice_delta, owed_interest)
+from matsya_intelligence.engine.core import EngineInputs, EngineResult, run_engine
+from matsya_intelligence.scenarios.apply import apply_transforms
+from matsya_intelligence.scenarios.transforms import to_json, transforms_hash
+
+SCALE = 100_000  # MILP works in Rs 1,000 units for numerics; reported figures stay in paise
+MODEL_VERSION = "saa-milp-highs-v1"
+
+
+@dataclass
+class Columns:
+    """The MILP's variables on one set of paths: actions, then y (chase x invoice) variables."""
+
+    acts: list[Action]
+    y: list[tuple[int, int]]  # (chase action index, open invoice index)
+    base: EngineResult
+    chase_runs: dict[int, EngineResult]
+    stretch_runs: dict[int, EngineResult]
+    inp: EngineInputs
+    day: int
+
+    @property
+    def n_vars(self) -> int:
+        return len(self.acts) + len(self.y)
+
+    def ub(self, v: int) -> int:
+        return self.acts[v].ub if v < len(self.acts) else 1
+
+    def delta(self, v: int) -> np.ndarray:
+        """(paths, day) int64 balance change per unit of variable v."""
+        D, H = self.day, self.base.balance.shape[1] - 1
+        if v >= len(self.acts):
+            c, i = self.y[v - len(self.acts)]
+            return chase_invoice_delta(self.base, self.chase_runs[c], self.inp, i, H)[:, :D]
+        a = self.acts[v]
+        if a.kind in ("treds_discount", "msmed_interest"):
+            return invoice_delta(self.base, self.inp, a, H)[:, :D]
+        if a.kind == "overdraft":
+            n = self.base.balance.shape[0]
+            return np.broadcast_to(np.where(np.arange(1, D + 1) >= a.detail["draw_day"], a.unit_paise, 0),
+                                   (n, D)).astype(np.int64)
+        if a.kind == "supplier_stretch":
+            return (self.stretch_runs[v].balance - self.base.balance)[:, 1:D + 1]
+        # chase: whole-run change minus the invoices that have their own y variable
+        d = (self.chase_runs[v].balance - self.base.balance)[:, 1:D + 1]
+        for c, i in self.y:
+            if c == v:
+                d = d - chase_invoice_delta(self.base, self.chase_runs[v], self.inp, i, H)[:, :D]
+        return d
+
+
+def _columns(inp: EngineInputs, active: list, acts: list[Action], base: EngineResult, seed_id: str, n: int,
+             horizon: int, day: int, only: set[int] | None = None) -> Columns:
+    """Scenario runs for chase and stretch actions (all, or the indices in only) on seed_id."""
+    def run(a: Action) -> EngineResult:
+        return run_engine(apply_transforms(inp, active + a.transforms()), f"{seed_id}:{a.kind}:{a.target_id}", n,
+                          horizon, keep_flows=True, seed_id=seed_id)
+
+    want = set(range(len(acts))) if only is None else only
+    chase = {j: run(a) for j, a in enumerate(acts) if a.kind == "chase" and j in want}
+    stretch = {j: run(a) for j, a in enumerate(acts) if a.kind == "supplier_stretch" and j in want}
+    inv_acted = {a.invoice for j, a in enumerate(acts) if a.invoice is not None and j in want}
+    oi = inp.open_invoices
+    y = [(j, int(i)) for j in sorted(chase) for i in np.flatnonzero(oi.buyer == acts[j].buyer) if int(i) in inv_acted]
+    return Columns(acts, y, base, chase, stretch, inp, day)
+
+
+def _p_short(bal: np.ndarray, theta: int, day: int) -> float:
+    return float((bal[:, 1:day + 1].min(axis=1) < theta).mean())
+
+
+def _short_days(bal: np.ndarray, theta: int, day: int) -> float:
+    return float((bal[:, 1:day + 1] < theta).sum(axis=1).mean())
+
+
+def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
+    """Returns (x per variable, sum z, status message, target met)."""
+    B = cols.base.balance[:, 1:cols.day + 1].astype(float)
+    n, V = B.shape[0], cols.n_vars
+    lo, hi = B.copy(), B.copy()
+    for v in range(V):
+        d = cols.delta(v).astype(float) * cols.ub(v)
+        lo += np.minimum(d, 0)
+        hi += np.maximum(d, 0)
+    hopeless = (hi < theta).any(axis=1)
+    keep = (lo < theta) & ~hopeless[:, None]
+    rn, rt = np.nonzero(keep)
+    R = len(rn)
+    # variables: x (V), z (n)
+    blocks = []
+    for v in range(V):
+        vals = cols.delta(v)[rn, rt].astype(float) / SCALE
+        nz = np.flatnonzero(vals)
+        blocks.append((nz, np.full(nz.size, v), vals[nz]))
+    rows = np.concatenate([b[0] for b in blocks] + [np.arange(R)])
+    cidx = np.concatenate([b[1] for b in blocks] + [V + rn])
+    vals = np.concatenate([b[2] for b in blocks] + [(theta - lo[rn, rt]) / SCALE])
+    A_paths = coo_matrix((vals, (rows, cidx)), shape=(R, V + n)).tocsr()
+    lb_paths = (theta - B[rn, rt]) / SCALE
+
+    side, s_lo, s_hi = [], [], []
+
+    def row(coefs: dict[int, float], lo_: float, hi_: float):
+        r = np.zeros(V + n)
+        for j, c in coefs.items():
+            r[j] += c
+        side.append(r)
+        s_lo.append(lo_)
+        s_hi.append(hi_)
+
+    acts = cols.acts
+    by_inv: dict[int, list[int]] = {}
+    for j, a in enumerate(acts):
+        if a.invoice is not None:
+            by_inv.setdefault(a.invoice, []).append(j)
+    for js in by_inv.values():
+        if len(js) > 1:
+            row({j: 1 for j in js}, -np.inf, 1)
+    by_sup: dict[str, list[int]] = {}
+    for j, a in enumerate(acts):
+        if a.supplier is not None:
+            by_sup.setdefault(a.supplier, []).append(j)
+    for js in by_sup.values():
+        row({j: 1 for j in js}, -np.inf, 1)
+    od = [j for j, a in enumerate(acts) if a.kind == "overdraft"]
+    if od:
+        row({j: 1 for j in od}, -np.inf, acts[od[0]].ub)
+    for yi, (c, i) in enumerate(cols.y):
+        yv = len(acts) + yi
+        on_i = by_inv.get(i, [])
+        row({yv: 1, c: -1}, -np.inf, 0)
+        row({yv: 1, **{j: 1 for j in on_i}}, -np.inf, 1)
+        row({yv: -1, c: 1, **{j: -1 for j in on_i}}, -np.inf, 0)
+
+    cap = math.floor(eps * n + 1e-9)
+    z_lb = hopeless.astype(float)
+    lb = np.concatenate([np.zeros(V), z_lb])
+    ub = np.concatenate([[cols.ub(v) for v in range(V)], np.ones(n)])
+    integrality = np.concatenate([[1] * len(acts), [0] * len(cols.y), np.ones(n)])
+    cost = np.concatenate([[a.cost_paise / SCALE for a in acts], np.zeros(len(cols.y)), np.zeros(n)])
+    base_cons = [LinearConstraint(A_paths, lb_paths, np.inf)] if R else []
+    if side:
+        base_cons.append(LinearConstraint(csr_matrix(np.array(side)), s_lo, s_hi))
+    z_row = csr_matrix(np.concatenate([np.zeros(V), np.ones(n)])[None, :])
+    opts = {"time_limit": time_limit, "disp": False, "presolve": True}
+
+    def go(c, zcap):
+        cons = base_cons + [LinearConstraint(z_row, -np.inf, zcap)]
+        return milp(c, constraints=cons, integrality=integrality, bounds=Bounds(lb, ub), options=opts)
+
+    met = True
+    res = go(cost, cap) if hopeless.sum() <= cap else None
+    if res is None or res.x is None:
+        met = False
+        zc = np.concatenate([np.zeros(V), np.ones(n)])
+        r1 = go(zc, n)
+        if r1.x is None:
+            raise RuntimeError(f"decision MILP failed: {r1.message}")
+        best = int(round(r1.x[V:].sum()))
+        res = go(cost, best)
+        if res.x is None:
+            res = r1
+    x = np.round(res.x[:V]).astype(np.int64)
+    x[len(acts):] = np.clip(x[len(acts):], 0, 1)
+    return x, int(round(res.x[V:].sum())), res.message, met, R
+
+
+@dataclass
+class DecisionResult:
+    run_id: str
+    tenant_id: str
+    plan: pl.DataFrame  # decisions.plans
+    chosen: list[tuple[Action, int]]
+    transforms: list
+    target_met: bool
+    eps: float
+    day: int
+    n_sub: int
+    n_verify: int
+    p_short_sub: float  # the plan on the subsample (in-sample)
+    p_short_verified: float  # on fresh paths
+    p_short_verified_se: float
+    baselines: pl.DataFrame
+    msmed_owed: pl.DataFrame
+    message: str
+    n_candidates: int
+    n_rows: int
+    record: dict
+
+    @property
+    def cost_paise(self) -> int:
+        return sum(a.cost(k) for a, k in self.chosen)
+
+    def contract_tables(self) -> dict[str, pl.DataFrame]:
+        return {"decisions.plans": self.plan}
+
+
+def _baseline_row(name: str, bal: np.ndarray, theta: int, day: int, cost: int, n_actions: int) -> dict:
+    return {"baseline": name, "n_actions": n_actions, "cost_paise": cost, "p_short": _p_short(bal, theta, day),
+            "expected_shortfall_days": _short_days(bal, theta, day)}
+
+
+def decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_transforms: list | None = None,
+           n_sub: int | None = None, n_verify: int | None = None, horizon: int = 90) -> DecisionResult:
+    """The cheapest plan meeting the target for this tenant at as_of, verified on fresh paths."""
+    k = C.constants()
+    active = list(active_transforms or [])
+    eps = dinp.eps if dinp.eps is not None else k["shortfall_target_eps"]["value"]
+    day = dinp.day if dinp.day is not None else k["shortfall_day"]["value"]
+    n_sub = n_sub or k["milp_path_subsample"]["value"]
+    n_verify = n_verify or k["verify_paths"]["value"]
+    if not 1 <= day <= horizon:
+        raise ValueError("shortfall day outside the horizon")
+    theta = inp.threshold_paise
+    inp_a = apply_transforms(inp, active)
+    run_id = f"{base_run_id}:decide"
+    sub_id, ver_id = f"{run_id}:subsample", f"{run_id}:verify"
+
+    base = run_engine(inp_a, sub_id, n_sub, horizon, keep_flows=True)
+    acts = candidate_actions(inp_a, dinp, base, horizon, active)
+    cols = _columns(inp, active, acts, base, sub_id, n_sub, horizon, day)
+    x, z_sum, message, met, n_rows = _solve(cols, theta, eps, k["milp_time_limit_s"]["value"])
+    chosen_idx = [j for j in range(len(acts)) if x[j] > 0]
+
+    # In-sample plan balance (linear model) and leave-one-out importance for the ranking.
+    B = base.balance[:, 1:day + 1].astype(np.int64)
+    contrib = {v: cols.delta(v) * int(x[v]) for v in range(cols.n_vars) if x[v] > 0}
+    plan_bal = B + sum(contrib.values()) if contrib else B
+    p_plan_sub = float((plan_bal.min(axis=1) < theta).mean())
+
+    def loo(j: int) -> float:
+        d = plan_bal - contrib[j]
+        for yi, (c, _) in enumerate(cols.y):
+            if c == j and len(acts) + yi in contrib:
+                d = d - contrib[len(acts) + yi]
+        return float((d.min(axis=1) < theta).mean()) - p_plan_sub
+
+    order = sorted(chosen_idx, key=lambda j: (-loo(j), acts[j].cost(int(x[j])), acts[j].kind, acts[j].target_id))
+
+    # Fresh paths: baseline, the plan step by step (additive on these paths), the full plan as a run.
+    vbase = run_engine(inp_a, ver_id, n_verify, horizon, keep_flows=True)
+    vcols = _columns(inp, active, acts, vbase, ver_id, n_verify, horizon, day, only=set(chosen_idx))
+    plan_ts = [t for j in order for t in acts[j].transforms(int(x[j]))]
+    vplan = run_engine(apply_transforms(inp, active + plan_ts), f"{ver_id}:plan", n_verify, horizon, seed_id=ver_id)
+    p_ver = _p_short(vplan.balance, theta, day)
+
+    # A chased invoice that the plan also discounts or claims keeps no chase effect (its y is 0 in the
+    # full plan), so the steps leave it out even before that invoice's own action is added.
+    rows, running = [], vbase.balance[:, 1:day + 1].astype(np.int64)
+    for rank, j in enumerate(order, start=1):
+        running = running + vcols.delta(j) * int(x[j])
+        p_after = float((running.min(axis=1) < theta).mean()) if rank < len(order) else p_ver
+        a = acts[j]
+        rows.append({"tenant_id": inp.tenant_id, "run_id": run_id, "rank": rank, "action": a.kind,
+                     "target_id": a.target_id if a.kind != "overdraft" else f"{a.target_id}:{int(x[j]) * a.unit_paise}",
+                     "cost_paise": max(a.cost(int(x[j])), 0), "p_short_after": p_after})
+    from matsya_contracts.validate import schema
+    plan = pl.DataFrame(rows, schema=schema("decisions.plans"))
+
+    # Baselines on the same fresh paths.
+    treds = [a for a in acts if a.kind == "treds_discount"]
+    chases = [a for a in acts if a.kind == "chase"]
+    base_rows = [_baseline_row("do_nothing", vbase.balance, theta, day, 0, 0)]
+    if treds:
+        r = run_engine(apply_transforms(inp, active + [t for a in treds for t in a.transforms()]),
+                       f"{ver_id}:discount_all", n_verify, horizon, seed_id=ver_id)
+        base_rows.append(_baseline_row("discount_all_eligible", r.balance, theta, day,
+                                       sum(a.cost() for a in treds), len(treds)))
+    if chases:
+        big = max(chases, key=lambda a: (a.detail["open_paise"], a.target_id))
+        r = run_engine(apply_transforms(inp, active + big.transforms()), f"{ver_id}:chase_largest", n_verify, horizon,
+                       seed_id=ver_id)
+        base_rows.append(_baseline_row("chase_largest_buyer", r.balance, theta, day, big.cost(), 1))
+    base_rows.append(_baseline_row("plan", vplan.balance, theta, day,
+                                   sum(acts[j].cost(int(x[j])) for j in chosen_idx), len(chosen_idx)))
+    baselines = pl.DataFrame(base_rows)
+
+    if met:
+        msg = f"target met in sample: {z_sum}/{n_sub} paths short by day {day} (cap {math.floor(eps * n_sub + 1e-9)})"
+    else:
+        msg = (f"target {eps:.3f} cannot be met with the available actions; plan minimises p_short "
+               f"({z_sum}/{n_sub} paths short in sample)")
+    record = {"run_id": run_id, "base_run_id": base_run_id, "tenant_id": inp.tenant_id, "as_of": inp.as_of.isoformat(),
+              "model_version": MODEL_VERSION, "model_versions": inp.model_versions,
+              "input_snapshot_ids": inp.input_snapshot_ids, "seed_ids": {"subsample": sub_id, "verify": ver_id},
+              "active_transforms_json": to_json(active), "plan_transforms_json": to_json(plan_ts),
+              "plan_transforms_hash": transforms_hash(plan_ts), "eps": eps, "day": day, "threshold_paise": theta,
+              "n_sub": n_sub, "n_verify": n_verify, "solver": message}
+    return DecisionResult(
+        run_id=run_id, tenant_id=inp.tenant_id, plan=plan, chosen=[(acts[j], int(x[j])) for j in order],
+        transforms=plan_ts, target_met=met, eps=eps, day=day, n_sub=n_sub, n_verify=n_verify,
+        p_short_sub=p_plan_sub, p_short_verified=p_ver,
+        p_short_verified_se=math.sqrt(max(p_ver * (1 - p_ver), 1e-12) / n_verify),
+        baselines=baselines, msmed_owed=owed_interest(inp_a, dinp), message=msg, n_candidates=len(acts),
+        n_rows=n_rows, record=json.loads(json.dumps(record, default=str)))

@@ -201,4 +201,5 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
            f"complete_through:{through}"],
         features=features,
         buyer_sectors=buyers["sector"].cast(pl.String).to_list(), fixed_kinds=fixed_kinds, fixed_ids=fixed_ids,
+        open_invoice_ids=open_["invoice_id"].to_list(),
     )

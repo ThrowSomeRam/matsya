@@ -1,0 +1,103 @@
+"""Exact rupee costs of the decision engine's actions, in int64 paise.
+
+All arithmetic is in Fractions and rounded once, half up, to whole paise. Rates come from the
+constants file; the ones without a source are marked status verify there.
+
+  TReDS discount     cash = A - A x r x days_early / 365, cost = A - cash
+  overdraft draw     cost = A x r x days_used / 365
+  MSMED interest     I = P x (prod_k (1 + 3 r_k / 12) - 1), one factor per monthly rest, r_k the
+                     RBI bank rate in force on that rest date; an incomplete last month accrues
+                     pro rata by days at the rate in force on the end date
+"""
+
+import math
+from datetime import date, timedelta
+from decimal import Decimal
+from fractions import Fraction
+
+from matsya_intelligence.synth.world import load_constants
+
+MSMED_RATE_MULTIPLIER = 3  # s.16: three times the bank rate
+MSMED_SUPPLIERS = ("micro", "small")  # s.15/16 and 43B(h) cover micro and small, not medium
+
+
+def constants() -> dict:
+    return load_constants()["decision"]
+
+
+def frac(x) -> Fraction:
+    """Exact Fraction of a config number (0.0575 means 575/10000, not its binary float)."""
+    return Fraction(Decimal(str(x)))
+
+
+def to_paise(x: Fraction) -> int:
+    """Round half up to whole paise."""
+    return math.floor(x + Fraction(1, 2))
+
+
+def bank_rate_history(entries: list[dict] | None = None) -> list[tuple[date, Fraction]]:
+    """(effective_from, annual rate), oldest first. An entry dated TODO is taken as in force
+    from the earliest date (its start is not sourced yet; see rbi_bank_rate.todo)."""
+    entries = entries if entries is not None else load_constants()["rbi_bank_rate"]["history"]
+    out = []
+    for e in entries:
+        d = date.min if str(e["effective_from"]).upper() == "TODO" else date.fromisoformat(str(e["effective_from"]))
+        out.append((d, frac(e["rate"])))
+    return sorted(out)
+
+
+def rate_on(history: list[tuple[date, Fraction]], d: date) -> Fraction:
+    rate = None
+    for start, r in history:
+        if start <= d:
+            rate = r
+    if rate is None:
+        raise ValueError(f"no bank rate in force on {d}")
+    return rate
+
+
+def add_months(d: date, k: int) -> date:
+    m = d.month - 1 + k
+    y, m = d.year + m // 12, m % 12 + 1
+    last = (date(y + m // 12, m % 12 + 1, 1) - timedelta(days=1)).day
+    return date(y, m, min(d.day, last))
+
+
+def msmed_interest(principal_paise: int, start: date, end: date,
+                   history: list[tuple[date, Fraction]] | None = None) -> int:
+    """MSMED s.16 compound interest on principal for the days [start, end).
+
+    start is the appointed day (the day after the s.15 deadline). Monthly rests at start + 1, 2, ...
+    months. # VERIFY: rate at each rest date and the pro rata last month (constants
+    decision.msmed_claim.rate_at / partial_month).
+    """
+    if end <= start or principal_paise <= 0:
+        return 0
+    history = history if history is not None else bank_rate_history()
+    factor = Fraction(1)
+    k = 0
+    while add_months(start, k + 1) <= end:
+        rest = add_months(start, k + 1)
+        factor *= 1 + MSMED_RATE_MULTIPLIER * rate_on(history, rest) / 12
+        k += 1
+    p_start = add_months(start, k)
+    if p_start < end:
+        p_end = add_months(start, k + 1)
+        share = Fraction((end - p_start).days, (p_end - p_start).days)
+        factor *= 1 + MSMED_RATE_MULTIPLIER * rate_on(history, end) / 12 * share
+    return to_paise(principal_paise * (factor - 1))
+
+
+def treds_discount(amount_paise: int, rate_annual, days_early: int) -> tuple[int, int]:
+    """(cash received, cost) for discounting amount days_early days before its due date."""
+    cost = to_paise(amount_paise * frac(rate_annual) * max(days_early, 0) / 365)
+    return amount_paise - cost, cost
+
+
+def overdraft_interest(amount_paise: int, rate_annual, days_used: int) -> int:
+    return to_paise(amount_paise * frac(rate_annual) * max(days_used, 0) / 365)
+
+
+def fiscal_year(d: date) -> int:
+    """Indian FY by its starting year (1 Apr - 31 Mar)."""
+    return d.year if d.month >= 4 else d.year - 1

@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2",
     "pyyaml>=6",
     "scikit-learn>=1.4",
+    "scipy>=1.11",  # HiGHS MILP for the decision engine (already installed via scikit-learn)
     "matsya-contracts",
 ]
 

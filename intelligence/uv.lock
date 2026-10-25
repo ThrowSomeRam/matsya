@@ -270,6 +270,8 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 
 [package.optional-dependencies]
@@ -294,6 +296,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6" },
     { name = "scikit-learn", specifier = ">=1.4" },
     { name = "scikit-survival", marker = "extra == 'bench'", specifier = ">=0.23" },
+    { name = "scipy", specifier = ">=1.11" },
 ]
 provides-extras = ["dev", "bench"]
 

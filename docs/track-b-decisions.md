@@ -460,9 +460,9 @@ scenario's own randomness (window days, extra orders) uses a separate `engine:sc
 stream, so baseline streams are unchanged. Exact consequences, tested: a one-off moves every
 path by exactly its amount from its date; the "unexpected expense" preset changes only the
 scenario cash flow and "revised payment schedule" only fixed obligations. Not exact: when a
-scenario changes how many draws a stream makes (payment chances change how many weekly
-trials run; fewer orders change which invoices exist), the later draws in that stream line
-up differently, so the difference also carries some noise.
+scenario changes which invoices exist (fewer orders), the later draws in that stream line
+up differently, so the difference also carries some noise. Payment-chance changes are exact
+since the decision engine (2026-10-25): every row draws a uniform every week.
 
 **Overrides never update learned parameters.** Tested: after running every preset, the inputs'
 posterior draws, open invoices, fixed obligations and features pickle identically, and a refit
@@ -576,6 +576,79 @@ Share paid by week since issue, predicted / observed (weeks 1-6): Beta-geometric
 above (week 1 and week 2). Better than Cox on Brier and calibration, still behind it on ranking
 (C-index 0.743 vs 0.770). Still under-predicts the due week (0.541 vs 0.594). Open points: s is the config value, not tuned; the day-of-month add-on for within-week placement is
 not built (the weekly Kaggle metrics cannot score it).
+
+## Decision engine (2026-10-25)
+
+`intelligence/.../decide/`. Each action is a scenario transform list with an exact cost in paise
+(constants `decision.*`), applied on the baseline's seed.
+
+| action | transforms | cost in the objective |
+|---|---|---|
+| TReDS discount (per open invoice of a CPSE buyer, or one the owner marks onboarded; not yet due after the lag) | `invoice_cash` replace: A - A r d / 365 on day L, the invoice leaves payment timing | A r d / 365, d = days from day L to the due date |
+| chase a buyer | `rate_multiplier` buyer x 1.5 for 2 weeks (new `weeks` field) | Rs 500 |
+| MSMED claim (micro/small tenant, invoice past its s.15 deadline) | `invoice_cash` if_unpaid: principal + interest on day 90, only on paths still unpaid then | penalty (10% of principal) - recovery (0.5) x P(unpaid by day 90) x interest |
+| overdraft draw | `cash_event` + k x limit / 10 on day d in {1, 15, 30, 45, 60, 75} | A r (H + 1 - d) / 365 (repaid after the horizon) |
+| stretch a supplier | `date_shift` supplier_payments, share s (new field), N in {7, 14, 30} days | owner penalty; micro/small and terms + N > 45: MSMED interest on the expected stretched amount for the days past 45, plus the lost s.43B(h) / 37(2)(g) deduction where the payment moves into the next FY |
+
+Rates without a source are config defaults with status verify: TReDS 9%, overdraft 11%, claim
+cash lag 90 days (s.18(5) award window), income-tax rate 25.17%. Interest is
+P (prod_k (1 + 3 r_k / 12) - 1) with r_k the bank rate in force on each monthly rest date; an
+incomplete last month accrues pro rata by days (VERIFY both). The bank-rate entry dated TODO is
+read as in force from the earliest date. The issue date stands in for acceptance. Suppliers are
+an owner input (id, share of supplier payments, MSME class, terms, penalty, tightened): the
+engine's purchases carry no supplier. A supplier is never stretched if the owner flags it as
+tightened or the active scenario has a supplier terms_change (which covers every supplier).
+
+**Optimiser.** Sample-average chance constraint on a 1,000-path subsample (seed
+`<run>:decide:subsample`): binary actions, integer overdraft units, a binary z_n per path,
+B[n, t] + sum_v delta_v[n, t] x_v + M[n, t] z_n >= theta for t <= 90, sum z <= floor(eps N),
+at most one action per invoice, one stretch length per supplier, units <= the limit. A chased
+invoice that is also discounted or claimed loses its chase effect: y = x_chase (1 - x_invoice),
+linearised. Rows that hold for every plan are dropped; M is the tightest valid big-M; a path no
+plan can save gets z = 1. HiGHS via `scipy.optimize.milp`. If eps cannot be reached, a first
+solve minimises sum z and a second finds the cheapest plan at that share; the result says so.
+eps defaults to 0.05 (status decide).
+
+**Deltas.** TReDS, claim and overdraft effects are exact from the baseline's per-invoice payment
+days (tested against engine runs, equal to the paisa). Chase and stretch effects come from
+scenario runs on the same seed. Engine change to make that exact: payment simulation now draws a
+uniform for every row every week, active or not, so a change to one buyer's chances moves only
+that buyer's payments (tested). Same distribution as before, different draws: earlier runs'
+numbers are not reproduced bit for bit at this commit. Remaining non-additivity (GST on stretched
+purchases; a claim on a chased invoice) is covered by the fresh-path check.
+
+**Verification and outputs.** The chosen transforms run on 10,000 fresh paths (seed
+`<run>:decide:verify`) against the same-seed baseline. `decisions.plans`: rank by leave-one-out
+importance on the subsample (p_short rise when the action is dropped), then cost;
+`p_short_after` is cumulative on the fresh paths, adding the actions in rank order, and the last
+row is the full plan's run. The plans table holds max(cost, 0) (claims can have negative net cost).
+The run record keeps both seed ids, the active and plan transform lists (canonical JSON and hash),
+eps, day and threshold; a rerun gives an identical plan, record and baselines (tested). The amount
+owed under MSMED on every overdue invoice is reported whether or not a claim is chosen.
+
+**Default world** (past seed 0, threshold Rs 20 lakh so the world is risky, small tenant, overdraft
+limit Rs 10 lakh, suppliers S1 micro 50% and S2 other 30%, both 30-day terms; 1,000 subsample
+paths, 10,000 fresh paths; eps 0.05 at day 90). One world, illustrative only:
+
+| baseline | actions | cost (Rs) | p_short(90) | expected days below threshold |
+|---|---|---|---|---|
+| do nothing | 0 | 0 | 0.717 | 10.62 |
+| discount every eligible invoice | 7 | 2,442 | 0.645 | 7.14 |
+| chase the largest buyer | 1 | 500 | 0.695 | 9.43 |
+| plan | 7 | 13,727 | 0.042 (in sample 0.046) | 0.19 |
+
+Plan: Rs 4 lakh overdraft on day 1 (Rs 10,849 interest), S1 +14 days and S2 +30 days (Rs 2,000
+each; S1 stays within 45 days so owes no MSMED interest), and four MSMED claims whose expected
+interest just beats the penalty. 83 candidates, 11,397 constraint rows after pruning, about 47 s
+(23 engine runs).
+
+**Contract gaps (proposals, additive).** 15. `decisions.plans` has no amount or parameters: an
+overdraft row's amount is in target_id (`day1:40000000`), a stretch's days in target_id
+(`S1:+14d`). Propose nullable `amount_paise` and `params_json` (the action's transforms). 16. A
+negative net cost (claims) cannot be stored (cost_paise is non-negative); propose nullable
+`net_cost_paise`. 17. Nowhere for the baselines comparison, the MSMED amount owed or the
+decision run record (seeds, transform lists); propose `decisions.baselines`,
+`decisions.msmed_owed` and a `decisions.runs` row.
 
 ## Requests to Track A
 

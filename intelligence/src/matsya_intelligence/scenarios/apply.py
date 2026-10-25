@@ -32,9 +32,17 @@ def apply_transforms(inp: EngineInputs, transforms: list) -> EngineInputs:
     due_week = np.full(n_b, -1, dtype=np.int64)
     order_mult, purchase_shift, sticky = 1.0, 0, 0
     fixed = list(inp.fixed)
-    cash, freezes = [], []
+    cash, freezes, windows, inv_cash, partial = [], [], [], [], []
     for t in transforms:
-        if t.type == "rate_multiplier":
+        if t.type == "rate_multiplier" and t.weeks is not None:
+            if t.target == "all_buyers":
+                mask = np.ones(n_b, dtype=bool)
+            elif t.target == "buyer":
+                mask = _buyers(inp, t.ids)
+            else:
+                mask = np.array([s in t.ids for s in inp.buyer_sectors], dtype=bool)
+            windows.append((mask, t.factor, 7 * t.weeks))
+        elif t.type == "rate_multiplier":
             if t.target == "orders":
                 order_mult *= t.factor
                 sticky = max(sticky, t.stickiness_days)
@@ -51,7 +59,10 @@ def apply_transforms(inp: EngineInputs, transforms: list) -> EngineInputs:
                 pay_mult[np.array([s in t.ids for s in inp.buyer_sectors])] *= t.factor
         elif t.type == "date_shift":
             if t.target == "supplier_payments":
-                purchase_shift += t.days
+                if t.share is None:
+                    purchase_shift += t.days
+                else:
+                    partial.append((t.share, t.days))
                 continue
             keys = inp.fixed_kinds if t.target == "obligation_kind" else inp.fixed_ids
             if len(keys) != len(fixed):
@@ -74,10 +85,19 @@ def apply_transforms(inp: EngineInputs, transforms: list) -> EngineInputs:
                 due_week[sel] = t.to_days // 7 + 1
         elif t.type == "freeze":
             freezes.append((max(_day(inp, t.start), 1), t.days, t.fraction))
+        elif t.type == "invoice_cash":
+            if t.invoice_id not in inp.open_invoice_ids:
+                raise ValueError(f"{t.invoice_id} is not an open invoice")
+            if _day(inp, t.on) < 1:
+                raise ValueError(f"invoice cash on {t.on} is not after as_of {inp.as_of}")
+            inv_cash.append((inp.open_invoice_ids.index(t.invoice_id), _day(inp, t.on), t.amount_paise, t.mode))
         else:
             raise ValueError(f"unknown transform {t.type!r}")
     effects = ScenarioEffects(
         pay_mult=None if (pay_mult == 1).all() else pay_mult,
         due_week=None if (due_week < 0).all() else due_week,
-        order_mult=order_mult, purchase_sticky_days=sticky, purchase_shift_days=purchase_shift, cash=tuple(cash), freezes=tuple(freezes))
+        order_mult=order_mult, purchase_sticky_days=sticky, purchase_shift_days=purchase_shift, cash=tuple(cash), freezes=tuple(freezes),
+        pay_windows=tuple(windows), invoice_cash=tuple(inv_cash), purchase_partial_shifts=tuple(partial))
+    if sum(s for s, _ in partial) > 1 + 1e-12:
+        raise ValueError("partial supplier shifts cover more than every supplier payment")
     return replace(inp, fixed=fixed, scenario=effects)
