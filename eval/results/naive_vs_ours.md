@@ -13,38 +13,34 @@
 
 Flags: the chance of running short by day 90 is at or above the bar. right = agrees with the truth; caught = flagged when the truth has a shortfall; false alarms = flagged when it does not.
 
-## Demo world (borderline, past seed 0, cushion Rs 10 lakh)
+## Demo world (borderline, past seed 2, cushion Rs 0 lakh)
 
 | model | p_short(90) | median day 30, Rs lakh | median day 60, Rs lakh | median day 90, Rs lakh |
 |---|---|---|---|---|
-| truth | 0.460 | 34.46 | 45.46 | 45.01 |
-| naive | 0.000 | 128.53 | 91.78 | 36.31 |
-| ours | 0.327 | 37.62 | 47.97 | 52.23 |
+| truth | 0.270 | 32.89 | 39.98 | 44.82 |
+| naive | 0.000 | 140.08 | 92.50 | 36.45 |
+| ours | 0.294 | 31.24 | 36.17 | 39.49 |
 
-Bills naive counts as certain cash that ours marks as likely dead (our chance of never being paid >= 0.5): 20, Rs 40.69 lakh in total (ANAND VIJAY CASTINGS PVT LTD, JAI DURGA FORGINGS PVT LTD, OM KRISHNA GARMENTS PVT LTD, SHREE SHAKTI WEAVERS PVT LTD).
+Bills naive counts as certain cash that ours marks as likely dead (our chance of never being paid >= 0.5): 16, Rs 31.91 lakh in total (ANAND AMBA FORGINGS PVT LTD, BHAGYA AMBA FOODS PVT LTD, SURYA UMIYA AUTO PARTS LTD).
 
 | buyer | amount (Rs) | age (days) | days overdue | our chance never paid | never paid in truth |
 |---|---|---|---|---|---|
-| ANAND VIJAY CASTINGS PVT LTD | 1,053,295 | 335 | 320 | 1.000 | True |
-| OM KRISHNA GARMENTS PVT LTD | 327,741 | 276 | 261 | 0.990 | True |
-| SHREE SHAKTI WEAVERS PVT LTD | 273,300 | 315 | 270 | 1.000 | True |
-| OM KRISHNA GARMENTS PVT LTD | 248,181 | 352 | 322 | 0.998 | True |
-| JAI DURGA FORGINGS PVT LTD | 226,120 | 230 | 185 | 0.894 | True |
-| JAI DURGA FORGINGS PVT LTD | 223,796 | 173 | 158 | 0.814 | True |
-| OM KRISHNA GARMENTS PVT LTD | 212,889 | 193 | 178 | 0.930 | True |
-| SHREE SHAKTI WEAVERS PVT LTD | 211,292 | 251 | 221 | 1.000 | True |
-| JAI DURGA FORGINGS PVT LTD | 195,480 | 143 | 128 | 0.708 | True |
-| JAI DURGA FORGINGS PVT LTD | 166,427 | 295 | 250 | 0.968 | True |
-| OM KRISHNA GARMENTS PVT LTD | 159,179 | 328 | 283 | 0.995 | True |
-| OM KRISHNA GARMENTS PVT LTD | 151,043 | 287 | 257 | 0.990 | True |
-| OM KRISHNA GARMENTS PVT LTD | 132,088 | 180 | 150 | 0.881 | False |
-| OM KRISHNA GARMENTS PVT LTD | 121,714 | 331 | 301 | 0.997 | True |
-| JAI DURGA FORGINGS PVT LTD | 90,222 | 214 | 184 | 0.891 | True |
-| ANAND VIJAY CASTINGS PVT LTD | 85,666 | 217 | 202 | 0.998 | True |
-| OM KRISHNA GARMENTS PVT LTD | 84,778 | 170 | 125 | 0.830 | True |
-| ANAND VIJAY CASTINGS PVT LTD | 53,087 | 353 | 323 | 1.000 | True |
-| JAI DURGA FORGINGS PVT LTD | 26,623 | 339 | 324 | 0.992 | True |
-| SHREE SHAKTI WEAVERS PVT LTD | 26,409 | 236 | 221 | 1.000 | True |
+| BHAGYA AMBA FOODS PVT LTD | 804,762 | 159 | 114 | 0.944 | True |
+| BHAGYA AMBA FOODS PVT LTD | 533,122 | 170 | 125 | 0.964 | True |
+| ANAND AMBA FORGINGS PVT LTD | 216,346 | 303 | 258 | 0.871 | True |
+| ANAND AMBA FORGINGS PVT LTD | 213,587 | 258 | 243 | 0.817 | True |
+| BHAGYA AMBA FOODS PVT LTD | 208,205 | 90 | 75 | 0.759 | False |
+| ANAND AMBA FORGINGS PVT LTD | 184,188 | 337 | 307 | 0.910 | True |
+| ANAND AMBA FORGINGS PVT LTD | 181,101 | 317 | 287 | 0.896 | True |
+| BHAGYA AMBA FOODS PVT LTD | 169,314 | 169 | 139 | 0.968 | True |
+| ANAND AMBA FORGINGS PVT LTD | 148,872 | 321 | 291 | 0.896 | True |
+| SURYA UMIYA AUTO PARTS LTD | 119,135 | 156 | 111 | 0.511 | False |
+| BHAGYA AMBA FOODS PVT LTD | 101,750 | 295 | 265 | 0.999 | True |
+| ANAND AMBA FORGINGS PVT LTD | 87,441 | 352 | 307 | 0.922 | True |
+| BHAGYA AMBA FOODS PVT LTD | 71,582 | 294 | 264 | 0.999 | True |
+| BHAGYA AMBA FOODS PVT LTD | 65,234 | 165 | 120 | 0.955 | True |
+| BHAGYA AMBA FOODS PVT LTD | 48,269 | 207 | 162 | 0.988 | True |
+| BHAGYA AMBA FOODS PVT LTD | 38,260 | 266 | 221 | 0.998 | True |
 
 ## Per world
 

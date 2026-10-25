@@ -152,20 +152,20 @@ Setup: 30 worlds (presets x past seeds 0-9), threshold 0, 10,000 paths. Paired b
 **Why naive's error is so large early on.** It counts every overdue bill as cash on day 1. Its error
 shrinks by day 90 only because the missing future sales and purchases partly offset that.
 
-**Demo world** (borderline, past seed 0, Rs 10 lakh cushion; the true 90-day chance is 0.46):
+**Demo world** (borderline, past seed 2, threshold 0, no cushion; the true 90-day chance is 0.27):
 
 | | 90-day chance | ours (Rs lakh) | naive (Rs lakh) | truth (Rs lakh) |
 |---|---|---|---|---|
-| truth | 0.460 | | | |
-| ours | 0.327 | | | |
+| truth | 0.270 | | | |
+| ours | 0.294 | | | |
 | naive | 0.000 | | | |
-| median day 30 | | 37.62 | 128.53 | 34.46 |
-| median day 90 | | 52.23 | 36.31 | 45.01 |
+| median day 30 | | 31.24 | 140.08 | 32.89 |
+| median day 90 | | 39.49 | 36.45 | 44.82 |
 
-- **Dead bills:** naive counts 20 bills (Rs 40.69 lakh) as certain cash that ours marks as likely never
-  paid (chance >= 0.5). In truth, 19 of the 20 are never paid.
-- **Ours still under-predicts:** 0.33 against the true 0.46, the same low-risk under-prediction the
-  calibration guard bins show.
+- **Dead bills:** naive counts 16 bills (Rs 31.91 lakh) as certain cash that ours marks as likely never
+  paid (chance >= 0.5). In truth, 14 of the 16 are never paid.
+- **Ours is close here:** 0.29 against the true 0.27, slightly cautious. Across the 30 worlds ours
+  leans about 8 points low.
 
 Chart data: `eval/demo/naive_vs_ours.json`.
 

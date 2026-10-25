@@ -1185,13 +1185,15 @@ against the engine, decision engine, scenario and attribution outputs.
 calibration component's level. The demo world has no calibration history, so the scale is 1 and those
 bands equal the engine's.
 
-**Demo payload** (`eval/models/owner_view_demo.py`): `eval/demo/owner_view.json`, built in 620 s at
-10,000 paths. Default world, past seed 0, Rs 10 lakh cushion, categoriser categories, CVaR plan.
+**Demo payload** (`eval/models/owner_view_demo.py`): `eval/demo/owner_view.json`, built in 450 s at
+10,000 paths. Default world, past seed 2, no cushion, categoriser categories, CVaR plan. The demo world
+was chosen as an example where the forecast is close; the 30-world averages remain the evidence (ours
+leans about 8 points low on average there).
 
 - **Today:** Rs 28.6 lakh in the bank.
-- **Risk:** 20% / 29% / 34% chance of running short within 30 / 60 / 90 days; runway beyond 90 days.
-- **Plan:** 6 steps for Rs 1.2 lakh take the 90-day chance to under 1%. Solved optimal.
-- **Money owed:** 54 overdue invoices carry Rs 6.9 lakh of MSMED interest.
+- **Risk:** 9% / 22% / 28% chance of running short within 30 / 60 / 90 days; runway beyond 90 days.
+- **Plan:** 7 steps for Rs 1.3 lakh take the 90-day chance to under 1%. Solved optimal.
+- **Money owed:** 62 overdue invoices carry Rs 4.4 lakh of MSMED interest.
 
 ## Requests to Track A
 

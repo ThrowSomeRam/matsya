@@ -23,7 +23,7 @@ own). Flags: a forecast "flags the shortfall" when its chance of running short b
 0.5 (the runway rule: runway inside 90 days); the truth has a shortfall when the oracle's is.
 A second bar, 0.2, is reported too.
 
-Demo world: the default (borderline) world, past seed 0, with an owner cushion DEMO_THRESHOLD. Writes
+Demo world: the default (borderline) world, past seed 2, with no owner cushion (DEMO_THRESHOLD 0). Writes
 eval/demo/naive_vs_ours.json (the chart data) and eval/results/naive_vs_ours.md.
 """
 
@@ -45,8 +45,8 @@ PRESETS = ("healthy", "borderline", "distressed")
 N_FUTURES, N_PATHS, H = 100, 10_000, 90
 DAYS = (30, 60, 90)
 FLAG_BARS = (0.5, 0.2)
-DEMO = ("borderline", 0)
-DEMO_THRESHOLD = 10_00_000_00  # Rs 10 lakh cushion: the true chance of running short by day 90 is 0.46 (borderline)
+DEMO = ("borderline", 2)
+DEMO_THRESHOLD = 0  # no cushion: the true chance of running short by day 90 is 0.27 (borderline)
 LIKELY_DEAD = 0.5  # our chance of never being paid at or above this: "likely dead"
 DEMO_DIR = Path(__file__).resolve().parents[1] / "demo"
 
