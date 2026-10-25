@@ -7,7 +7,8 @@ the AA summary balance is the latest). Labels and open-invoice survival are cut
 at the ledger-complete-through watermark. Snapshot IDs hash the as-of view the
 components read, so two table histories with the same view give the same run.
 
-Payment-timing model -> posterior draws and open invoices; sales forecaster ->
+Payment-timing model -> posterior draws, empirical hazards (buyers with enough paid bills)
+and open invoices; sales forecaster ->
 future invoices and purchases (with a persistent demand level per path);
 obligations detector -> fixed obligations and GST dates; GST amounts per path
 from sales and purchases (sales forecaster owns them); unscheduled flows from
@@ -115,7 +116,8 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
     through = obs["complete_through"]  # labels and survival are cut at the watermark
     tm = fit_timing(out, inv, buyers, through, run_id=run_id, type_defaults=timing_priors, hierarchical=timing_hierarchical)
     timing = TimingDraws(p_early=[tm.posteriors[b].p_early for b in buyer_ids],
-                         p=[tm.posteriors[b].p for b in buyer_ids], pi=[tm.posteriors[b].pi for b in buyer_ids])
+                         p=[tm.posteriors[b].p for b in buyer_ids], pi=[tm.posteriors[b].pi for b in buyer_ids],
+                         hazard=[tm.hazards.get(b) for b in buyer_ids] if tm.hazards else None)
 
     open_ = inv.filter(pl.col("status") != "paid").join(out.select("invoice_id", "paid_fraction"), on="invoice_id")
     cash = ((open_["gross_paise"] - open_["expected_tds_paise"]) * (1 - open_["paid_fraction"])).round().cast(pl.Int64)
@@ -175,7 +177,9 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         features["forecast.shock_state"] = shocks.state_table(tenant)
         var = [0.0 if not shock_base else shocks.stationary_var(sector_of[b]) for b in buyer_ids]
         timing = replace(timing, p_early_base=[base_chance(x, v) for x, v in zip(timing.p_early, var)],
-                         p_base=[base_chance(x, v) for x, v in zip(timing.p, var)])
+                         p_base=[base_chance(x, v) for x, v in zip(timing.p, var)],
+                         hazard_base=None if timing.hazard is None else
+                         [None if h is None else base_chance(h, v) for h, v in zip(timing.hazard, var)])
     gst_days = [(d - as_of).days for d, k in zip(obligations["due_date"], obligations["kind"]) if k == "gst"]
     first_base = month_key(as_of + timedelta(days=min(gst_days))) - 1 if gst_days else month_key(as_of)
     supplier = txns.join(categories.select("txn_uid", "category"), on="txn_uid").filter(
@@ -190,7 +194,7 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         survival_through_day=(through - as_of).days, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
         gst_due_days=gst_days, gst_history_net=known, gst_carry_in=carry,
         unscheduled=bootstrap_unscheduled(txns, categories, as_of, full=full_unscheduled), shift_sampler=shock_sampler,
-        model_versions={"payment_timing": "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1",
+        model_versions={"payment_timing": "beta-geometric-2phase-v1+empirical-v1" if tm.hazards else "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1",
                         "obligations_detector": "v1", "unscheduled": "bootstrap-8w-v0"},
         input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(obs.items()) if isinstance(v, pl.DataFrame)]
         + [f"opening_balance:{obs['opening_balance']['closing_paise']}@{obs['opening_balance']['date']}",

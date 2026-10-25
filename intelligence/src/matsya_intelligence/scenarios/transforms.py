@@ -6,7 +6,8 @@ with the run (canonical JSON plus its sha256) so the run can be replayed exactly
 
 Types:
   rate_multiplier  weekly payment chance x factor for buyers / sectors / all buyers, or the
-                   order rate x factor (purchases follow via the purchase ratio)
+                   order rate x factor (purchases follow via the purchase ratio, after a
+                   purchase_stickiness_days delay for orders already placed)
   date_shift       move fixed obligations (by kind or obligation_id) or every future supplier
                    payment by N days
   cash_event       one-off amount (signed: + inflow, - outflow) on a date, or on a day drawn
@@ -26,6 +27,9 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
 
+DEFAULT_PURCHASE_STICKINESS_DAYS = 14  # assumption: two weeks of supplies already ordered
+
+
 class _T(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -35,12 +39,21 @@ class RateMultiplier(_T):
     target: Literal["buyer", "sector", "all_buyers", "orders"]
     ids: list[str] = []  # buyer_ids or sectors; empty for all_buyers and orders
     factor: Annotated[float, Field(ge=0)]
+    # orders only: days beyond the purchase lag for which supplies of dropped orders are still
+    # paid (None = DEFAULT_PURCHASE_STICKINESS_DAYS)
+    purchase_stickiness_days: Annotated[int, Field(ge=0)] | None = None
 
     @model_validator(mode="after")
     def _ids(self):
         if (self.target in ("buyer", "sector")) != bool(self.ids):
             raise ValueError("ids are required for buyer/sector targets and not allowed otherwise")
+        if self.target != "orders" and self.purchase_stickiness_days is not None:
+            raise ValueError("purchase_stickiness_days applies to the orders target only")
         return self
+
+    @property
+    def stickiness_days(self) -> int:
+        return DEFAULT_PURCHASE_STICKINESS_DAYS if self.purchase_stickiness_days is None else self.purchase_stickiness_days
 
 
 class DateShift(_T):

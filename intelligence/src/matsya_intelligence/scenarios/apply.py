@@ -5,7 +5,7 @@ obligations, features) are never modified: the result is a new EngineInputs that
 them and carries the changes as a new fixed-obligations list and ScenarioEffects.
 
 Several transforms compose: multipliers multiply, shifts add, the last terms change for a
-buyer wins, cash events and freezes accumulate. Dates become days after as_of.
+buyer wins, the longest purchase stickiness wins, cash events and freezes accumulate. Dates become days after as_of.
 """
 
 from dataclasses import replace
@@ -30,13 +30,14 @@ def apply_transforms(inp: EngineInputs, transforms: list) -> EngineInputs:
     n_b = len(inp.buyer_ids)
     pay_mult = np.ones(n_b)
     due_week = np.full(n_b, -1, dtype=np.int64)
-    order_mult, purchase_shift = 1.0, 0
+    order_mult, purchase_shift, sticky = 1.0, 0, 0
     fixed = list(inp.fixed)
     cash, freezes = [], []
     for t in transforms:
         if t.type == "rate_multiplier":
             if t.target == "orders":
                 order_mult *= t.factor
+                sticky = max(sticky, t.stickiness_days)
             elif t.target == "all_buyers":
                 pay_mult *= t.factor
             elif t.target == "buyer":
@@ -78,5 +79,5 @@ def apply_transforms(inp: EngineInputs, transforms: list) -> EngineInputs:
     effects = ScenarioEffects(
         pay_mult=None if (pay_mult == 1).all() else pay_mult,
         due_week=None if (due_week < 0).all() else due_week,
-        order_mult=order_mult, purchase_shift_days=purchase_shift, cash=tuple(cash), freezes=tuple(freezes))
+        order_mult=order_mult, purchase_sticky_days=sticky, purchase_shift_days=purchase_shift, cash=tuple(cash), freezes=tuple(freezes))
     return replace(inp, fixed=fixed, scenario=effects)

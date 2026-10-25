@@ -41,7 +41,10 @@ Scenario order rate (order_mult in sample, from the scenarios component): the ba
 are drawn exactly as without it, then thinned (k < 1, each order kept with chance k) or
 topped up (k > 1, extra Poisson((k - 1) lambda) orders per week) with a separate generator,
 so the base draws are common to baseline and scenario. Purchases are generated per order,
-so they follow at the purchase ratio.
+so they follow at the purchase ratio. When orders are thinned, supplies for orders already
+placed are still paid for: the purchase cut lags the sales cut by the fitted lag L plus
+purchase_sticky_days, so a dropped order's purchase is kept if it falls on day <= L + sticky.
+Added orders (k > 1) get their purchases as usual (selling more needs the supplies).
 """
 
 from dataclasses import dataclass
@@ -115,7 +118,8 @@ class SalesModel:
     def sample(self, n_paths: int, horizon_days: int, rng: np.random.Generator,
                level: np.ndarray | None = None, param_draws: bool = False,
                demand: str = "none", order_mult: float = 1.0,
-               extra_rng: np.random.Generator | None = None) -> tuple[pl.DataFrame, pl.DataFrame]:
+               extra_rng: np.random.Generator | None = None,
+               purchase_sticky_days: int = 0) -> tuple[pl.DataFrame, pl.DataFrame]:
         """Future invoices issued in (as_of, as_of + horizon] and purchases paid in that window, per path.
 
         Invoices are drawn L days past the horizon too, so purchases near its end
@@ -141,11 +145,14 @@ class SalesModel:
             k = self._dispersion(m, v, 0.0)
         lam = rng.gamma(k[:, None], (m / k)[:, None] * mult, size=(n_paths, n_weeks))
         path, day, buyer, gross, terms = self._orders(rng.poisson(lam), rng)
+        sticky = None  # dropped orders whose purchases are still paid: (path, day, gross)
         if order_mult != 1.0:
             if extra_rng is None:
                 raise ValueError("order_mult needs extra_rng (the scenario stream)")
             if order_mult < 1.0:
                 keep = extra_rng.random(path.size) < order_mult
+                held = ~keep & (day - L <= L + purchase_sticky_days)
+                sticky = path[held], day[held], gross[held]
                 path, day, buyer, gross, terms = path[keep], day[keep], buyer[keep], gross[keep], terms[keep]
             else:
                 more = self._orders(extra_rng.poisson(lam * (order_mult - 1.0)), extra_rng)
@@ -160,12 +167,13 @@ class SalesModel:
             "gross_paise": gross,
             "terms_days": terms,
         }).filter(pl.col("issue_date") <= self.as_of + timedelta(days=horizon_days))
-        p_day = day - L
+        p_path, p_day, p_gross = (path, day - L, gross) if sticky is None else (
+            np.concatenate([path, sticky[0]]), np.concatenate([day, sticky[1]]) - L, np.concatenate([gross, sticky[2]]))
         keep = (p_day >= 1) & (p_day <= horizon_days)
         purchases = pl.DataFrame({
-            "path": path[keep].astype(np.int32),
+            "path": p_path[keep].astype(np.int32),
             "value_date": as_of + p_day[keep].astype("timedelta64[D]"),
-            "amount_paise": np.round(ratio[path[keep]] * gross[keep]).astype(np.int64),
+            "amount_paise": np.round(ratio[p_path[keep]] * p_gross[keep]).astype(np.int64),
         })
         return invoices, purchases
 

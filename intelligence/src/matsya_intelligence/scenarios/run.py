@@ -59,6 +59,11 @@ def preset(name: str, as_of: date) -> list:
     return TRANSFORM_LIST.validate_python(_resolve(presets()[name]["transforms"], as_of))
 
 
+def preset_view_days(name: str) -> list[int]:
+    """Days a preset is reported at (its run horizon is the last); default [90]."""
+    return sorted(presets()[name].get("view_days", [90]))
+
+
 # ---------------------------------------------------------------- one scenario
 
 
@@ -104,6 +109,13 @@ class ScenarioResult:
                               "name": self.name, "params_json": json.dumps(params, sort_keys=True),
                               "breaking_magnitude": None if self.breaking is None else self.breaking.magnitude}],
                             schema=schema("forecast.scenarios"))
+
+    def at_days(self, days: list[int]) -> pl.DataFrame:
+        """p_short and expected shortfall (conditional and unconditional), baseline and scenario, at each day."""
+        cols = ["day", "p_short", "expected_shortfall_cond_paise", "expected_shortfall_uncond_paise"]
+        b = self.base.shortfall.select(cols).rename({c: f"{c}_base" for c in cols[1:]})
+        s = self.result.shortfall.select(cols)
+        return b.join(s, on="day").filter(pl.col("day").is_in(days)).sort("day")
 
     def contract_tables(self) -> dict[str, pl.DataFrame]:
         """forecast.scenarios plus the scenario run's forecast.runs / balance_quantiles / shortfall rows."""

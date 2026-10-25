@@ -2,6 +2,7 @@ import pickle
 from datetime import timedelta
 
 import numpy as np
+import polars as pl
 import pytest
 from matsya_contracts.validate import validate
 
@@ -195,3 +196,54 @@ def test_default_search_ranges_point_towards_the_harmful_side(world):
     assert default_range(TermsChange(party="supplier", from_days=30, to_days=15), inp) == (30.0, 0.0)
     assert default_range(TermsChange(party="buyer", from_days=45, to_days=90), inp) == (45.0, 360.0)
     assert default_range(RateMultiplier(target="orders", factor=0.7), inp) == (1.0, 0.0)
+
+
+def test_payment_multiplier_applies_to_empirical_buyers(world):
+    from dataclasses import replace
+
+    _, _, _, inp, base = world
+    emp = [b for b, h in zip(inp.buyer_ids, inp.timing.hazard) if h is not None]
+    assert emp  # the default world has buyers in empirical mode
+    # the engine reads the hazards: dropping them changes the paths
+    assert not np.array_equal(run_engine(replace(inp, timing=replace(inp.timing, hazard=None)), RUN, N).balance,
+                              base.balance)
+    rec = ("open_invoice_receipts", "future_invoice_receipts")
+    res = run_scenario(inp, RUN, [RateMultiplier(target="buyer", ids=emp, factor=0.5)], n_paths=N, base=base,
+                       keep_flows=True).result
+    assert sum(res.flows[k].sum() for k in rec) < 0.95 * sum(base.flows[k].sum() for k in rec)
+    # every buyer empirical, payment chance x 0: no receipts in any week starting after as_of
+    n_bins = len(next(h for h in inp.timing.hazard if h is not None))
+    allemp = replace(inp, timing=replace(inp.timing, hazard=[np.full(n_bins, 0.3)] * len(inp.buyer_ids),
+                                         hazard_base=None))
+    zero = run_scenario(allemp, RUN, [RateMultiplier(target="all_buyers", factor=0.0)], n_paths=200,
+                        keep_flows=True).result
+    assert zero.flows["future_invoice_receipts"].sum() == 0
+    half = run_scenario(allemp, RUN, preset("delayed_customer_payments", inp.as_of), n_paths=200, keep_flows=True)
+    assert sum(half.result.flows[k].sum() for k in rec) < sum(half.base.flows[k].sum() for k in rec)
+
+
+def test_reduced_sales_keeps_purchases_for_orders_already_placed(world):
+    _, _, _, inp, base = world
+    sp = inp.features["features.sales_process"]
+    L = int(sp.filter(pl.col("name") == "purchase_lag_days")["value"][0])
+    for S in (0, 14):
+        res = run_scenario(inp, RUN, [RateMultiplier(target="orders", factor=0.5, purchase_stickiness_days=S)],
+                           n_paths=N, base=base, keep_flows=True).result
+        bp, rp = base.flows["purchases"], res.flows["purchases"]
+        assert np.array_equal(rp[:, : L + S + 1], bp[:, : L + S + 1])  # cut starts after lag + stickiness
+        assert -rp[:, L + S + 1:].sum() < 0.7 * -bp[:, L + S + 1:].sum()
+    assert preset("reduced_sales", inp.as_of)[0].stickiness_days == 14
+    assert RateMultiplier(target="orders", factor=0.7).stickiness_days == 14
+    with pytest.raises(ValueError):
+        RateMultiplier(target="all_buyers", factor=0.7, purchase_stickiness_days=3)
+
+
+def test_view_days_report(world):
+    from matsya_intelligence.scenarios import preset_view_days
+
+    cfg, _, _, inp, base = world
+    assert preset_view_days("reduced_sales") == [90, 180] and preset_view_days("unexpected_expense") == [90]
+    sr = run_scenario(inp, RUN, preset("reduced_sales", cfg.as_of_date), n_paths=N, base=base)
+    v = sr.at_days([30, 90])
+    assert v["day"].to_list() == [30, 90]
+    assert v["p_short_base"][1] == base.shortfall["p_short"][89] and v["p_short"][1] == sr.result.shortfall["p_short"][89]

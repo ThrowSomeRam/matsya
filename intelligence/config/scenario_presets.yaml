@@ -3,6 +3,7 @@
 # Dates are "+Nd" = N days after the run's as_of, resolved when the preset is used.
 # Magnitudes are placeholders (status: assumption): the owner edits them, and the
 # breaking-point search reports the magnitude at which each one breaks the business.
+# view_days (optional): days to report at; the run horizon is their maximum (default [90]).
 
 delayed_customer_payments:
   description: Every buyer's weekly chance of paying halves from tomorrow.
@@ -17,10 +18,13 @@ unexpected_expense:
     - {type: cash_event, "on": "+14d", amount_paise: -20000000, label: unexpected expense}
 
 reduced_sales:
-  description: Orders fall 30%. Purchases follow via the purchase ratio; fixed costs do not change.
+  description: >-
+    Orders fall 30%. Purchases follow via the purchase ratio, but supplies for orders already
+    placed are still paid for the purchase lag plus 14 days; fixed costs do not change.
   status: assumption
+  view_days: [90, 180]  # the cash effect of fewer orders shows after the receivables lag
   transforms:
-    - {type: rate_multiplier, target: orders, factor: 0.7}
+    - {type: rate_multiplier, target: orders, factor: 0.7, purchase_stickiness_days: 14}
 
 supplier_tightens_terms:
   description: Suppliers cut credit from 30 to 15 days, so every future supplier payment is 15 days earlier.

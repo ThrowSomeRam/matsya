@@ -29,7 +29,7 @@ import results  # noqa: E402
 from matsya_intelligence.io import adapters  # noqa: E402
 from matsya_intelligence.seeding import rng_for  # noqa: E402
 from matsya_intelligence.timing import fit_timing  # noqa: E402
-from matsya_intelligence.timing.model import Posterior, predict_open  # noqa: E402
+from matsya_intelligence.timing.model import Posterior  # noqa: E402
 
 AS_OF = date(2019, 7, 1)
 TEST_END = date(2019, 9, 1)  # test issues >= 17 weeks before the 2019-12-31 truncation
@@ -107,8 +107,9 @@ def _weekly_to_daily(paid_weeks: np.ndarray) -> np.ndarray:
     return cum[w] + paid_weeks[w] * ((GRID % 7) + 1) / 7
 
 
-def ours(test: pl.DataFrame) -> np.ndarray:
-    """Payment-timing model, fitted per tenant on the as-of contract tables via the adapters."""
+def ours(test: pl.DataFrame, empirical: bool = True) -> np.ndarray:
+    """Payment-timing model, fitted per tenant on the as-of contract tables via the adapters.
+    empirical: per-buyer empirical hazard for buyers with >= 8 paid bills (timing.empirical)."""
     raw = loaders.kaggle_raw()
     n_weeks = FOLLOW_DAYS // 7 + 1
     cdf = np.zeros((test.height, GRID.size))
@@ -116,7 +117,8 @@ def ours(test: pl.DataFrame) -> np.ndarray:
         tables = loaders.kaggle_tables(raw, bc, AS_OF)
         out, inv, buyers = adapters.outcomes(tables, AS_OF), adapters.invoices(tables, AS_OF), adapters.buyers(
             tables, loaders.kaggle_tenant_id(bc))
-        tm = fit_timing(out, inv, buyers, adapters.ledger_complete_through(tables, AS_OF), run_id=f"{SEED}:{bc}")
+        tm = fit_timing(out, inv, buyers, adapters.ledger_complete_through(tables, AS_OF), run_id=f"{SEED}:{bc}",
+                        empirical=empirical)
         prior = next(iter(tm.priors.values()))
         r = rng_for(SEED, f"unseen:{bc}")
         unseen = Posterior(p=r.beta(prior.alpha, prior.beta, 400), pi=r.beta(prior.a, prior.b, 400),
@@ -127,8 +129,8 @@ def ours(test: pl.DataFrame) -> np.ndarray:
         for i, row in enumerate(test.iter_rows(named=True)):
             if row["business_code"] != bc:
                 continue
-            post = tm.posteriors.get(ids.local_buyer_id(tenant, row["cust_number"]), unseen)
-            paid, _, _ = predict_open(post, 0, n_weeks + 1, row["terms"] // 7 + 1)
+            b = ids.local_buyer_id(tenant, row["cust_number"])
+            paid, _, _ = tm.predict_invoice(tm.posteriors.get(b, unseen), b, 0, n_weeks + 1, row["terms"] // 7 + 1)
             cdf[i] = _weekly_to_daily(paid)
     return cdf
 
@@ -259,14 +261,29 @@ def calibration(test, cdf, day) -> tuple[float, float, float, float]:
     return float(p.mean()), float(y.mean()), float(ece), float(((p - y) ** 2).mean())
 
 
+WEEKS_DETAIL = 6
+
+
+def weekly_mass(test, cdf) -> list[tuple[float, float]]:
+    """(mean predicted, observed share) paid in week w since issue (days 7(w-1)..7w-1), w = 1..6."""
+    t, e = test["obs_time"].to_numpy(), test["event"].to_numpy()
+    out = []
+    for w in range(1, WEEKS_DETAIL + 1):
+        lo, hi = 7 * (w - 1), 7 * w - 1
+        pred = cdf[:, hi] - (cdf[:, lo - 1] if lo > 0 else 0.0)
+        out.append((float(pred.mean()), float((e & (t >= lo) & (t <= hi)).mean())))
+    return out
+
+
 def check_timing() -> tuple[list[dict], str]:
     d, train, test = split()
-    models = {"payment_timing_model": lambda: ours(test), "due_date": lambda: due_date(test),
+    models = {"payment_timing_model": lambda: ours(test, empirical=False),
+              "payment_timing_model_empirical": lambda: ours(test, empirical=True), "due_date": lambda: due_date(test),
               "cox": lambda: cox(train, test), "random_survival_forest": lambda: rsf(train, test),
               "lgbm_person_period": lambda: lgbm_person_period(train, test)}
     early = d.filter(pl.col("issue_date") < date(2019, 4, 1))
     trunc = {k: float((early["time"] > k).mean()) for k in (83, 112)}
-    rows, table = [], []
+    rows, table, weekly = [], [], []
     rng = rng_for(SEED, "bootstrap")
     for name, fn in models.items():
         cdf = np.clip(fn(), 0, 1)
@@ -288,6 +305,12 @@ def check_timing() -> tuple[list[dict], str]:
             rec |= {f"pred_{wks}w": mp, f"obs_{wks}w": obs, f"ece_{wks}w": ece}
         table.append(rec)
         print(rec, flush=True)
+        wk = {"model": name}
+        for w, (pm, ob) in enumerate(weekly_mass(test, cdf), start=1):
+            rows += [results.row(metric="week_mass_pred", value=pm, n=test.height, horizon=f"week{w}", **bench),
+                     results.row(metric="week_mass_obs", value=ob, n=test.height, horizon=f"week{w}", **bench)]
+            wk[f"w{w}"] = f"{pm:.3f} / {ob:.3f}"
+        weekly.append(wk)
     rows.append(results.row("kaggle_payment_timing", "kaggle_payment_date_v2", "payment_timing", "all",
                             "never_paid_calibration", None, 0, "n/a",
                             note="not measurable: dataset holds no unpaid invoices (right-truncated)"))
@@ -296,6 +319,7 @@ def check_timing() -> tuple[list[dict], str]:
           f"tenants {', '.join(TENANTS)}. Test: issued {AS_OF} to {TEST_END - timedelta(days=1)} "
           f"(n = {test.height}), followed {FOLLOW_DAYS} days. Baseline: due date.\n\n"
           + results.md_table(pl.DataFrame(table)) +
+          "\n\nShare paid in each week since issue, predicted / observed:\n\n" + results.md_table(pl.DataFrame(weekly)) +
           f"\n\nRight truncation: of invoices issued Jan-Mar 2019 (n = {early.height}), "
           f"{trunc[83]:.4f} took more than 83 days and {trunc[112]:.4f} more than 112 days, so the "
           "fiscal-year cut removes little at these horizons. Never-paid calibration is not measurable: "

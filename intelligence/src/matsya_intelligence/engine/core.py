@@ -32,6 +32,7 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.seeding import rng_for, seed_from_run_id
+from matsya_intelligence.timing.empirical import J_HI, J_LO, N_BINS
 
 STREAMS = ("timing_draws", "open_invoices", "sales", "sales_timing", "unscheduled", "shocks")
 
@@ -43,6 +44,11 @@ class TimingDraws:
     p_early_base, p_base: base chances for future weeks under the shock hook, so that the
     shock-averaged chance equals the posterior (shocks.sector.base_chance). None = use p.
     Past weeks (survival, the elapsed part of the current week) always use the posterior.
+
+    hazard[b] (timing.empirical, None for Beta-geometric buyers) replaces the two-phase chances
+    in every week for that buyer; the never-paid share still comes from pi and the Beta-geometric
+    survival, as in the payment-timing model's own predictions. Shock shifts and scenario
+    multipliers apply to it the same way: logit shift, then x factor clipped to [0, 1].
     """
 
     p_early: list[np.ndarray]
@@ -50,6 +56,8 @@ class TimingDraws:
     pi: list[np.ndarray]
     p_early_base: list[np.ndarray] | None = None
     p_base: list[np.ndarray] | None = None
+    hazard: list[np.ndarray | None] | None = None  # empirical mode: weekly hazard by bin of k - due week
+    hazard_base: list[np.ndarray | None] | None = None  # its base chances under the shock hook
 
 
 @dataclass(frozen=True)
@@ -81,7 +89,8 @@ class ScenarioEffects:
     pay_mult, due_week: per buyer (index-aligned with buyer_ids); they apply to weeks starting
     on day >= 1 only, so survival to the cut (the past) keeps the posterior and the old terms.
     due_week -1 = unchanged. order_mult scales the sales forecaster's order rate (purchases
-    follow per invoice). purchase_shift_days moves every future supplier payment (earliest day 1).
+    follow per invoice; when orders fall, purchases of dropped orders on days <= purchase lag +
+    purchase_sticky_days are still paid). purchase_shift_days moves every future supplier payment (earliest day 1).
     cash: (first_day, last_day, amount_paise), the day drawn per path uniformly in the window.
     freezes: (start_day, days, fraction): that share of each path's balance on start_day - 1
     (if positive) is unusable from start_day for `days` days.
@@ -90,6 +99,7 @@ class ScenarioEffects:
     pay_mult: np.ndarray | None = None
     due_week: np.ndarray | None = None
     order_mult: float = 1.0
+    purchase_sticky_days: int = 0
     purchase_shift_days: int = 0
     cash: tuple[tuple[int, int, int], ...] = ()
     freezes: tuple[tuple[int, int, float], ...] = ()
@@ -97,7 +107,7 @@ class ScenarioEffects:
 
 SalesSampler = Callable[..., tuple[Invoices, pl.DataFrame]]
 # (n_paths, horizon, rng[, order_mult=, extra_rng=]) -> (future invoices with path set, purchases: path, day,
-# amount_paise > 0). order_mult/extra_rng are passed only when a scenario changes the order rate.
+# amount_paise > 0). order_mult/extra_rng/purchase_sticky_days are passed only when a scenario changes the order rate.
 UnscheduledSampler = Callable[[int, int, np.random.Generator], np.ndarray]
 # (n_paths, horizon, rng) -> int64 (n_paths, horizon + 1) net flows, column 0 unused
 ShiftFn = Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]
@@ -181,6 +191,18 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     if based:
         pe_b = np.concatenate(inp.timing.p_early_base)[_flat_index(inp, b, d)]
         p_b = np.concatenate(inp.timing.p_base)[_flat_index(inp, b, d)]
+    hz = hz_b = None
+    if inp.timing.hazard is not None:
+        hz = _hazard_matrix(inp.timing.hazard)
+        hz_b = _hazard_matrix(inp.timing.hazard_base) if based and inp.timing.hazard_base is not None else hz
+        emp = ~np.isnan(hz[b, 0])
+
+    def chance(rows, week, due_w, early, late, h_mat):
+        out = np.where(week < due_w, early[rows], late[rows])
+        if h_mat is not None:
+            out = np.where(emp[rows], h_mat[b[rows], np.clip(week - due_w, J_LO, J_HI) - J_LO], out)
+        return out
+
     elapsed = np.maximum(0, inp.survival_through_day - issue + 1)
     c, r = elapsed // 7, elapsed % 7
     probs = _offset_probs(inp, b, issue)
@@ -194,13 +216,11 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     while active.any():
         a = np.flatnonzero(active)
         week_start = issue[a] + 7 * (k[a] - 1)
-        base = np.where(k[a] < due[a], pe[a], p[a])
-        if based:
-            base = np.where(week_start >= 1, np.where(k[a] < due[a], pe_b[a], p_b[a]), base)
-        if due_new is not due:  # new terms: future weeks use the new due week
-            base = np.where(week_start >= 1, np.where(k[a] < due_new[a], pe[a], p[a]), base)
-            if based:
-                base = np.where(week_start >= 1, np.where(k[a] < due_new[a], pe_b[a], p_b[a]), base)
+        # past weeks: posterior and old terms; future weeks: base chances (shock hook) and new terms
+        base = chance(a, k[a], due[a], pe, p, hz)
+        if based or due_new is not due:
+            fut = chance(a, k[a], due_new[a], pe_b if based else pe, p_b if based else p, hz_b)
+            base = np.where(week_start >= 1, fut, base)
         h = _sigmoid_shift(base, None if shift_fn is None else shift_fn(path[a], b[a], week_start))
         if mult is not None:
             h = np.where(week_start >= 1, np.minimum(h * mult[a], 1.0), h)
@@ -219,6 +239,15 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     pay[pay > horizon] = -1
     pay[(pay >= 0) & (pay < 1)] = 1  # paid inside the lag window: lands on day 1
     return pay
+
+
+def _hazard_matrix(hazards: list[np.ndarray | None]) -> np.ndarray:
+    """(n_buyers, N_BINS), NaN rows for buyers without an empirical hazard."""
+    out = np.full((len(hazards), N_BINS), np.nan)
+    for i, h in enumerate(hazards):
+        if h is not None:
+            out[i] = h
+    return out
 
 
 def _flat_index(inp: EngineInputs, buyer: np.ndarray, draw: np.ndarray) -> np.ndarray:
@@ -308,7 +337,8 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
     month_of_day = np.array([month_key(inp.as_of + timedelta(days=d)) for d in range(H + 1)])
     path_month_net: dict[int, np.ndarray] = {}
     if inp.sales is not None:
-        extra = {} if sc is None or sc.order_mult == 1.0 else {"order_mult": sc.order_mult, "extra_rng": rng_sc}
+        extra = {} if sc is None or sc.order_mult == 1.0 else {"order_mult": sc.order_mult, "extra_rng": rng_sc,
+                                                                "purchase_sticky_days": sc.purchase_sticky_days}
         fut, purch = inp.sales(n_paths, H, rng["sales"], **extra)
         if len(fut.buyer):
             ones = np.ones(len(fut.buyer))

@@ -161,7 +161,6 @@ complete-through date would fix it). The low bin is still under-predicted.
     needs the unclipped alpha (alpha_t is a Prob, but ACI's level can go below 0) and somewhere
     for bands waiting for their outcome. Propose nullable `alpha_raw` and a
     `forecast.calibration_pending` table; until then the state lives in the runner.
-
 13. **Scenario transforms in forecast.runs (additive).** `overrides_json` is validated as a list
     of `events.OverrideItem`, which only has `one_off` (kind, on, amount_paise; extra fields
     forbidden). The scenario engine's transforms (rate_multiplier, date_shift, cash_event with a
@@ -506,6 +505,77 @@ orders cost cash before they bring it in; fewer orders means less working capita
 The model is doing what it should; for this world the brief's "reduced sales" stress only
 shows beyond the horizon, or with fixed costs that scale. The breaking-point search reports it
 as not monotone (p_short falls along the whole grid) rather than inventing a number.
+
+## Scenario engine: empirical buyers and sticky purchases (2026-10-25)
+
+**Empirical timing in the engine.** The merge of the per-buyer empirical mode left the simulation
+engine on the Beta-geometric chances for every buyer (only the payment-timing model's own
+`features.invoice_timing` used the hazards). `TimingDraws.hazard` now carries each empirical
+buyer's weekly hazard (None for the rest); in every week the engine takes h at bin k - due week
+in place of the two-phase chance. The never-paid draw is unchanged (pi and the Beta-geometric
+survival to the cut, as in `TimingModel.predict_invoice`). On that hazard, in order: the sector
+shock as a logit shift (base hazards solved with `base_chance` like the two-phase chances, so the
+shock-averaged hazard is the fitted one), then the scenario multiplier k, h x k clipped to [0, 1],
+for weeks starting after as_of. New buyer terms move the bin (k - new due week) for future weeks.
+`predict_invoice` applies the shock shift to the hazard on the logit too. Tested: dropping the
+hazards changes the paths; x 0.5 on the empirical buyers cuts receipts; with every buyer empirical,
+x 0 leaves no future-invoice receipts. Model version `beta-geometric-2phase-v1+empirical-v1`.
+
+**Sticky purchases under reduced sales.** Thinning orders used to cut their purchases at once.
+But supplies for orders already placed are still paid: the purchase cut now lags the sales cut
+by the fitted purchase lag L plus `purchase_stickiness_days` (on `rate_multiplier` with target
+orders; default 14, assumption). A dropped order's purchase stays if it falls on day <= L + S, so
+purchases match the baseline exactly on days 1..L+S (tested). Added orders (k > 1) keep their
+purchases as before. Preset `reduced_sales` now carries `view_days: [90, 180]`; it should be run
+on inputs built at a 180-day horizon (obligations and GST dates beyond 90 days).
+
+`eval/models/scenario_views.py` (`eval/results/scenario_views.md`): default world, 20 pasts x
+2,000 paths, orders x 0.7, baseline the same world and seed. Means over pasts, ES in Rs lakh:
+
+| variant | day | p_short base / scenario | d p_short (sd over pasts) | ES uncond base / scenario | ES cond base / scenario |
+|---|---|---|---|---|---|
+| stickiness 14 d (preset) | 90 | 0.284 / 0.234 | -0.050 (0.038) | 3.72 / 2.58 | 11.16 / 9.39 |
+| stickiness 14 d (preset) | 180 | 0.398 / 0.412 | +0.014 (0.058) | 6.26 / 6.41 | 13.20 / 12.69 |
+| stickiness 0 d | 90 | 0.284 / 0.170 | -0.114 (0.063) | 3.72 / 1.64 | 11.16 / 8.25 |
+| stickiness 0 d | 180 | 0.398 / 0.343 | -0.055 (0.058) | 6.26 / 4.87 | 13.20 / 11.47 |
+
+Stickiness halves the 90-day "benefit" of fewer orders; at 180 days the preset is about neutral
+(+0.014, se about 0.013 over 20 pasts). So in this world reduced sales still does not show as a
+stress: purchases and invoice cash fall together, and the cash freed from purchases offsets the
+lost receipts for most of the half year. A stress would need fixed costs that do not scale, a longer
+stickiness, or margin compression; those are owner edits, not defaults.
+
+## Payment-timing model: per-buyer empirical timing kept (2026-10-25)
+
+**Mode.** For buyers with >= 8 paid bills, timing comes from their own history by week relative
+to the due week, j = k - d (j = 0 holds the due date), as a discrete weekly hazard: e_j payments
+and r_j invoices at risk in bin j, each invoice entering at j = 1 - d and censored open invoices
+counted at risk up to c - d. Each bin is shrunk Beta-Binomial style toward the group's pooled
+hazard g_j = (E_j + 0.5) / (R_j + 1): h_j = (e_j + s g_j) / (r_j + s), s = prior_strength (8).
+A hazard rather than a histogram so censoring and the bins before issue are handled exactly. The
+never-paid share is unchanged: open invoices count at risk with weight 1 - P(dead | open) from the
+Beta-geometric posterior, and predictions use its P(dead). Buyers with fewer bills, and unseen
+buyers, keep the Beta-geometric model. Code: `timing/empirical.py`, `fit_timing(empirical=True)`
+is now the default. Rule set in advance: keep it only if it beats the current model on Kaggle.
+
+**Kaggle result** (same split, n = 5,955 test invoices, baseline due date, rows in
+`eval/results/results.parquet`, model `payment_timing_model_empirical`):
+
+| model | C-index (95% CI) | integrated Brier, weeks 1-15 | 4w pred / obs, ECE | 8w | 12w |
+|---|---|---|---|---|---|
+| Beta-geometric only | 0.735 (0.727-0.744) | 0.0313 | 0.874 / 0.903, 0.033 | 0.949 / 0.961, 0.014 | 0.978 / 0.989, 0.013 |
+| with empirical mode | 0.743 (0.731-0.751) | 0.0274 | 0.878 / 0.903, 0.026 | 0.950 / 0.961, 0.011 | 0.981 / 0.989, 0.010 |
+| Cox | 0.770 (0.763-0.777) | 0.0386 | 0.881 / 0.903, 0.064 | 0.947 / 0.961, 0.016 | 0.969 / 0.989, 0.023 |
+
+Share paid by week since issue, predicted / observed (weeks 1-6): Beta-geometric 0.127 / 0.015,
+0.136 / 0.258, 0.524 / 0.594, 0.087 / 0.037, 0.038 / 0.024, 0.017 / 0.016; empirical 0.027 / 0.015,
+0.259 / 0.258, 0.541 / 0.594, 0.052 / 0.037, 0.031 / 0.024, 0.018 / 0.016; Cox 0.014 / 0.015,
+0.304 / 0.258, 0.515 / 0.594, 0.048 / 0.037, 0.029 / 0.024, 0.020 / 0.016.
+
+**Kept:** better than the current model on every metric, and fixes the pre-due misfit recorded
+above (week 1 and week 2). Better than Cox on Brier and calibration, still behind it on ranking
+(C-index 0.743 vs 0.770). Still under-predicts the due week (0.541 vs 0.594). Open points: s is the config value, not tuned; the day-of-month add-on for within-week placement is
+not built (the weekly Kaggle metrics cannot score it).
 
 ## Requests to Track A
 
