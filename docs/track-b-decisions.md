@@ -785,8 +785,10 @@ the empirical hazards inside the data are point estimates and carry no parameter
 **Guard.** `test_learned_mode_calibration_has_not_moved` (slow) fails if mean gap or mean |gap|
 moves more than 0.02 from the reference; `MATSYA_ORACLE_CACHE` reuses the oracle pickle.
 
-**Not re-run:** the Kaggle timing check (empirical vs Beta-geometric). This environment's network
-policy blocks www.kaggle.com, so the recorded Kaggle numbers are from before the fix. Open item.
+**Kaggle re-run after the fix** (same split, n = 5,955 test invoices): empirical C-index 0.741
+(0.733-0.748), integrated Brier 0.027, ECE at 4 / 8 / 12 weeks 0.028 / 0.011 / 0.009; Beta-geometric
+0.735, 0.031, 0.033 / 0.014 / 0.013. Still better on every metric, so the mode stays (before the
+fix: 0.743, 0.027, 0.026 / 0.011 / 0.010; the change is within the C-index interval).
 
 ## Requests to Track A
 
