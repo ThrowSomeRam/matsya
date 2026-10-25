@@ -38,6 +38,10 @@ import polars as pl
 from matsya_intelligence.seeding import rng_for, seed_from_run_id
 from matsya_intelligence.timing.empirical import J_HI, J_LO, N_BINS
 
+# Bumped whenever the same seed gives different draws. v2: payment simulation draws a uniform
+# for every row every week (v1 drew only for active rows).
+ENGINE_VERSION = "mc-v2"
+
 STREAMS = ("timing_draws", "open_invoices", "sales", "sales_timing", "unscheduled", "shocks")
 
 
@@ -50,7 +54,8 @@ class TimingDraws:
     Past weeks (survival, the elapsed part of the current week) always use the posterior.
 
     hazard[b] (timing.empirical, None for Beta-geometric buyers) replaces the two-phase chances
-    in every week for that buyer; the never-paid share still comes from pi and the Beta-geometric
+    for that buyer in every week whose bin is not NaN (NaN = beyond the buyer's data: the per-draw
+    two-phase chance applies); the never-paid share still comes from pi and the Beta-geometric
     survival, as in the payment-timing model's own predictions. Shock shifts and scenario
     multipliers apply to it the same way: logit shift, then x factor clipped to [0, 1].
     """
@@ -214,7 +219,8 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     def chance(rows, week, due_w, early, late, h_mat):
         out = np.where(week < due_w, early[rows], late[rows])
         if h_mat is not None:
-            out = np.where(emp[rows], h_mat[b[rows], np.clip(week - due_w, J_LO, J_HI) - J_LO], out)
+            h = h_mat[b[rows], np.clip(week - due_w, J_LO, J_HI) - J_LO]
+            out = np.where(emp[rows] & ~np.isnan(h), h, out)  # NaN bin: the per-draw parametric chance
         return out
 
     elapsed = np.maximum(0, inp.survival_through_day - issue + 1)
@@ -448,7 +454,8 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
         "as_of": inp.as_of,
         "seed": seed_from_run_id(seed_id),
         "seed_streams": {s: seed_from_run_id(seed_id, f"engine:{s}") for s in STREAMS},
-        "model_versions": inp.model_versions,
+        "engine_version": ENGINE_VERSION,
+        "model_versions": {**inp.model_versions, "simulation_engine": ENGINE_VERSION},
         "input_snapshot_ids": inp.input_snapshot_ids,
         "scenario_id": None,
         "overrides_json": json.dumps([{**asdict(o), "on": o.on.isoformat()} for o in overrides]),

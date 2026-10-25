@@ -41,8 +41,9 @@ The synthetic generator tags every true transaction with its generating process 
 ## Shortfall definitions
 
 Let $B^{(n)}_t$ be the simulated closing balance on day t after as_of in path n, N paths, and
-$\theta$ the shortfall threshold (`shortfall_threshold_paise`, default 0; later
-$-\text{overdraft limit} + \text{owner cushion}$).
+$\theta$ the shortfall threshold (`shortfall_threshold_paise`): the owner cushion, default 0,
+never negative. Overdraft headroom is not part of it. The decision engine offers overdraft
+only as explicit draws with their interest cost, so the limit is counted once.
 
 - **Shortfall:** the balance is below the threshold, $B_t < \theta$.
 - **Probability of shortfall by day t:** the share of paths whose balance has been below the
@@ -552,6 +553,8 @@ to the due week, j = k - d (j = 0 holds the due date), as a discrete weekly haza
 and r_j invoices at risk in bin j, each invoice entering at j = 1 - d and censored open invoices
 counted at risk up to c - d. Each bin is shrunk Beta-Binomial style toward the group's pooled
 hazard g_j = (E_j + 0.5) / (R_j + 1): h_j = (e_j + s g_j) / (r_j + s), s = prior_strength (8).
+(Superseded: the shrink target, the end bins and the bins beyond the data changed; see
+"Empirical timing in the engine: late bins".)
 A hazard rather than a histogram so censoring and the bins before issue are handled exactly. The
 never-paid share is unchanged: open invoices count at risk with weight 1 - P(dead | open) from the
 Beta-geometric posterior, and predictions use its P(dead). Buyers with fewer bills, and unseen
@@ -586,12 +589,20 @@ not built (the weekly Kaggle metrics cannot score it).
 |---|---|---|
 | TReDS discount (per open invoice of a CPSE buyer, or one the owner marks onboarded; not yet due after the lag) | `invoice_cash` replace: A - A r d / 365 on day L, the invoice leaves payment timing | A r d / 365, d = days from day L to the due date |
 | chase a buyer | `rate_multiplier` buyer x 1.5 for 2 weeks (new `weeks` field) | Rs 500 |
-| MSMED claim (micro/small tenant, invoice past its s.15 deadline) | `invoice_cash` if_unpaid: principal + interest on day 90, only on paths still unpaid then | penalty (10% of principal) - recovery (0.5) x P(unpaid by day 90) x interest |
+| MSMED claim (micro/small tenant, invoice past its s.15 deadline) | `invoice_cash` if_unpaid: principal + interest on day 90, only on paths still unpaid then | penalty (10% of principal) - recovery (0.5) x P(unpaid by day 90) x interest x (1 - tax rate): the recovered interest is taxable income |
 | overdraft draw | `cash_event` + k x limit / 10 on day d in {1, 15, 30, 45, 60, 75} | A r (H + 1 - d) / 365 (repaid after the horizon) |
-| stretch a supplier | `date_shift` supplier_payments, share s (new field), N in {7, 14, 30} days | owner penalty; micro/small and terms + N > 45: MSMED interest on the expected stretched amount for the days past 45, plus the lost s.43B(h) / 37(2)(g) deduction where the payment moves into the next FY |
+| stretch a supplier | `date_shift` supplier_payments, share s (new field), N in {7, 14, 30} days | owner penalty; micro/small paid past its s.15 deadline (written terms capped at 45 days, else 15; VERIFY): MSMED interest on the expected stretched amount for the late days the stretch adds (full cost: s.23 makes it non-deductible), plus the delay in the s.43B(h) / 37(2)(g) deduction: tax rate x amount net of GST x cost of funds x FYs moved (0 for a late payment in the same FY) |
 
 Rates without a source are config defaults with status verify: TReDS 9%, overdraft 11%, claim
-cash lag 90 days (s.18(5) award window), income-tax rate 25.17%. Interest is
+cash lag 90 days (s.18(5) award window). The income-tax rate is an owner input by entity type
+(proprietor, partnership, company); only the company rate has a default (25.17%, verify).
+Without a rate, a micro/small supplier stretch or an open MSMED claim is refused. The cost of
+funds for the deduction delay is an owner input, defaulting to the overdraft rate. Worked
+example (tested): as_of 1 Mar 2026, half of Rs 1 lakh a day, 30-day terms stretched 30 days:
+Rs 30 lakh of payments move one FY, cost 0.2517 x 30 lakh x 10% = Rs 75,510 with no GST (the
+earlier full-tax rule gave Rs 7,55,100), Rs 63,991.53 with 18% GST netted off. The shortfall threshold is the owner cushion and is never
+negative (decide refuses one); the overdraft limit enters only as draws with their interest,
+so it is counted once (tested). Interest is
 P (prod_k (1 + 3 r_k / 12) - 1) with r_k the bank rate in force on each monthly rest date; an
 incomplete last month accrues pro rata by days (VERIFY both). The bank-rate entry dated TODO is
 read as in force from the earliest date. The issue date stands in for acceptance. Suppliers are
@@ -617,11 +628,37 @@ that buyer's payments (tested). Same distribution as before, different draws: ea
 numbers are not reproduced bit for bit at this commit. Remaining non-additivity (GST on stretched
 purchases; a claim on a chased invoice) is covered by the fresh-path check.
 
+**Engine stream change check.** The run record now carries `engine_version` (`mc-v2`, also in
+`model_versions` as `simulation_engine`); v1 is the stream before this change. Same scripts and
+seeds at 43b54b5 (v1) and here (v2); error bars are Monte Carlo standard errors of the
+difference (independent streams) and a paired bootstrap over pasts (5,000 resamples).
+
+| check | n | v1 | v2 | v2 - v1 | se | z |
+|---|---|---|---|---|---|---|
+| true-parameter p_short, 3 curated pasts x days 30/60/90 | 10,000 paths, oracle 200 futures | | | +0.0004 to +0.0094 | 0.002-0.007 | max +1.69 |
+| learned mean gap p_short(90) | 100 pasts, 4,000 paths | -0.1490 | -0.1489 | +0.0001 | 0.0007 | +0.21 |
+| learned mean \|gap\| | same | 0.1799 | 0.1792 | -0.0007 | 0.0007 | -1.08 |
+| learned corr | same | 0.736 | 0.739 | +0.003 | 0.003 | +1.07 |
+| breaking point, delayed payments (factor) | default world, 10,000 paths, target 0.5 | 0.612 | 0.612 | 0 | 0.003 | 0 |
+| breaking point, supplier terms (days) | same | 15 | 15 | 0 | 0.17 | 0 |
+
+Per past, |z| > 2 in 2 of 100 learned pasts (4.5 expected by chance). Unexpected expense,
+reduced sales and revised schedule reach no breaking point at either version. Nothing moves
+beyond its error: the stream change alters draws, not distributions. All nine true-parameter
+differences are positive; they share paths within a past (three independent pasts), and the
+pooled day-90 z is +1.3.
+
+Note: the learned-mode figures here (mean gap -0.149, |gap| 0.180) were off the recorded
+-0.033 / 0.133 at both versions. Cause and fix: "Empirical timing in the engine: late bins"
+below.
+
 **Verification and outputs.** The chosen transforms run on 10,000 fresh paths (seed
 `<run>:decide:verify`) against the same-seed baseline. `decisions.plans`: rank by leave-one-out
 importance on the subsample (p_short rise when the action is dropped), then cost;
 `p_short_after` is cumulative on the fresh paths, adding the actions in rank order, and the last
-row is the full plan's run. The plans table holds max(cost, 0) (claims can have negative net cost).
+row is the full plan's run. The plans table holds max(cost, 0) (claims can have negative net cost);
+the decision result's plan frame keeps the signed figure in `net_cost_paise`, dropped from the
+contract write until question 16 is answered.
 The run record keeps both seed ids, the active and plan transform lists (canonical JSON and hash),
 eps, day and threshold; a rerun gives an identical plan, record and baselines (tested). The amount
 owed under MSMED on every overdue invoice is reported whether or not a claim is chosen.
@@ -632,15 +669,18 @@ paths, 10,000 fresh paths; eps 0.05 at day 90). One world, illustrative only:
 
 | baseline | actions | cost (Rs) | p_short(90) | expected days below threshold |
 |---|---|---|---|---|
-| do nothing | 0 | 0 | 0.717 | 10.62 |
-| discount every eligible invoice | 7 | 2,442 | 0.645 | 7.14 |
-| chase the largest buyer | 1 | 500 | 0.695 | 9.43 |
-| plan | 7 | 13,727 | 0.042 (in sample 0.046) | 0.19 |
+| do nothing | 0 | 0 | 0.707 | 9.56 |
+| discount every eligible invoice | 7 | 2,442 | 0.630 | 6.40 |
+| chase the largest buyer | 1 | 500 | 0.684 | 8.49 |
+| plan | 8 | 22,743 | 0.045 (in sample 0.050) | 0.38 |
 
-Plan: Rs 4 lakh overdraft on day 1 (Rs 10,849 interest), S1 +14 days and S2 +30 days (Rs 2,000
-each; S1 stays within 45 days so owes no MSMED interest), and four MSMED claims whose expected
-interest just beats the penalty. 83 candidates, 11,397 constraint rows after pruning, about 47 s
-(23 engine runs).
+Plan (company tenant, s.15 deadline = written terms): Rs 7 lakh overdraft on day 1 (Rs 18,986
+interest), S2 +30 days (Rs 2,000; not MSME), two chases (Rs 500 each) and four TReDS discounts
+(Rs 757 together). S1 is not stretched: with 30-day written terms any stretch is late and owes
+interest. No claim is chosen: net of tax, the expected interest no longer beats the penalty.
+83 candidates, 10,504 constraint rows after pruning, about 88 s, of which HiGHS about 47 s.
+Before the s.15, GST and claim-tax changes the same world gave Rs 13,705 net (Rs 14,849
+clamped), p_short 0.036, with S1 +14 days and four claims of negative net cost.
 
 **Contract gaps (proposals, additive).** 15. `decisions.plans` has no amount or parameters: an
 overdraft row's amount is in target_id (`day1:40000000`), a stretch's days in target_id
@@ -649,6 +689,104 @@ negative net cost (claims) cannot be stored (cost_paise is non-negative); propos
 `net_cost_paise`. 17. Nowhere for the baselines comparison, the MSMED amount owed or the
 decision run record (seeds, transform lists); propose `decisions.baselines`,
 `decisions.msmed_owed` and a `decisions.runs` row.
+
+## Decision engine across worlds and claim sensitivity (2026-10-25)
+
+**Across 30 worlds** (`eval/models/decision_baselines.py`, `eval/results/decision_baselines.md`):
+past seeds 0-9 of the healthy, borderline and distressed presets; small company tenant,
+overdraft limit Rs 10 lakh, S1 micro 50% and S2 not MSME 30% on 30-day written terms; eps 0.05
+at day 90; 1,000 solve and 10,000 fresh paths per world. Each world's opening balance is lowered
+by the median do-nothing 90-day minimum from a pilot run on its own seed (2,000 paths), with the
+threshold left at 0. That is the same arithmetic as a threshold at that median and keeps the
+threshold a cushion. Realised do-nothing p_short 0.482-0.531, 30/30 inside 0.2-0.8.
+
+| strategy | worlds | net cost mean (sd), Rs | median | p_short(90) mean (sd) | days below |
+|---|---|---|---|---|---|
+| do nothing | 30 | 0 | 0 | 0.501 (0.012) | 8.75 |
+| discount every eligible invoice | 21 | 7,222 (5,892) | 2,903 | 0.387 (0.083) | 5.79 |
+| chase the largest buyer | 30 | 500 | 500 | 0.470 (0.021) | 7.92 |
+| plan | 30 | 54,431 (45,193) | 27,059 | 0.054 (0.005) | 0.50 |
+
+The plan reaches the target in 30/30 worlds within Monte Carlo error (fresh p_short <= eps +
+2 x 0.0091) but only 5/30 strictly: fresh-path p_short averages 0.054 against 0.049 in sample.
+This is the usual optimism of a sample-average chance constraint: the solver pushes the
+in-sample count to the cap, so fresh paths land a little above it. No world was unreachable and
+no baseline matched the plan's p_short for less. Net and clamped costs are equal in every world:
+no plan chose a claim. Solve time median 94 s, max 129 s. Plan cost rises with the preset's
+margin pressure (healthy median about Rs 14k, distressed about Rs 1 lakh).
+
+**Claim sensitivity** (`eval/models/decision_sensitivity.py`, `decide(constants_overrides=...)`;
+default world, past seed 0, Rs 20 lakh cushion, same seeds in every run):
+
+| run | claims chosen | net cost (Rs) | vs default | fresh p_short |
+|---|---|---|---|---|
+| default (recovery 0.5, penalty 0.10) | 0 | 28,334 | 0 | 0.0561 |
+| claims off | 0 | 28,334 | 0 | 0.0569 |
+| recovery 0.25 | 0 | 28,977 | +644 | 0.0546 |
+| recovery 0.75 | 6 | 9,043 | -19,291 | 0.0560 |
+| penalty 0.05 | 13 | -25,883 | -54,217 | 0.0568 |
+| penalty 0.20 | 0 | 28,334 | 0 | 0.0561 |
+
+Two findings. (1) Claims are chosen only for their expected net value, never for risk: their
+cash lands on day 90, so they leave p_short unchanged and the rest of the plan stays the same
+(non-claim cost Rs 28,334 in every run with claims). Mixing them into the plan's cost hides that;
+reporting claims separately from the risk plan would be clearer (proposal, not done).
+(2) The solver stops at its 60 s time limit on this world (HiGHS status 13 for both the default
+and the recovery 0.25 runs, checked on a rerun), so these plans are the best found, not proven
+optimal. That explains recovery 0.25 costing Rs 644 more for an identical risk problem (claims
+there are never worth taking) and claims off swapping one chase for another at the same cost:
+the claim columns change the search path. Plan identity and, at the time limit, cost are not
+stable across candidate lists. The 30-world run did not record solver status; 60 s is about
+the median HiGHS time, so some of those plans are likely time-limited too. Options: record the
+status and MIP gap in the run record, raise the limit, or tighten the formulation (fewer chase
+columns, symmetric overdraft days). Not done.
+
+## Empirical timing in the engine: late bins (2026-10-25)
+
+**What moved.** Learned-mode calibration on the 100 default pasts (oracle 200 futures, 4,000
+paths, `engine.evaluate._learned_one`) reproduced the recorded -0.033 / 0.133 / 0.770 exactly at
+ef5a591, c4acc4f, 96dfccf and 1e4ba02, and gave -0.149 / 0.180 / 0.736 from 6e07b3d, the merge
+that put the empirical hazards into the engine. The script was right. With the hazards switched
+off, today's code gave -0.033 / 0.135 / 0.767 and the receipts gap fell from +Rs 7.7 lakh to
++Rs 14k at day 30; no other flow changed.
+
+**Cause: two bugs in the late bins** (j = weeks past the due week), both hitting long-overdue bills.
+1. The end bin j = 26 holds every later week, but each invoice added one week of exposure there
+   however long it stayed. An invoice paid in week 41 was one event over one week. Hazards of
+   0.48-0.58 a week came out where the Beta-geometric p was 0.08-0.16, and the engine used them
+   for every week past 26.
+2. Bins with no exposure fell back to the group prior (E + 0.5) / (R + 1) = 0.5 a week.
+On past 0, invoices 4+ weeks past due (Rs 63.9 lakh) paid Rs 11.9 lakh by day 30 with the
+hazards, Rs 6.9 lakh without. The Kaggle check scores weeks 1-15 and could not see it.
+
+**Fix.** The end bins count invoice-weeks, so their hazard is a weekly rate (tested: a constant
+0.2 beyond j = 26 comes back within 0.005 on 20,000 invoices). Shrinkage is to the buyer's own
+fitted Beta-geometric chance, m_j = p_early before the due week and p from it on (posterior
+means; the buyer's fit is already shrunk to its group), replacing the pooled group hazard:
+h_j = (e_j + s m_j) / (r_j + s). Empirical bins are used up to the last bin with at least
+`payment_timing.empirical_min_exposure` (5, assumption) invoice-weeks at risk; beyond it the
+parametric chance applies. Predictions (features, Kaggle) use its posterior mean there; the
+engine gets NaN bins and uses each posterior draw's own p, which keeps parameter uncertainty
+(with the mean instead, receipts by day 30 were +Rs 87k and the gap -0.050). Open invoices still
+count at risk weighted by 1 - P(dead | open).
+
+| variant (100 pasts, 4,000 paths) | mean gap | mean \|gap\| | corr | median gap day 30 / 90 (Rs) | receipts gap day 30 / 90 (Rs) |
+|---|---|---|---|---|---|
+| recorded reference (ef5a591, no empirical hazards in the engine) | -0.033 | 0.133 | 0.770 | -24,649 / -84,165 | n/a |
+| before the fix (6e07b3d to here) | -0.149 | 0.180 | 0.736 | +7,34,620 / +9,59,790 | +7,72,077 / +10,16,694 |
+| fix, posterior mean beyond the data | -0.050 | 0.143 | 0.745 | +48,110 / +42,037 | +87,329 / +1,04,573 |
+| fix, per-draw p beyond the data (kept) | -0.045 | 0.142 | 0.746 | +21,747 / +2,954 | +60,213 / +64,149 |
+
+Calibration table (kept variant): predicted / oracle 0.031 / 0.067 (n 9), 0.126 / 0.194 (27),
+0.299 / 0.374 (30), 0.481 / 0.496 (15), 0.706 / 0.713 (17), 0.863 / 0.745 (2). The low and middle
+bins are still under-predicted, as before. Receipts remain about Rs 0.6-0.9 lakh over the oracle;
+the empirical hazards inside the data are point estimates and carry no parameter uncertainty.
+
+**Guard.** `test_learned_mode_calibration_has_not_moved` (slow) fails if mean gap or mean |gap|
+moves more than 0.02 from the reference; `MATSYA_ORACLE_CACHE` reuses the oracle pickle.
+
+**Not re-run:** the Kaggle timing check (empirical vs Beta-geometric). This environment's network
+policy blocks www.kaggle.com, so the recorded Kaggle numbers are from before the fix. Open item.
 
 ## Requests to Track A
 

@@ -17,7 +17,7 @@ from matsya_intelligence.io.types import INVOICE_TIMING
 from matsya_intelligence.seeding import rng_for
 from matsya_intelligence.synth.world import load_constants
 from matsya_intelligence.timing.hierarchy import TYPE_DEFAULTS, group_prior
-from matsya_intelligence.timing.empirical import buyer_hazard, counts, group_hazard, predict_open_empirical
+from matsya_intelligence.timing.empirical import buyer_hazard, counts, data_extent, parametric_chance, predict_open_empirical
 from matsya_intelligence.timing.labels import timing_labels
 from matsya_intelligence.timing.model import Posterior, TimingPrior, gibbs, p_dead_given_open, predict_open, shift_logit
 
@@ -32,6 +32,7 @@ class TimingModel:
     priors: dict[str, TimingPrior]  # buyer_id -> prior used in the final fit
     posteriors: dict[str, Posterior]  # buyer_id -> draws
     hazards: dict[str, np.ndarray] = field(default_factory=dict)  # buyer_id -> empirical hazard (empirical mode)
+    hazard_extent: dict[str, int] = field(default_factory=dict)  # buyer_id -> last bin with adequate exposure
 
     def predict_invoice(self, post: Posterior, buyer_id: str | None, age: int, horizon: int, due_week: int,
                         shift: float = 0.0) -> tuple[np.ndarray, float, float]:
@@ -93,24 +94,26 @@ def fit_timing(outcomes: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFr
             for b in bs:
                 priors[b] = gp
                 posts[b] = fit(gp, b, "group")
-    hazards = empirical_hazards(data, posts, group, cap) if empirical else {}
+    hazards, extent = (empirical_hazards(data, posts, cap, float(consts["empirical_min_exposure"]["value"]))
+                       if empirical else ({}, {}))
     tenant = outcomes["tenant_id"][0] if outcomes.height else ""
-    return TimingModel(tenant_id=tenant, as_of=as_of, labels=labels, priors=priors, posteriors=posts, hazards=hazards)
+    return TimingModel(tenant_id=tenant, as_of=as_of, labels=labels, priors=priors, posteriors=posts, hazards=hazards,
+                       hazard_extent=extent)
 
 
-def empirical_hazards(data: dict[str, dict], posts: dict[str, Posterior], group: dict[str, tuple],
-                      strength: float) -> dict[str, np.ndarray]:
-    """Empirical mode (timing.empirical): hazards for buyers with >= EMPIRICAL_MIN_PAID paid bills."""
-    er = {}
+def empirical_hazards(data: dict[str, dict], posts: dict[str, Posterior], strength: float,
+                      min_exposure: float) -> tuple[dict[str, np.ndarray], dict[str, int]]:
+    """Empirical mode (timing.empirical): hazards for buyers with >= EMPIRICAL_MIN_PAID paid bills, shrunk
+    to the buyer's own Beta-geometric chances (already shrunk to its group by the hierarchical fit)."""
+    out, extent = {}, {}
     for b, x in data.items():
+        if x["paid_weeks"].size < EMPIRICAL_MIN_PAID:
+            continue
         po = posts[b]
         alive = 1 - np.array([p_dead_given_open(c, po.p, po.pi, d, po.p_early).mean()
                               for c, d in zip(x["open_ages"], x["open_due"])])
-        er[b] = counts(x["paid_weeks"], x["paid_due"], x["open_ages"], x["open_due"], alive)
-    pooled: dict[tuple, list] = {}
-    for b, (e, r) in er.items():
-        acc = pooled.setdefault(group[b], [np.zeros_like(e), np.zeros_like(r)])
-        acc[0] += e
-        acc[1] += r
-    return {b: buyer_hazard(e, r, group_hazard(*pooled[group[b]]), strength)
-            for b, (e, r) in er.items() if data[b]["paid_weeks"].size >= EMPIRICAL_MIN_PAID}
+        e, r = counts(x["paid_weeks"], x["paid_due"], x["open_ages"], x["open_due"], alive)
+        out[b] = buyer_hazard(e, r, parametric_chance(float(po.p_early.mean()), float(po.p.mean())), strength,
+                              min_exposure)
+        extent[b] = data_extent(r, min_exposure)
+    return out, extent

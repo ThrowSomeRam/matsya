@@ -8,9 +8,15 @@ constants file; the ones without a source are marked status verify there.
   MSMED interest     I = P x (prod_k (1 + 3 r_k / 12) - 1), one factor per monthly rest, r_k the
                      RBI bank rate in force on that rest date; an incomplete last month accrues
                      pro rata by days at the rate in force on the end date
+  43B(h) deferral    tax x A / (1 + GST) x cost_of_funds x years, years = FY the deduction moves to
+                     minus the FY it had (0 when a late payment stays in the same FY)
 """
 
+import copy
 import math
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date, timedelta
 from decimal import Decimal
 from fractions import Fraction
@@ -19,15 +25,46 @@ from matsya_intelligence.synth.world import load_constants
 
 MSMED_RATE_MULTIPLIER = 3  # s.16: three times the bank rate
 MSMED_SUPPLIERS = ("micro", "small")  # s.15/16 and 43B(h) cover micro and small, not medium
+ENTITY_TYPES = ("proprietor", "partnership", "company")
+
+
+_OVERRIDES: ContextVar[dict] = ContextVar("decision_constants_overrides", default={})
 
 
 def constants() -> dict:
-    return load_constants()["decision"]
+    """The constants file's decision section, with any overrides active in this context applied."""
+    k = load_constants()["decision"]
+    if not _OVERRIDES.get():
+        return k
+    k = copy.deepcopy(k)  # load_constants is cached: never edit its dict
+    for path, v in _OVERRIDES.get().items():
+        *head, last = path.split(".")
+        node = k
+        for part in head:
+            node = node[part]
+        if last not in node:
+            raise KeyError(f"no decision constant {path!r}")
+        if isinstance(node[last], dict) and "value" in node[last]:
+            node[last]["value"] = v
+        else:
+            node[last] = v
+    return k
+
+
+@contextmanager
+def overrides(values: dict | None) -> Iterator[None]:
+    """Override decision constants by dotted path (e.g. {"msmed_claim.recovery_share": 0.25}) inside the block."""
+    token = _OVERRIDES.set(dict(values or {}))
+    try:
+        constants()  # unknown paths fail here, before any work
+        yield
+    finally:
+        _OVERRIDES.reset(token)
 
 
 def frac(x) -> Fraction:
     """Exact Fraction of a config number (0.0575 means 575/10000, not its binary float)."""
-    return Fraction(Decimal(str(x)))
+    return x if isinstance(x, Fraction) else Fraction(Decimal(str(x)))
 
 
 def to_paise(x: Fraction) -> int:
@@ -96,6 +133,25 @@ def treds_discount(amount_paise: int, rate_annual, days_early: int) -> tuple[int
 
 def overdraft_interest(amount_paise: int, rate_annual, days_used: int) -> int:
     return to_paise(amount_paise * frac(rate_annual) * max(days_used, 0) / 365)
+
+
+def income_tax_rate(entity_type: str | None, owner_rate=None) -> Fraction | None:
+    """The owner's rate if given, else the constants default for the entity type (company only).
+    None: no rate known (a proprietor or partnership that has not given one)."""
+    if owner_rate is not None:
+        return frac(owner_rate)
+    if entity_type is None:
+        return None
+    if entity_type not in ENTITY_TYPES:
+        raise ValueError(f"entity_type must be one of {ENTITY_TYPES}, got {entity_type!r}")
+    v = constants()["stretch"]["income_tax_rate"][entity_type]["value"]  # VERIFY: company 25.17%
+    return None if v is None else frac(v)
+
+
+def deduction_deferral_cost(amount_years_paise, tax_rate: Fraction, cost_of_funds) -> int:
+    """Cost of a 43B(h) / 37(2)(g) deduction moved to a later FY: the tax saving arrives later by
+    that many years, valued at the cost of funds. amount_years_paise = sum of amount (net of GST) x years."""
+    return to_paise(frac(amount_years_paise) * tax_rate * frac(cost_of_funds))
 
 
 def fiscal_year(d: date) -> int:

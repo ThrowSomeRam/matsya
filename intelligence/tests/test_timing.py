@@ -173,19 +173,69 @@ def test_rhat_four_chains():
 
 
 def test_empirical_counts_and_shrinkage():
-    from matsya_intelligence.timing.empirical import J_LO, buyer_hazard, counts, predict_open_empirical
+    from matsya_intelligence.timing.empirical import J_LO, buyer_hazard, counts, parametric_chance, predict_open_empirical
 
     # due week 3: paid in week 2 (j=-1) and week 3 (j=0); open after 1 full week (at risk j=-2 only)
     e, r = counts([2, 3], [3, 3], [1], [3])
     at = lambda j: j - J_LO  # noqa: E731
     assert e[at(-1)] == 1 and e[at(0)] == 1 and e.sum() == 2
     assert (r[at(-2)], r[at(-1)], r[at(0)], r[at(1)]) == (3, 2, 1, 0)
-    g = np.full_like(e, 0.3)
-    h = buyer_hazard(e, r, g, 8.0)
-    assert h[at(1)] == pytest.approx(0.3)  # no data: group hazard
-    assert h[at(0)] == pytest.approx((1 + 2.4) / 9)
+    m = parametric_chance(0.1, 0.3)
+    assert m[at(-1)] == 0.1 and m[at(0)] == 0.3
+    h = buyer_hazard(e, r, m, 8.0, min_exposure=1)
+    assert h[at(0)] == pytest.approx((1 + 8 * 0.3) / 9)  # last bin with exposure >= 1
+    assert h[at(-1)] == pytest.approx((1 + 8 * 0.1) / 10)
+    assert h[at(1)] == 0.3 and h[at(26)] == 0.3  # beyond the data: the parametric chance
     paid, never, beyond = predict_open_empirical(h, 0.05, age=0, horizon=13, due_week=3)
     assert paid.sum() + never + beyond == pytest.approx(1.0)
+
+
+def test_empirical_end_bin_recovers_a_constant_hazard_beyond_26_weeks():
+    from matsya_intelligence.timing.empirical import J_HI, J_LO, counts
+
+    # due week 1, nobody pays before j = 26, then a constant weekly chance of 0.2: the end bin holds
+    # every week from 26 on, so its exposure is in invoice-weeks and the rate comes back as 0.2
+    rng = np.random.default_rng(0)
+    lam, n = 0.2, 20_000
+    j_paid = J_HI + rng.geometric(lam, n) - 1  # first week at risk in the end bin is j = 26
+    e, r = counts(j_paid + 1, np.ones(n, dtype=int), [], [])
+    est = e[J_HI - J_LO] / r[J_HI - J_LO]
+    assert abs(est - lam) < 0.005, est
+    assert r[J_HI - J_LO] == pytest.approx((j_paid - J_HI + 1).sum())
+    # open invoices in the end bin add their weeks too
+    _, r2 = counts([], [], [J_HI + 10], [1], [0.5])
+    assert r2[J_HI - J_LO] == pytest.approx(0.5 * 10)
+
+
+def test_empty_bins_return_the_parametric_chance():
+    from matsya_intelligence.timing.empirical import N_BINS, buyer_hazard, parametric_chance
+
+    m = parametric_chance(0.05, 0.4)
+    h = buyer_hazard(np.zeros(N_BINS), np.zeros(N_BINS), m, 8.0, min_exposure=5)
+    assert np.array_equal(h, m)
+
+
+def test_long_overdue_invoice_uses_the_parametric_rate_beyond_the_data():
+    from matsya_intelligence.timing.empirical import J_LO, buyer_hazard, counts, parametric_chance, predict_open_empirical
+
+    # 40 bills, due week 3, all paid within two weeks of the due week: no data from j = 3 on
+    k = np.array([3, 4, 5] * 13 + [4])
+    e, r = counts(k, np.full(k.size, 3), [], [])
+    m = parametric_chance(0.05, 0.35)
+    h = buyer_hazard(e, r, m, 8.0, min_exposure=5)
+    assert h[2 - J_LO] != pytest.approx(0.35)  # inside the data: empirical
+    q = 0.6  # long overdue, so most of it is probably dead (never-paid weighting kept)
+    paid, never, beyond = predict_open_empirical(h, q, age=30, horizon=6, due_week=3)
+    alive = (1 - q) * np.concatenate([[1.0], np.cumprod(np.full(5, 1 - 0.35))])
+    assert paid == pytest.approx(alive * 0.35)  # weekly rate among the living = p
+    assert never == q
+    # for the engine, bins beyond the data are NaN so it uses each posterior draw's own p there
+    from matsya_intelligence.timing.empirical import beyond_data_as_nan, data_extent
+
+    last = data_extent(r, 5)
+    assert last == 2 - J_LO
+    eng = beyond_data_as_nan(h, last)
+    assert np.isnan(eng[last + 1:]).all() and np.array_equal(eng[: last + 1], h[: last + 1])
 
 
 def test_empirical_mode_reproducible_and_valid():

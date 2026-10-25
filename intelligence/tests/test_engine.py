@@ -80,6 +80,17 @@ def test_outputs_and_run_record(learned):
     assert res.run["overrides_json"] == "[]"
 
 
+def test_run_record_carries_the_engine_version(learned):
+    from matsya_intelligence.engine.core import ENGINE_VERSION, run_table
+
+    _, _, _, inp = learned
+    res = run_engine(inp, "ver", 50)
+    assert res.run["engine_version"] == ENGINE_VERSION
+    assert res.run["model_versions"]["simulation_engine"] == ENGINE_VERSION
+    assert inp.model_versions.get("simulation_engine") is None  # inputs are not mutated
+    assert json.loads(run_table(res.run)["model_versions_json"][0])["simulation_engine"] == ENGINE_VERSION
+
+
 def test_speed_10k_paths(learned):
     _, _, _, inp = learned
     t = time.perf_counter()
@@ -149,3 +160,33 @@ def test_learned_shock_base_preserves_posterior_chance(learned):
             a, b = (v, b) if abs(shock_averaged(lo[i:i + 1], v)[0] - 0.5) > abs(p[i] - 0.5) else (a, v)
         assert np.allclose(shock_averaged(lo, v), np.clip(p, 1e-9, 1 - 1e-9), atol=1e-6)
     assert moved
+
+
+# Recorded at ef5a591 (before empirical timing reached the engine): 100 default pasts, oracle 200
+# futures, 4,000 paths. See docs/track-b-decisions.md, "Shock correction on the current pipeline".
+CALIBRATION_REFERENCE = {"mean_gap_90": -0.033, "mean_abs_gap_90": 0.133}
+
+
+@pytest.mark.slow
+def test_learned_mode_calibration_has_not_moved():
+    """Fails if learned-mode mean gap or mean |gap| of p_short(90) against the oracle moves by more than
+    0.02 from the reference. MATSYA_ORACLE_CACHE: a pickle path to reuse the oracle (about 10 min)."""
+    import os
+
+    from matsya_intelligence.engine.evaluate import learned_calibration, oracle_cache
+
+    oracle = oracle_cache(range(100), 200, os.environ.get("MATSYA_ORACLE_CACHE"))
+    r = learned_calibration(oracle, n_paths=4000, workers=4)
+    for key, ref in CALIBRATION_REFERENCE.items():
+        assert abs(r[key] - ref) <= 0.02, (key, r[key], ref)
+
+
+def test_empirical_hazards_reach_the_engine_with_nan_beyond_the_data(learned):
+    _, _, _, inp = learned
+    hz = [h for h in (inp.timing.hazard or []) if h is not None]
+    assert hz and any(np.isnan(h).any() for h in hz)  # a buyer with data out to the end bin has no NaN
+    for h in hz:  # NaN only as a tail beyond the data
+        nan = np.flatnonzero(np.isnan(h))
+        assert nan.size == 0 or np.array_equal(nan, np.arange(nan[0], len(h)))
+    res = run_engine(inp, "nan-tail", 200)
+    assert np.isfinite(res.balance).all()
