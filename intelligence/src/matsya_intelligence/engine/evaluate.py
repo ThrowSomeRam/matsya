@@ -62,6 +62,23 @@ def oracle_summary(past_seed: int, n_futures: int = 200) -> dict:
             "median": np.median(paths, axis=0), "flow_cum_mean": cum}
 
 
+def oracle_cache(seeds=range(100), n_futures: int = 200, path: str | None = None, workers: int = 4) -> list[dict]:
+    """oracle_summary for each past, loaded from path if it exists, else computed (and saved there)."""
+    import multiprocessing as mp
+    import os
+    import pickle
+    from concurrent.futures import ProcessPoolExecutor
+
+    if path and os.path.exists(path):
+        return pickle.load(open(path, "rb"))
+    os.environ.setdefault("POLARS_MAX_THREADS", "1")
+    with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn")) as ex:
+        out = list(ex.map(oracle_summary, list(seeds), [n_futures] * len(seeds)))
+    if path:
+        pickle.dump(out, open(path, "wb"))
+    return out
+
+
 def _oracle(cfg: WorldConfig, past_seed: int, n_futures: int):
     fut = resample_futures(cfg, past_seed, n_futures)
     o = fut.oracle_shortfall(horizon_days=90)["p_short"].to_numpy()

@@ -46,6 +46,7 @@ from matsya_intelligence.sales import fit_sales
 from matsya_intelligence.shocks import base_chance, fit_sector_shocks
 from matsya_intelligence.synth.world import PROCESS_OF_CATEGORY
 from matsya_intelligence.timing import fit_timing
+from matsya_intelligence.timing.empirical import beyond_data_as_nan
 
 UNSCHEDULED = [c for c, p in PROCESS_OF_CATEGORY.items() if p == "unscheduled"]
 MON_SAT = np.array([1, 1, 1, 1, 1, 1, 0], dtype=float) / 6
@@ -117,7 +118,8 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
     tm = fit_timing(out, inv, buyers, through, run_id=run_id, type_defaults=timing_priors, hierarchical=timing_hierarchical)
     timing = TimingDraws(p_early=[tm.posteriors[b].p_early for b in buyer_ids],
                          p=[tm.posteriors[b].p for b in buyer_ids], pi=[tm.posteriors[b].pi for b in buyer_ids],
-                         hazard=[tm.hazards.get(b) for b in buyer_ids] if tm.hazards else None)
+                         hazard=[None if b not in tm.hazards else beyond_data_as_nan(tm.hazards[b], tm.hazard_extent[b])
+                                 for b in buyer_ids] if tm.hazards else None)
 
     open_ = inv.filter(pl.col("status") != "paid").join(out.select("invoice_id", "paid_fraction"), on="invoice_id")
     cash = ((open_["gross_paise"] - open_["expected_tds_paise"]) * (1 - open_["paid_fraction"])).round().cast(pl.Int64)

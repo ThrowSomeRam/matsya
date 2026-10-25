@@ -553,6 +553,8 @@ to the due week, j = k - d (j = 0 holds the due date), as a discrete weekly haza
 and r_j invoices at risk in bin j, each invoice entering at j = 1 - d and censored open invoices
 counted at risk up to c - d. Each bin is shrunk Beta-Binomial style toward the group's pooled
 hazard g_j = (E_j + 0.5) / (R_j + 1): h_j = (e_j + s g_j) / (r_j + s), s = prior_strength (8).
+(Superseded: the shrink target, the end bins and the bins beyond the data changed; see
+"Empirical timing in the engine: late bins".)
 A hazard rather than a histogram so censoring and the bins before issue are handled exactly. The
 never-paid share is unchanged: open invoices count at risk with weight 1 - P(dead | open) from the
 Beta-geometric posterior, and predictions use its P(dead). Buyers with fewer bills, and unseen
@@ -646,10 +648,9 @@ beyond its error: the stream change alters draws, not distributions. All nine tr
 differences are positive; they share paths within a past (three independent pasts), and the
 pooled day-90 z is +1.3.
 
-Note: `engine.evaluate._learned_one` (used here and by `eval/models/engine_calibration.py`)
-gives mean gap -0.149 and mean |gap| 0.180 on the 100 pasts, against -0.033 and 0.133 recorded
-for the current pipeline above. Same at both versions, so not from the stream; the
-calibration script's input path needs checking against the pipeline the earlier table used.
+Note: the learned-mode figures here (mean gap -0.149, |gap| 0.180) were off the recorded
+-0.033 / 0.133 at both versions. Cause and fix: "Empirical timing in the engine: late bins"
+below.
 
 **Verification and outputs.** The chosen transforms run on 10,000 fresh paths (seed
 `<run>:decide:verify`) against the same-seed baseline. `decisions.plans`: rank by leave-one-out
@@ -688,6 +689,53 @@ negative net cost (claims) cannot be stored (cost_paise is non-negative); propos
 `net_cost_paise`. 17. Nowhere for the baselines comparison, the MSMED amount owed or the
 decision run record (seeds, transform lists); propose `decisions.baselines`,
 `decisions.msmed_owed` and a `decisions.runs` row.
+
+## Empirical timing in the engine: late bins (2026-10-25)
+
+**What moved.** Learned-mode calibration on the 100 default pasts (oracle 200 futures, 4,000
+paths, `engine.evaluate._learned_one`) reproduced the recorded -0.033 / 0.133 / 0.770 exactly at
+ef5a591, c4acc4f, 96dfccf and 1e4ba02, and gave -0.149 / 0.180 / 0.736 from 6e07b3d, the merge
+that put the empirical hazards into the engine. The script was right. With the hazards switched
+off, today's code gave -0.033 / 0.135 / 0.767 and the receipts gap fell from +Rs 7.7 lakh to
++Rs 14k at day 30; no other flow changed.
+
+**Cause: two bugs in the late bins** (j = weeks past the due week), both hitting long-overdue bills.
+1. The end bin j = 26 holds every later week, but each invoice added one week of exposure there
+   however long it stayed. An invoice paid in week 41 was one event over one week. Hazards of
+   0.48-0.58 a week came out where the Beta-geometric p was 0.08-0.16, and the engine used them
+   for every week past 26.
+2. Bins with no exposure fell back to the group prior (E + 0.5) / (R + 1) = 0.5 a week.
+On past 0, invoices 4+ weeks past due (Rs 63.9 lakh) paid Rs 11.9 lakh by day 30 with the
+hazards, Rs 6.9 lakh without. The Kaggle check scores weeks 1-15 and could not see it.
+
+**Fix.** The end bins count invoice-weeks, so their hazard is a weekly rate (tested: a constant
+0.2 beyond j = 26 comes back within 0.005 on 20,000 invoices). Shrinkage is to the buyer's own
+fitted Beta-geometric chance, m_j = p_early before the due week and p from it on (posterior
+means; the buyer's fit is already shrunk to its group), replacing the pooled group hazard:
+h_j = (e_j + s m_j) / (r_j + s). Empirical bins are used up to the last bin with at least
+`payment_timing.empirical_min_exposure` (5, assumption) invoice-weeks at risk; beyond it the
+parametric chance applies. Predictions (features, Kaggle) use its posterior mean there; the
+engine gets NaN bins and uses each posterior draw's own p, which keeps parameter uncertainty
+(with the mean instead, receipts by day 30 were +Rs 87k and the gap -0.050). Open invoices still
+count at risk weighted by 1 - P(dead | open).
+
+| variant (100 pasts, 4,000 paths) | mean gap | mean \|gap\| | corr | median gap day 30 / 90 (Rs) | receipts gap day 30 / 90 (Rs) |
+|---|---|---|---|---|---|
+| recorded reference (ef5a591, no empirical hazards in the engine) | -0.033 | 0.133 | 0.770 | -24,649 / -84,165 | n/a |
+| before the fix (6e07b3d to here) | -0.149 | 0.180 | 0.736 | +7,34,620 / +9,59,790 | +7,72,077 / +10,16,694 |
+| fix, posterior mean beyond the data | -0.050 | 0.143 | 0.745 | +48,110 / +42,037 | +87,329 / +1,04,573 |
+| fix, per-draw p beyond the data (kept) | -0.045 | 0.142 | 0.746 | +21,747 / +2,954 | +60,213 / +64,149 |
+
+Calibration table (kept variant): predicted / oracle 0.031 / 0.067 (n 9), 0.126 / 0.194 (27),
+0.299 / 0.374 (30), 0.481 / 0.496 (15), 0.706 / 0.713 (17), 0.863 / 0.745 (2). The low and middle
+bins are still under-predicted, as before. Receipts remain about Rs 0.6-0.9 lakh over the oracle;
+the empirical hazards inside the data are point estimates and carry no parameter uncertainty.
+
+**Guard.** `test_learned_mode_calibration_has_not_moved` (slow) fails if mean gap or mean |gap|
+moves more than 0.02 from the reference; `MATSYA_ORACLE_CACHE` reuses the oracle pickle.
+
+**Not re-run:** the Kaggle timing check (empirical vs Beta-geometric). This environment's network
+policy blocks www.kaggle.com, so the recorded Kaggle numbers are from before the fix. Open item.
 
 ## Requests to Track A
 

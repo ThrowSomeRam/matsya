@@ -54,7 +54,8 @@ class TimingDraws:
     Past weeks (survival, the elapsed part of the current week) always use the posterior.
 
     hazard[b] (timing.empirical, None for Beta-geometric buyers) replaces the two-phase chances
-    in every week for that buyer; the never-paid share still comes from pi and the Beta-geometric
+    for that buyer in every week whose bin is not NaN (NaN = beyond the buyer's data: the per-draw
+    two-phase chance applies); the never-paid share still comes from pi and the Beta-geometric
     survival, as in the payment-timing model's own predictions. Shock shifts and scenario
     multipliers apply to it the same way: logit shift, then x factor clipped to [0, 1].
     """
@@ -218,7 +219,8 @@ def _simulate_payments(inp: EngineInputs, rng: np.random.Generator, path: np.nda
     def chance(rows, week, due_w, early, late, h_mat):
         out = np.where(week < due_w, early[rows], late[rows])
         if h_mat is not None:
-            out = np.where(emp[rows], h_mat[b[rows], np.clip(week - due_w, J_LO, J_HI) - J_LO], out)
+            h = h_mat[b[rows], np.clip(week - due_w, J_LO, J_HI) - J_LO]
+            out = np.where(emp[rows] & ~np.isnan(h), h, out)  # NaN bin: the per-draw parametric chance
         return out
 
     elapsed = np.maximum(0, inp.survival_through_day - issue + 1)
