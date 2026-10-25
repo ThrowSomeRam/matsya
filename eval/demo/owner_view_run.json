@@ -1,0 +1,83 @@
+{
+ "run_id": "demo:borderline:0:decide:verify",
+ "plan_record": {
+  "run_id": "demo:borderline:0:decide:cvar",
+  "base_run_id": "demo:borderline:0",
+  "tenant_id": "5f0c6a1e-2b7d-4c3a-9e8f-1a2b3c4d5e6f",
+  "as_of": "2026-03-31",
+  "model_version": "saa-milp-highs-v1",
+  "model_versions": {
+   "payment_timing": "beta-geometric-2phase-v1+empirical-v1",
+   "sales_forecaster": "negbin-v1+boot",
+   "obligations_detector": "v1",
+   "unscheduled": "bootstrap-8w-v0"
+  },
+  "input_snapshot_ids": [
+   "buyers:809fc284ae120e2b",
+   "invoice_outcomes:fed8a3efbd7b0c07",
+   "invoices:18c893196517c2a6",
+   "transactions:c9e46d1405e3a640",
+   "opening_balance:286000000@2026-03-31",
+   "complete_through:2026-03-29"
+  ],
+  "seed_ids": {
+   "subsample": "demo:borderline:0:decide:subsample",
+   "verify": "demo:borderline:0:decide:verify"
+  },
+  "active_transforms_json": "[]",
+  "plan_transforms_json": "[{\"days\":30,\"ids\":[],\"share\":0.5,\"target\":\"supplier_payments\",\"type\":\"date_shift\"},{\"days\":30,\"ids\":[],\"share\":0.3,\"target\":\"supplier_payments\",\"type\":\"date_shift\"},{\"amount_paise\":19406606,\"invoice_id\":\"ceda0ddd8f0b3921b9f2520a915f5546\",\"mode\":\"replace\",\"on\":\"2026-04-02\",\"type\":\"invoice_cash\"},{\"factor\":1.5,\"ids\":[\"a506f6e2d1a119e5a295c9cd74027edd\"],\"purchase_stickiness_days\":null,\"target\":\"buyer\",\"type\":\"rate_multiplier\",\"weeks\":2},{\"amount_paise\":20000000,\"label\":\"overdraft draw\",\"on\":\"2026-05-15\",\"type\":\"cash_event\",\"window_end\":null},{\"amount_paise\":14075529,\"invoice_id\":\"b73f5691f54b76b7cabb7b512c184164\",\"mode\":\"replace\",\"on\":\"2026-04-02\",\"type\":\"invoice_cash\"}]",
+  "plan_transforms_hash": "a7b2d731ee7bcb1befeee4737237a1c00ec5dfec99a22da470685d213445dbd0",
+  "eps": 0.05,
+  "day": 90,
+  "threshold_paise": 100000000,
+  "n_sub": 1000,
+  "n_verify": 10000,
+  "eps_solve": 0.04000000000000001,
+  "solver": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "method": "cvar",
+  "cvar_alpha": 0.05,
+  "cvar_budget_paise": 0,
+  "cvar_sub_paise": 0.0,
+  "constants_overrides": {}
+ },
+ "solver": {
+  "status": 0,
+  "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "seconds": 0.4433634120005081
+ },
+ "attribution_seconds": 75.4713830260007,
+ "seconds": 620.1665315680002,
+ "n_paths": 10000,
+ "breaking_points": {
+  "delayed_customer_payments": {
+   "magnitude": 0.8671875,
+   "monotone": true,
+   "evaluations": 16
+  },
+  "unexpected_expense": {
+   "magnitude": -58565370.0,
+   "monotone": true,
+   "evaluations": 33
+  },
+  "reduced_sales": {
+   "magnitude": null,
+   "monotone": false,
+   "evaluations": 9
+  },
+  "supplier_tightens_terms": {
+   "magnitude": 26.0,
+   "monotone": true,
+   "evaluations": 11
+  },
+  "revised_payment_schedule": {
+   "magnitude": null,
+   "monotone": true,
+   "evaluations": 9
+  }
+ }
+}

@@ -1163,6 +1163,36 @@ The two tests for them are back as well. Learned-mode calibration guard, with th
   forecasts more optimistic will trip the guard.
 - **Bins:** the 0.05-0.20 bin still under-predicts (0.126 predicted vs 0.214 oracle, n 28).
 
+## Owner view payload (2026-10-25)
+
+`present/owner_view.py`: `build_owner_view(tenant_run) -> OwnerView` (pydantic). `present/tenant_run.py`:
+`compute_tenant_run` runs everything once.
+
+- **Baseline:** the decision engine's fresh-path do-nothing run (`<run>:decide:verify`). The plan's
+  "risk after" figures therefore share every random draw with the headline and chart 2.
+- **What-ifs:** every preset, each with its breaking point, run against that baseline.
+- **Drivers:** attribution, on its own seed.
+
+**No LLM.** Strings come from fixed templates, and every number a string shows is also a payload field
+(`Money.text`, `Pct.text` or an integer field). A test checks this, along with every rupee figure
+against the engine, decision engine, scenario and attribution outputs.
+
+**Money format:** Rs 4.2 lakh, Rs 1.3 crore, en-IN grouping below a lakh.
+
+**Breaking point:** the magnitude at which the 90-day chance reaches 0.5, the runway rule.
+
+**Fan:** the engine's own quantiles. Days 1-30 are flagged as calibrated, and would be read at the
+calibration component's level. The demo world has no calibration history, so the scale is 1 and those
+bands equal the engine's.
+
+**Demo payload** (`eval/models/owner_view_demo.py`): `eval/demo/owner_view.json`, built in 620 s at
+10,000 paths. Default world, past seed 0, Rs 10 lakh cushion, categoriser categories, CVaR plan.
+
+- **Today:** Rs 28.6 lakh in the bank.
+- **Risk:** 20% / 29% / 34% chance of running short within 30 / 60 / 90 days; runway beyond 90 days.
+- **Plan:** 6 steps for Rs 1.2 lakh take the 90-day chance to under 1%. Solved optimal.
+- **Money owed:** 54 overdue invoices carry Rs 6.9 lakh of MSMED interest.
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).
