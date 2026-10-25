@@ -584,7 +584,7 @@ Against the handbook's A1 to A10 and phases P0 to P5.
 | Compose base and `compose.platform.yml` | `compose.platform.yml` built (MinIO and bucket init); no base file | Track B's file still points at the missing base |
 | Track A CI | not built (only `.github/workflows/track-b.yml`) | pending |
 | P4 chaos suite, scale test, naive-stack comparison | partial: the stress sweep covers AA fault injection; no scale test or naive-stack run | pending |
-| owner view, dashboard (P5) | not built | pending |
+| owner view, dashboard (P5) | built: owner-view API (`platform/src/matsya_platform/api`, serves precomputed payloads, no auth) and owner dashboard (`dashboard/owner`, logic in `src/viewmodel.ts`); payloads come from Track B's demo precompute (`eval/models/owner_view_demo.py`), not from the pipeline | pending: auth and tenant isolation, payloads fed by the pipeline; payload asks in `docs/owner-dashboard-payload-gaps.md` |
 | Berka loaded as a Track A tenant (P1) | not built | pending |
 
 ## 11. Next steps and unanswered questions
