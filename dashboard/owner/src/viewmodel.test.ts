@@ -3,8 +3,8 @@ import demoJson from "../../../eval/demo/owner_view.json";
 import type { OwnerView, PlanAction, WhatIf } from "./types";
 import {
   BANNED, BUYERS_SHOWN, MSME_STRETCH_CATCH, STATUS_RULES, STRETCH_PENALTY_PAISE, buildOwnerScreen, buyerRows,
-  chanceEstimate, extraTimeToPay, horizonCovered, isLikelyMsmeSupplierFromStretchCost, longerText, oneIn,
-  readyText, splitSteps, statusOf, supplierLabel,
+  chanceEstimate, extraTimeToPay, horizonCovered, isLikelyMsmeSupplierFromStretchCost, longerText, readyText,
+  roundPct, splitSteps, statusOf, supplierLabel,
 } from "./viewmodel";
 
 const demo = demoJson as unknown as OwnerView;
@@ -74,23 +74,34 @@ describe("statusOf", () => {
   });
 });
 
-describe("chance words", () => {
-  it("words a chance as 1 in N or a fraction", () => {
-    expect(oneIn(0.2)).toBe("1 in 5");
-    expect(oneIn(0.33)).toBe("1 in 3");
-    expect(oneIn(0.25)).toBe("1 in 4");
-    expect(oneIn(0.66)).toBe("2 in 3");
-    expect(oneIn(0.9)).toBe("9 in 10");
-    expect(oneIn(0.99)).toBe("almost certain");
-    expect(oneIn(1.2)).toBe("");
+describe("chance as a percentage", () => {
+  it("rounds to 5 from 10% up and to 1 below", () => {
+    expect(roundPct(0.196)).toBe(20);
+    expect(roundPct(0.337)).toBe(35);
+    expect(roundPct(0.073)).toBe(7);
+    expect(roundPct(0.001)).toBe(1);
   });
 
-  it("widens low estimates upward and says small at the bottom", () => {
-    expect(chanceEstimate(0.2)).toBe("roughly 1 in 5 to 1 in 3");
-    expect(chanceEstimate(0.001)).toBe("small");
-    expect(chanceEstimate(0)).toBe("small");
-    expect(chanceEstimate(0.7)).toBe("about 2 in 3");
-    expect(chanceEstimate(Number.NaN)).toBe("");
+  it("widens low estimates upward into a range", () => {
+    expect(chanceEstimate(0.2)).toBe("20–30%");
+    expect(chanceEstimate(0.05)).toBe("5–8%");
+    expect(chanceEstimate(0.4)).toBe("40–60%");
+  });
+
+  it("says under 2% at the bottom and over 95% at the top", () => {
+    expect(chanceEstimate(0.001)).toBe("under 2%");
+    expect(chanceEstimate(0)).toBe("under 2%");
+    expect(chanceEstimate(0.02)).toBe("2–3%");
+    expect(chanceEstimate(0.96)).toBe("over 95%");
+  });
+
+  it("gives one figure from the likely line up", () => {
+    expect(chanceEstimate(0.5)).toBe("about 50%");
+    expect(chanceEstimate(0.7)).toBe("about 70%");
+  });
+
+  it("rejects values that are not probabilities", () => {
+    for (const p of [Number.NaN, -0.1, 1.2]) expect(chanceEstimate(p)).toBe("");
   });
 });
 
@@ -177,7 +188,7 @@ describe("demo payload", () => {
 
   it("leads with the 30-day estimate, not the 90-day figure", () => {
     expect(screen.status?.headline).toContain("30 days");
-    expect(screen.status?.headline).not.toMatch(/%/);
+    expect(screen.status?.headline).toMatch(/\d+–\d+%\.$/);
     expect(screen.status?.estimateNote).toMatch(/estimate/);
     expect(screen.status?.range30).toMatch(/^Likely balance on /);
   });

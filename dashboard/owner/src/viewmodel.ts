@@ -63,43 +63,38 @@ export function statusOf(s: StatusInput): StatusResult | null {
   return { key: "ok", reason: "far" };
 }
 
-// ---------------------------------------------------------------- chance words
+// ---------------------------------------------------------------- chance as a percentage
 
-/** How estimates are worded. */
-export const CHANCE_WORDS = {
-  /** Below this the estimate is just "small": the engine under-predicts low risks (calibration guard,
-   *  docs/results-summary.md), so a ratio like "1 in 500" would claim precision it does not have. */
+/** How estimates are worded: percentages, as a range below `likely`. */
+export const CHANCE_FORMAT = {
+  /** Below this the estimate reads "under 2%": the engine under-predicts low risks (calibration guard,
+   *  docs/results-summary.md), so a figure like "0.4%" would claim precision it does not have. */
   small: 0.02,
-  /** Below `likely`, the upper end of the stated range is the estimate times this. On 100 generator pasts
-   *  the true chance in the 0.05-0.20 bin was about 1.7 times the estimate (0.214 vs 0.126); 1.5 widens
-   *  toward that without assuming the full gap everywhere. */
+  /** Above this it reads "over 95%". */
+  high: 0.95,
+  /** Below `likely`, the top of the range is the estimate times this. On 100 generator pasts the true
+   *  chance in the 0.05-0.20 bin was about 1.7 times the estimate (0.214 vs 0.126); 1.5 widens toward
+   *  that without assuming the full gap everywhere. */
   widen: 1.5,
-  denominators: [2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50],
-  fractions: [[1, 2], [3, 5], [2, 3], [3, 4], [4, 5], [9, 10], [19, 20]] as [number, number][],
 };
 
-/** A chance as "1 in 5" or "2 in 3" (no hedge word); "" when not a probability. */
-export function oneIn(p: number): string {
-  if (!finite(p) || p < 0 || p > 1) return "";
-  if (p >= 0.975) return "almost certain";
-  if (p >= 0.5) {
-    const [a, b] = CHANCE_WORDS.fractions.reduce((x, y) => (Math.abs(y[0] / y[1] - p) < Math.abs(x[0] / x[1] - p) ? y : x));
-    return `${a} in ${b}`;
-  }
-  const lp = Math.log(Math.max(p, 1e-9));
-  const n = CHANCE_WORDS.denominators.reduce((x, y) => (Math.abs(Math.log(1 / y) - lp) < Math.abs(Math.log(1 / x) - lp) ? y : x));
-  return `1 in ${n}`;
+/** A chance in whole percent: to the nearest 5 from 10% up, the nearest 1 below. */
+export function roundPct(p: number): number {
+  const v = p * 100;
+  return v >= 10 ? Math.round(v / 5) * 5 : Math.max(1, Math.round(v));
 }
 
-/** An estimate as words: "small", "about 1 in 5", "roughly 1 in 5 to 1 in 3", "about 2 in 3". Below
- *  `likely` the range is widened upward (see CHANCE_WORDS.widen). */
+/** An estimate as a percentage: "under 2%", "20–30%", "about 70%", "over 95%". Below `likely` it is a
+ *  range widened upward (see CHANCE_FORMAT.widen); "" when not a probability. */
 export function chanceEstimate(p: number): string {
   if (!finite(p) || p < 0 || p > 1) return "";
-  if (p < CHANCE_WORDS.small) return "small";
-  const lo = oneIn(p);
-  if (p >= STATUS_RULES.likely) return lo === "almost certain" ? lo : `about ${lo}`;
-  const hi = oneIn(Math.min(p * CHANCE_WORDS.widen, 0.99));
-  return lo === hi ? `about ${lo}` : `roughly ${lo} to ${hi}`;
+  const { small, high, widen } = CHANCE_FORMAT;
+  if (p < small) return `under ${Math.round(small * 100)}%`;
+  if (p > high) return `over ${Math.round(high * 100)}%`;
+  const lo = roundPct(p);
+  if (p >= STATUS_RULES.likely) return `about ${lo}%`;
+  const hi = Math.min(roundPct(p * widen), Math.round(high * 100));
+  return lo === hi ? `about ${lo}%` : `${lo}–${hi}%`;
 }
 
 // ---------------------------------------------------------------- payment slowdown as time
