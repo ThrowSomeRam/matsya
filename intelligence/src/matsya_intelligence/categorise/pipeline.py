@@ -1,12 +1,17 @@
 """The categoriser cascade: owner override > confident rules > classifier > abstain (LLM).
 
-fit():   labelling functions -> label model (EM, no gold labels) -> training
-         labels (+ owner corrections, which replace weak labels) -> classifier.
+fit():   labelling functions -> majority vote -> training labels (+ owner corrections,
+         which replace weak labels) -> classifier.
 predict(): per transaction, in order of precedence:
     1. owner override for (tenant_id, txn_uid)           source "owner", confidence 1
-    2. label model, if a function voted and posterior >= rule_threshold  source "rule"
+    2. majority vote of the functions that fired, if its share of those votes
+       >= rule_threshold                                  source "rule"
     3. classifier, if its top probability >= model_threshold      source "model"
     4. otherwise ABSTAIN with needs_llm; an LLM labeller, if given, may fill it  source "llm"
+
+Majority vote replaced a Dawid-Skene label model (EM over rule accuracies): on the template
+hold-out benchmark the vote scored macro-F1 0.991 against the label-model cascade's 0.992
+(n = 3,134, docs/math-and-constants.md), so the extra model did not earn its place.
 
 Rules come before the classifier because the classifier is trained on the
 rules' output: where the rules are confident it adds nothing, and on unseen
@@ -21,14 +26,22 @@ import polars as pl
 
 from matsya_intelligence.categories import CATEGORIES
 from matsya_intelligence.categorise.classifier import NarrationClassifier
-from matsya_intelligence.categorise.label_model import LabelModel
-from matsya_intelligence.categorise.lfs import ABSTAIN, apply_lfs
+from matsya_intelligence.categorise.lfs import ABSTAIN, apply_lfs, majority_vote
 from matsya_intelligence.categorise.llm import LLMLabeller, strip_pii
 from matsya_intelligence.io.types import TXN_CATEGORY
 
 ABSTAIN_LABEL = "abstain"
 
 OVERRIDE_SCHEMA = {"tenant_id": pl.String, "txn_uid": pl.String, "category": pl.String}
+
+
+def vote(votes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """(majority class or ABSTAIN, share of the fired functions voting for it; 0 when none fired)."""
+    cat = majority_vote(votes, len(CATEGORIES))
+    fired = (votes != ABSTAIN).sum(axis=1)
+    agree = (votes == cat[:, None]).sum(axis=1)
+    share = np.where((cat != ABSTAIN) & (fired > 0), agree / np.maximum(fired, 1), 0.0)
+    return cat, share
 
 
 def empty_overrides() -> pl.DataFrame:
@@ -46,24 +59,23 @@ def add_override(overrides: pl.DataFrame, tenant_id: str, txn_uid: str, category
 @dataclass
 class Categoriser:
     model_threshold: float = 0.6
-    rule_threshold: float = 0.5  # with one vote, the posterior equals that function's accuracy
+    rule_threshold: float = 0.5  # share of the fired functions that agree with the vote
     min_label_confidence: float = 0.5  # weak labels below this are not used for training
     owner_weight: float = 5.0  # sample weight of an owner correction vs a weak label (<= 1)
-    label_model: LabelModel | None = field(default=None, repr=False)
     classifier: NarrationClassifier | None = field(default=None, repr=False)
 
     def training_set(self, txns: pl.DataFrame, overrides: pl.DataFrame | None = None,
                      votes: np.ndarray | None = None) -> pl.DataFrame:
-        """txn_uid, tenant_id, category, weight, origin ("label_model" | "owner")."""
+        """txn_uid, tenant_id, category, weight, origin ("rules" | "owner")."""
         votes = apply_lfs(txns) if votes is None else votes
-        q = self.label_model.predict_proba(votes)
-        keep = ((votes != ABSTAIN).any(axis=1)) & (q.max(axis=1) >= self.min_label_confidence)
+        cat, share = vote(votes)
+        keep = (cat != ABSTAIN) & (share >= self.min_label_confidence)
         weak = pl.DataFrame({
             "tenant_id": txns["tenant_id"],
             "txn_uid": txns["txn_uid"],
-            "category": [CATEGORIES[k] for k in q.argmax(axis=1)],
-            "weight": q.max(axis=1),
-            "origin": "label_model",
+            "category": [CATEGORIES[k] if k != ABSTAIN else ABSTAIN_LABEL for k in cat],
+            "weight": share,
+            "origin": "rules",
         }).filter(pl.Series(keep))
         if overrides is None or overrides.height == 0:
             return weak
@@ -74,7 +86,6 @@ class Categoriser:
 
     def fit(self, txns: pl.DataFrame, overrides: pl.DataFrame | None = None) -> "Categoriser":
         votes = apply_lfs(txns)
-        self.label_model = LabelModel(len(CATEGORIES)).fit(votes)
         train = self.training_set(txns, overrides, votes)
         data = train.join(txns, on=["tenant_id", "txn_uid"], how="left")
         y = np.array([CATEGORIES.index(c) for c in data["category"]])
@@ -86,11 +97,10 @@ class Categoriser:
         if self.classifier is None:
             raise RuntimeError("Categoriser not fitted")
         votes = apply_lfs(txns)
-        q = self.label_model.predict_proba(votes)
         p = self.classifier.predict_proba(txns)
         m_cat, m_conf = p.argmax(axis=1), p.max(axis=1)
-        r_cat, r_conf = q.argmax(axis=1), q.max(axis=1)
-        has_vote = (votes != ABSTAIN).any(axis=1)
+        r_cat, r_conf = vote(votes)
+        has_vote = r_cat != ABSTAIN
 
         use_rule = has_vote & (r_conf >= self.rule_threshold)
         use_model = ~use_rule & (m_conf >= self.model_threshold)

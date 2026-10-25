@@ -87,7 +87,7 @@ def test_plan_meets_the_target_out_of_sample(result):
     assert r.target_met
     do_nothing = r.baselines.filter(r.baselines["baseline"] == "do_nothing")["p_short"][0]
     assert do_nothing > 0.5  # the world is risky, so the plan has work to do
-    assert r.p_short_sub <= r.eps
+    assert r.eps_solve == pytest.approx(0.8 * r.eps) and r.p_short_sub <= r.eps_solve
     # Monte Carlo error of the in-sample constraint (N_SUB paths) plus the check (N_VER paths)
     se = math.sqrt(r.eps * (1 - r.eps) / N_SUB) + math.sqrt(r.eps * (1 - r.eps) / N_VER)
     assert r.p_short_verified <= r.eps + 3 * se
@@ -113,6 +113,23 @@ def test_plan_table_and_baselines(result):
     # amount owed is reported for every overdue invoice, chosen or not
     owed = r.msmed_owed.drop_nulls("interest_to_as_of_paise")
     assert owed.height > 0 and (owed["interest_to_as_of_paise"] > 0).all()
+
+
+def test_claims_are_money_owed_not_plan_actions(result):
+    r = result
+    assert "msmed_interest" not in set(r.plan["action"])
+    m = r.money_owed
+    overdue = set(r.msmed_owed.drop_nulls("interest_to_as_of_paise")["invoice_id"])
+    assert m.height > 0 and set(m["invoice_id"]) == overdue
+    assert (m["net_value_paise"] == m["value_after_tax_paise"] - m["penalty_paise"]).all()
+    assert m["net_value_paise"].to_list() == sorted(m["net_value_paise"].to_list(), reverse=True)
+
+
+def test_run_record_has_solver_status_and_gap(result):
+    rec = result.record
+    assert rec["solver_status"] in (0, 1) and rec["time_limited"] == (rec["solver_status"] == 1)
+    assert rec["mip_gap"] is None or rec["mip_gap"] >= 0
+    assert rec["eps_solve"] == pytest.approx(0.8 * rec["eps"])
 
 
 def test_replay_is_deterministic(world, result):
@@ -146,8 +163,7 @@ def test_target_that_cannot_be_met_returns_the_lowest_p_short(world):
 # ---------------------------------------------------------------- action effects are exact
 
 
-def test_invoice_and_overdraft_deltas_match_engine_runs(world):
-    _, _, inp, dinp = world
+def _delta_gaps(inp, dinp):
     base = run_engine(inp, "d-delta", 300, keep_flows=True)
     acts = candidate_actions(inp, dinp, base, 90, [])
     picks = [next(a for a in acts if a.kind == k) for k in ("treds_discount", "msmed_interest", "overdraft")]
@@ -155,9 +171,29 @@ def test_invoice_and_overdraft_deltas_match_engine_runs(world):
         k = 3 if a.kind == "overdraft" else 1
         res = run_engine(apply_transforms(inp, a.transforms(k)), "d-delta:x", 300, seed_id="d-delta")
         got = res.balance[:, 1:] - base.balance[:, 1:]
-        want = (np.where(np.arange(1, 91) >= a.detail["draw_day"], k * a.unit_paise, 0)[None, :]
-                if a.kind == "overdraft" else invoice_delta(base, inp, a, 90))
-        assert np.array_equal(got, np.broadcast_to(want, got.shape)), a.kind
+        want = np.broadcast_to(np.where(np.arange(1, 91) >= a.detail["draw_day"], k * a.unit_paise, 0)[None, :]
+                               if a.kind == "overdraft" else invoice_delta(base, inp, a, 90), got.shape)
+        yield a, k, got, want
+
+
+def test_invoice_and_overdraft_deltas_match_engine_runs(world):
+    # exact when unscheduled flows do not react to the balance (the transforms themselves)
+    _, _, flat, dinp = world  # default inputs: bootstrap unscheduled flows, no balance feedback
+    assert not getattr(flat.unscheduled, "balance_feedback", False)
+    for a, _, got, want in _delta_gaps(flat, dinp):
+        assert np.array_equal(got, want), a.kind
+
+
+def test_deltas_are_close_when_flows_react_to_the_balance(world):
+    # the flow forecaster pulls the balance back towards usual, so an action's cash is partly offset
+    # later; the decision engine's linear model ignores that and the fresh-path run checks it
+    cfg, obs, _, dinp = world
+    cats = generate_world(cfg, past_seed=0, future_seed=0)[1].transactions.select("txn_uid", "category")
+    inp = build_learned_inputs(obs, cats, cfg.as_of_date, RUN, threshold_paise=THRESHOLD, flow_forecaster="quantile")
+    assert inp.unscheduled.balance_feedback
+    for a, k, got, want in _delta_gaps(inp, dinp):
+        cash = k * a.unit_paise if a.kind == "overdraft" else a.detail.get("cash_paise", a.detail.get("principal_paise"))
+        assert np.abs(got - want).max() <= 0.01 * abs(cash), a.kind
 
 
 def test_chasing_one_buyer_moves_only_its_invoices(world):
@@ -336,6 +372,6 @@ def test_decide_records_its_overrides(world):
     _, _, inp, dinp = world
     r = decide(inp, dinp, RUN, n_sub=100, n_verify=200, constants_overrides={"msmed_claim.enabled": False})
     assert r.record["constants_overrides"] == {"msmed_claim.enabled": False}
-    assert "msmed_interest" not in set(r.plan["action"])
+    assert r.money_owed.height == 0  # claims off: none listed either
     again = decide(inp, dinp, RUN, n_sub=100, n_verify=200, constants_overrides={"msmed_claim.enabled": False})
     assert again.plan.equals(r.plan) and again.record == r.record

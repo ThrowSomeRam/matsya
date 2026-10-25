@@ -4,6 +4,12 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 
 
+def _standard_gst_rate() -> float:
+    from matsya_intelligence.statutory import gst_rate  # late import: statutory reads the constants via synth.world
+
+    return gst_rate()
+
+
 @dataclass(frozen=True)
 class TypePrior:
     """Type-level hyperpriors buyers are drawn from."""
@@ -73,7 +79,7 @@ class WorldConfig:
     amount_median_paise: int = 1_50_000_00  # Rs 1.5 lakh
     amount_sigma: float = 0.8  # lognormal sigma
     terms_choices: tuple[int, ...] = (15, 30, 45)
-    gst_rate: float = 0.18
+    gst_rate: float = field(default_factory=lambda: _standard_gst_rate())  # constants file gst.standard_rate
     part_payment_prob: float = 0.10
     has_irn: bool = True  # supplier above the Rs 5 crore e-invoicing threshold
     # Share of invoices whose terms the platform could not read (terms_source unknown:

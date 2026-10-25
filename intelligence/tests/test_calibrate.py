@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from matsya_contracts.validate import validate
 
-from matsya_intelligence.calibrate import Calibrator, read_band, realised_level
+from matsya_intelligence.calibrate import Calibrator, read_band
 
 D0 = date(2026, 1, 1)
 PATHS = np.random.default_rng(0).normal(0, 100, (2000, 91))
@@ -21,8 +21,7 @@ def _stream(cal: Calibrator, y: float, days: int, h: int = 1) -> list[float]:
     return levels
 
 
-@pytest.mark.parametrize("method", ["aci", "online"])
-def test_always_miss_widens_always_hit_narrows(method):
+def test_always_miss_widens_always_hit_narrows(method="aci"):
     miss = Calibrator(method=method, gamma=0.05, horizons=(1,))
     lv = _stream(miss, 1e6, 60)  # far outside every band
     # Falls until the band is the whole line (level <= 0), then hovers there: a band that
@@ -62,8 +61,7 @@ def test_delayed_feedback_waits_for_the_outcome():
     assert len(cal.state[7].pending) == 0
 
 
-@pytest.mark.parametrize("method", ["aci", "online"])
-def test_long_horizons_keep_the_engine_band(method):
+def test_long_horizons_keep_the_engine_band(method="aci"):
     cal = Calibrator(method=method, gamma=0.1, horizons=(30, 60))
     for t in range(120):
         day = D0 + timedelta(days=t)
@@ -73,21 +71,6 @@ def test_long_horizons_keep_the_engine_band(method):
     assert cal.level(60) == cal.alpha and cal.state[60].alpha_t == pytest.approx(cal.alpha)
     assert len(cal.state[60].history) > 0 and all(e == 1 for _, e in cal.state[60].history)  # still scored
     assert Calibrator(method=method, horizons=(60,), adapt_max_horizon=90).adapts(60)
-
-
-def test_online_weights_stay_a_distribution():
-    cal = Calibrator(method="online", horizons=(1,))
-    _stream(cal, 150.0, 40)
-    w = cal.state[1].weights
-    assert w.sum() == pytest.approx(1.0) and (w > 0).all()
-
-
-def test_realised_level_matches_band_coverage():
-    p = PATHS[:, 30]
-    for y in (-150.0, -20.0, 0.0, 90.0):
-        beta = realised_level(p, y)
-        lo, hi = read_band(p, max(beta - 0.01, 1e-6))
-        assert lo <= y <= hi
 
 
 def test_state_table_validates():
@@ -109,7 +92,7 @@ def test_replay_with_calibration_is_deterministic_and_never_looks_ahead():
     start = cfg.as_of - timedelta(days=10)
     runs = []
     for _ in range(2):
-        r = Replay(truth, n_paths=300, start=start, calibrator=Calibrator(method="online", horizons=(1, 7)))
+        r = Replay(truth, n_paths=300, start=start, calibrator=Calibrator(method="aci", gamma=0.05, horizons=(1, 7)))
         r.run(9)
         runs.append(r)
     a, b = runs
@@ -126,3 +109,33 @@ def test_replay_with_calibration_is_deterministic_and_never_looks_ahead():
             assert (sc["target_date"] <= s.as_of.date()).all()
             assert (sc["made_on"] < s.as_of.date()).all()
         validate(s.calibration["forecast.calibration_state"], "forecast.calibration_state")
+
+
+def test_production_run_scores_earlier_bands_and_state_round_trips(tmp_path):
+    import json
+
+    from matsya_intelligence.calibrate import PRODUCTION_HORIZONS
+    from matsya_intelligence.run import load_calibrator, run_tenant, save_calibrator
+    from matsya_intelligence.synth import WorldConfig, generate_world
+    from matsya_intelligence.synth.world import contract_tables_at
+
+    cfg = WorldConfig()
+    _, truth = generate_world(cfg, 0, 0)
+    tenant = cfg.tenant_id
+    live = Calibrator(horizons=PRODUCTION_HORIZONS)
+    states = []
+    for k in range(5):  # five daily runs; the saved-and-reloaded path must match the in-memory one
+        cut = cfg.as_of - timedelta(days=20 - 3 * k)
+        tables = contract_tables_at(truth, cut)
+        out, _, res = run_tenant(tables, tenant, cut, "cal", 300, return_inputs=True, calibrator=live)
+        reloaded = load_calibrator(tmp_path, tenant)
+        out2 = run_tenant(tables, tenant, cut, "cal", 300, calibrator=reloaded)
+        save_calibrator(tmp_path, tenant, reloaded)
+        validate(out["forecast.calibration_state"], "forecast.calibration_state")
+        assert out["forecast.calibration_state"].equals(out2["forecast.calibration_state"])
+        assert set(res.run["calibration_bands"]["horizon"]) == set(PRODUCTION_HORIZONS)
+        states.append(out["forecast.calibration_state"])
+    assert json.loads((tmp_path / f"{tenant}.json").read_text()) == json.loads(json.dumps(live.to_json(), sort_keys=True))
+    assert states[0].height == 0  # nothing to score on the first run
+    assert states[-1].filter(states[-1]["horizon"] == 1).height == 1  # 1-day bands scored by the last run
+    assert all(h <= 30 for h in live.state)

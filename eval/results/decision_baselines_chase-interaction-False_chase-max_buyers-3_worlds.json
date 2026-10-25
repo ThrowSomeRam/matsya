@@ -1,0 +1,1572 @@
+[
+ {
+  "preset": "healthy",
+  "seed": 0,
+  "opening_shift_paise": 189251234,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.001952534506737333,
+  "seconds": 48.01397421,
+  "n_candidates": 22,
+  "plan_actions": [
+   "overdraft:day1x3",
+   "supplier_stretch:S2:+30dx1",
+   "treds_discount:b74d5de34bd1aa99095a2a2bfc0570acx1",
+   "treds_discount:a9952a4eb4bcd707eb1bea023e985752x1",
+   "chase:ae0eec12836e51fc40b3cee4fec50286x1",
+   "treds_discount:5a5e5562803a18d01c88d71398dc05d2x1",
+   "treds_discount:febcdda752b3b07dde05659f22ecf7c1x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 54,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5028,
+   "short_days": 2.9516
+  },
+  "discount_all_eligible": {
+   "n_actions": 7,
+   "net_cost_paise": 244179,
+   "clamped_cost_paise": 244179,
+   "p_short": 0.3855,
+   "short_days": 0.9923
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4732,
+   "short_days": 2.4665
+  },
+  "plan": {
+   "n_actions": 7,
+   "net_cost_paise": 1137970,
+   "clamped_cost_paise": 1137970,
+   "p_short": 0.0397,
+   "short_days": 0.0913
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 1,
+  "opening_shift_paise": 168964290,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.002094850830011531,
+  "seconds": 48.506940387,
+  "n_candidates": 18,
+  "plan_actions": [
+   "overdraft:day1x2",
+   "supplier_stretch:S2:+30dx1",
+   "treds_discount:eb6fda4a03a9bca4866f11909b99280ex1",
+   "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1",
+   "chase:49ec0a3a5ecad3cf07ca756bac1e20edx1",
+   "chase:b759884108225efe897ac445b0a43338x1",
+   "treds_discount:cc63248728169d1c39d5ea9e3a8d2530x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 30,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4834,
+   "short_days": 3.8356
+  },
+  "discount_all_eligible": {
+   "n_actions": 3,
+   "net_cost_paise": 224032,
+   "clamped_cost_paise": 224032,
+   "p_short": 0.3627,
+   "short_days": 2.1973
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4334,
+   "short_days": 2.9529
+  },
+  "plan": {
+   "n_actions": 7,
+   "net_cost_paise": 1002604,
+   "clamped_cost_paise": 1002604,
+   "p_short": 0.046,
+   "short_days": 0.1954
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 2,
+  "opening_shift_paise": 161758134,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0020420342798297977,
+  "seconds": 58.77056613299999,
+  "n_candidates": 20,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day1x1",
+   "treds_discount:90a11343fb1d67ff3fde989d7d80f08ex1",
+   "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+   "treds_discount:9297dae0aeac2e2bd7f64078248d0335x1",
+   "chase:87e5e9df1337c8f63c1caf78b7849e62x1",
+   "chase:9acee0fbd3c24c88575819948eae2b40x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 62,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4956,
+   "short_days": 4.0718
+  },
+  "discount_all_eligible": {
+   "n_actions": 5,
+   "net_cost_paise": 240132,
+   "clamped_cost_paise": 240132,
+   "p_short": 0.2838,
+   "short_days": 1.8042
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4673,
+   "short_days": 3.4721
+  },
+  "plan": {
+   "n_actions": 7,
+   "net_cost_paise": 763641,
+   "clamped_cost_paise": 763641,
+   "p_short": 0.0436,
+   "short_days": 0.1317
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 3,
+  "opening_shift_paise": 70386826,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.002208122279222779,
+  "seconds": 105.048341511,
+  "n_candidates": 27,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day30x4",
+   "treds_discount:b7d873f92200b3017b3ee25a62a79149x1",
+   "treds_discount:66f668a53886173fe3f20b92aca04215x1",
+   "overdraft:day60x2",
+   "chase:1c89b28cfd0df0faaade9c4c79d470d5x1"
+  ],
+  "solver_status": 1,
+  "time_limited": true,
+  "mip_gap": 0.2650250401563607,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 19,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.493,
+   "short_days": 6.6443
+  },
+  "discount_all_eligible": {
+   "n_actions": 12,
+   "net_cost_paise": 1283552,
+   "clamped_cost_paise": 1283552,
+   "p_short": 0.2008,
+   "short_days": 1.9827
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.446,
+   "short_days": 5.814
+  },
+  "plan": {
+   "n_actions": 6,
+   "net_cost_paise": 1585051,
+   "clamped_cost_paise": 1585051,
+   "p_short": 0.0514,
+   "short_days": 0.3219
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 4,
+  "opening_shift_paise": 157491172,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.002055391933427783,
+  "seconds": 63.639459523,
+  "n_candidates": 15,
+  "plan_actions": [
+   "overdraft:day1x5",
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day30x3",
+   "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+   "chase:4a29ffb000fbdf8ef9e0dd606bd37288x1",
+   "overdraft:day75x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 34,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4889,
+   "short_days": 6.7713
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4152,
+   "short_days": 5.0382
+  },
+  "plan": {
+   "n_actions": 6,
+   "net_cost_paise": 2255890,
+   "clamped_cost_paise": 2255890,
+   "p_short": 0.0442,
+   "short_days": 0.3193
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 5,
+  "opening_shift_paise": 198163384,
+  "target_met": true,
+  "p_short_sub": 0.038,
+  "p_verified_se": 0.0018925157859315204,
+  "seconds": 58.80768228299999,
+  "n_candidates": 31,
+  "plan_actions": [
+   "overdraft:day1x4",
+   "supplier_stretch:S2:+30dx1",
+   "treds_discount:31eba3e23cf7ff9c7305b7583420df78x1",
+   "treds_discount:36d6a94ab015dd4d9697300af311ff62x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 60,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5103,
+   "short_days": 2.2101
+  },
+  "discount_all_eligible": {
+   "n_actions": 16,
+   "net_cost_paise": 1725653,
+   "clamped_cost_paise": 1725653,
+   "p_short": 0.46,
+   "short_days": 0.5075
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4961,
+   "short_days": 1.925
+  },
+  "plan": {
+   "n_actions": 4,
+   "net_cost_paise": 1318340,
+   "clamped_cost_paise": 1318340,
+   "p_short": 0.0372,
+   "short_days": 0.1122
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 6,
+  "opening_shift_paise": 169378362,
+  "target_met": true,
+  "p_short_sub": 0.03,
+  "p_verified_se": 0.0019619375627170197,
+  "seconds": 54.08214448999999,
+  "n_candidates": 20,
+  "plan_actions": [
+   "overdraft:day1x2",
+   "treds_discount:83a3ffdd2cd78ba399d98d3e764c9038x1",
+   "supplier_stretch:S2:+30dx1",
+   "chase:550c10ef465a5d2bd52f330cfa781aedx1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 52,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4931,
+   "short_days": 3.1641
+  },
+  "discount_all_eligible": {
+   "n_actions": 5,
+   "net_cost_paise": 1054646,
+   "clamped_cost_paise": 1054646,
+   "p_short": 0.2831,
+   "short_days": 0.4731
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4539,
+   "short_days": 2.4608
+  },
+  "plan": {
+   "n_actions": 4,
+   "net_cost_paise": 855564,
+   "clamped_cost_paise": 855564,
+   "p_short": 0.0401,
+   "short_days": 0.1528
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 7,
+  "opening_shift_paise": 170955452,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0021121022702511355,
+  "seconds": 93.863101564,
+  "n_candidates": 15,
+  "plan_actions": [
+   "overdraft:day1x3",
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+7dx1",
+   "chase:e6202004069431866dc6196b5b0ee45ex1",
+   "overdraft:day60x4",
+   "overdraft:day45x3",
+   "chase:5ac939a87f31ca0a3ef88df53cc91640x1",
+   "chase:64764205ba54d9c79e6e35acd811c123x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 73,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.498,
+   "short_days": 7.5935
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.466,
+   "short_days": 6.7464
+  },
+  "plan": {
+   "n_actions": 8,
+   "net_cost_paise": 5644609,
+   "clamped_cost_paise": 5644609,
+   "p_short": 0.0468,
+   "short_days": 0.5111
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 8,
+  "opening_shift_paise": 135442230,
+  "target_met": true,
+  "p_short_sub": 0.038,
+  "p_verified_se": 0.002099179839842218,
+  "seconds": 48.839279153999996,
+  "n_candidates": 15,
+  "plan_actions": [
+   "overdraft:day1x7",
+   "supplier_stretch:S2:+30dx1",
+   "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1",
+   "overdraft:day45x2",
+   "chase:9cd4fc7b57271e4479585d8e6c7170d3x1",
+   "chase:0776dbc5b84ca2278a8b73b64476698ex1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 45,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5015,
+   "short_days": 7.106
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4646,
+   "short_days": 6.3418
+  },
+  "plan": {
+   "n_actions": 6,
+   "net_cost_paise": 2525890,
+   "clamped_cost_paise": 2525890,
+   "p_short": 0.0462,
+   "short_days": 0.3457
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 9,
+  "opening_shift_paise": 101264169,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0019736169841182457,
+  "seconds": 74.909368812,
+  "n_candidates": 19,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day15x5",
+   "overdraft:day30x4",
+   "chase:daa503db0e210c87105af71ec6d69eb8x1",
+   "chase:2f5a0461765361ec70faaf7babb70c0dx1",
+   "treds_discount:f0148f713a2cebf1dce720a9173b1423x1",
+   "treds_discount:77dca74d4ec29fffbf47fe67603cf882x1",
+   "treds_discount:91214118d9eb9f52b9e016576bd1e54dx1",
+   "chase:e04f4b556cdafaaae7c5363828b243ecx1",
+   "treds_discount:38e8be3d49aa2b117fc5984402d114cbx1",
+   "overdraft:day60x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 55,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4963,
+   "short_days": 9.108
+  },
+  "discount_all_eligible": {
+   "n_actions": 4,
+   "net_cost_paise": 290345,
+   "clamped_cost_paise": 290345,
+   "p_short": 0.395,
+   "short_days": 6.6893
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.452,
+   "short_days": 8.0093
+  },
+  "plan": {
+   "n_actions": 11,
+   "net_cost_paise": 2614317,
+   "clamped_cost_paise": 2614317,
+   "p_short": 0.0406,
+   "short_days": 0.35
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 0,
+  "opening_shift_paise": 140341982,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0020883368981081574,
+  "seconds": 82.87821252600003,
+  "n_candidates": 22,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day1x3",
+   "chase:d1fa72363ad699ad1c482b1af89ffcc7x1",
+   "treds_discount:ceda0ddd8f0b3921b9f2520a915f5546x1",
+   "chase:79e4733276381687e1862a05291493fcx1",
+   "overdraft:day30x1",
+   "treds_discount:20695b2316b51127bc722bc74272318bx1",
+   "treds_discount:b73f5691f54b76b7cabb7b512c184164x1",
+   "treds_discount:4e8b755296dabedb5004fecfe9856c89x1",
+   "chase:ae0eec12836e51fc40b3cee4fec50286x1",
+   "treds_discount:a985764c1541ed3a2bf9d63ca815c74fx1",
+   "treds_discount:1e4041eb91588df89e29465f8e7c76c0x1",
+   "overdraft:day60x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 54,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5083,
+   "short_days": 7.8351
+  },
+  "discount_all_eligible": {
+   "n_actions": 7,
+   "net_cost_paise": 244179,
+   "clamped_cost_paise": 244179,
+   "p_short": 0.3759,
+   "short_days": 5.422
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4697,
+   "short_days": 6.8159
+  },
+  "plan": {
+   "n_actions": 13,
+   "net_cost_paise": 1669582,
+   "clamped_cost_paise": 1669582,
+   "p_short": 0.0457,
+   "short_days": 0.3727
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 1,
+  "opening_shift_paise": 120921107,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0019689550528135475,
+  "seconds": 102.25584561800002,
+  "n_candidates": 18,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day1x5",
+   "overdraft:day30x4",
+   "chase:49ec0a3a5ecad3cf07ca756bac1e20edx1",
+   "treds_discount:dad8ba0298adba1b54ed3d3e5abdbe6fx1",
+   "overdraft:day15x1",
+   "chase:b759884108225efe897ac445b0a43338x1",
+   "treds_discount:a673fa32126bcc9213c123aa0544ab09x1",
+   "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 30,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5313,
+   "short_days": 9.3859
+  },
+  "discount_all_eligible": {
+   "n_actions": 3,
+   "net_cost_paise": 224032,
+   "clamped_cost_paise": 224032,
+   "p_short": 0.4511,
+   "short_days": 7.6791
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4744,
+   "short_days": 7.9532
+  },
+  "plan": {
+   "n_actions": 9,
+   "net_cost_paise": 2780685,
+   "clamped_cost_paise": 2780685,
+   "p_short": 0.0404,
+   "short_days": 0.3759
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 2,
+  "opening_shift_paise": 68994322,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0019287900352293404,
+  "seconds": 108.83228410099997,
+  "n_candidates": 20,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+7dx1",
+   "overdraft:day45x8",
+   "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+   "chase:87e5e9df1337c8f63c1caf78b7849e62x1",
+   "overdraft:day30x1",
+   "chase:9acee0fbd3c24c88575819948eae2b40x1",
+   "overdraft:day60x1",
+   "treds_discount:561ba48177193b00b9c3edb289ce4887x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 62,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4918,
+   "short_days": 9.9254
+  },
+  "discount_all_eligible": {
+   "n_actions": 5,
+   "net_cost_paise": 240132,
+   "clamped_cost_paise": 240132,
+   "p_short": 0.4261,
+   "short_days": 8.5866
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4617,
+   "short_days": 8.9875
+  },
+  "plan": {
+   "n_actions": 9,
+   "net_cost_paise": 8151133,
+   "clamped_cost_paise": 8151133,
+   "p_short": 0.0387,
+   "short_days": 0.342
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 3,
+  "opening_shift_paise": -84378222,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0022222868851703194,
+  "seconds": 85.81086502699998,
+  "n_candidates": 27,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day30x5",
+   "overdraft:day45x5",
+   "treds_discount:ffec6459c1936b1fb18426d1591e4869x1",
+   "chase:1c89b28cfd0df0faaade9c4c79d470d5x1",
+   "chase:d1314ee84c88a934fc7ee97f54b2ea8ax1",
+   "treds_discount:88c0cfe943e186134743aa8d3fc0e74ax1",
+   "treds_discount:0477982454e0757fdcb2820f6d5b0da7x1",
+   "treds_discount:a8519611a3d3cd7a4ec57cbfc3332f32x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 19,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5142,
+   "short_days": 9.4098
+  },
+  "discount_all_eligible": {
+   "n_actions": 12,
+   "net_cost_paise": 1283552,
+   "clamped_cost_paise": 1283552,
+   "p_short": 0.3967,
+   "short_days": 6.112
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4989,
+   "short_days": 8.9578
+  },
+  "plan": {
+   "n_actions": 9,
+   "net_cost_paise": 2375967,
+   "clamped_cost_paise": 2375967,
+   "p_short": 0.0521,
+   "short_days": 0.4168
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 4,
+  "opening_shift_paise": 26677386,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0022582026038422682,
+  "seconds": 82.22283365199996,
+  "n_candidates": 15,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+14dx1",
+   "overdraft:day45x3",
+   "overdraft:day60x3",
+   "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+   "overdraft:day75x4",
+   "chase:0a6f58adf031dbea05d15dcd3c48b566x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 34,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5058,
+   "short_days": 10.4054
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4546,
+   "short_days": 8.9277
+  },
+  "plan": {
+   "n_actions": 7,
+   "net_cost_paise": 7783536,
+   "clamped_cost_paise": 7783536,
+   "p_short": 0.0539,
+   "short_days": 0.521
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 5,
+  "opening_shift_paise": 174688833,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0021586801523152985,
+  "seconds": 109.58623349600003,
+  "n_candidates": 30,
+  "plan_actions": [
+   "overdraft:day1x3",
+   "supplier_stretch:S2:+30dx1",
+   "treds_discount:4a3879f4a7c7cc18bee9156277ae09d7x1",
+   "chase:d666aadbacb20c7d5291f9893c356ebax1",
+   "chase:2198cd59c956a0df185e69342e4a10bfx1",
+   "chase:fc1d047960809e9a224fae1122c7e7b2x1",
+   "treds_discount:a4eb8a519caf8ff4f73440f8816d1c11x1",
+   "treds_discount:f5e0883794668872f3ecf06901fb3958x1",
+   "treds_discount:ae6b17a8b5af8683df69a9373b2b5be9x1"
+  ],
+  "solver_status": 1,
+  "time_limited": true,
+  "mip_gap": 0.10817107050720698,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 60,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5148,
+   "short_days": 6.5857
+  },
+  "discount_all_eligible": {
+   "n_actions": 15,
+   "net_cost_paise": 1715356,
+   "clamped_cost_paise": 1715356,
+   "p_short": 0.309,
+   "short_days": 1.8667
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4738,
+   "short_days": 5.417
+  },
+  "plan": {
+   "n_actions": 9,
+   "net_cost_paise": 1466978,
+   "clamped_cost_paise": 1466978,
+   "p_short": 0.049,
+   "short_days": 0.4021
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 6,
+  "opening_shift_paise": 129596679,
+  "target_met": true,
+  "p_short_sub": 0.039,
+  "p_verified_se": 0.0019548902782509305,
+  "seconds": 60.47620892799995,
+  "n_candidates": 20,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day30x4",
+   "treds_discount:50aa1edd2bc1b1ba1b9d274471d828aex1",
+   "overdraft:day60x5",
+   "treds_discount:8a6267143880955b72039aa41411d89cx1",
+   "chase:550c10ef465a5d2bd52f330cfa781aedx1",
+   "treds_discount:c62fa7311bebed1ffed0870b014e25a1x1",
+   "treds_discount:7ab3dc3ca22c9b50c2b5ffc125c46064x1",
+   "treds_discount:ced343b66f1dd7d9c344b52d82298d07x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 52,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5012,
+   "short_days": 8.0538
+  },
+  "discount_all_eligible": {
+   "n_actions": 5,
+   "net_cost_paise": 1054646,
+   "clamped_cost_paise": 1054646,
+   "p_short": 0.2435,
+   "short_days": 3.6051
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4509,
+   "short_days": 6.8862
+  },
+  "plan": {
+   "n_actions": 9,
+   "net_cost_paise": 2507111,
+   "clamped_cost_paise": 2507111,
+   "p_short": 0.0398,
+   "short_days": 0.3808
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 7,
+  "opening_shift_paise": 35217120,
+  "target_met": true,
+  "p_short_sub": 0.039,
+  "p_verified_se": 0.002109955212794812,
+  "seconds": 60.630533463000006,
+  "n_candidates": 15,
+  "plan_actions": [
+   "supplier_stretch:S1:+30dx1",
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day60x8",
+   "chase:e6202004069431866dc6196b5b0ee45ex1",
+   "chase:5ac939a87f31ca0a3ef88df53cc91640x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 73,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5167,
+   "short_days": 13.4412
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.5013,
+   "short_days": 12.8464
+  },
+  "plan": {
+   "n_actions": 5,
+   "net_cost_paise": 12336291,
+   "clamped_cost_paise": 12336291,
+   "p_short": 0.0467,
+   "short_days": 0.5944
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 8,
+  "opening_shift_paise": 5353603,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0020285709255532572,
+  "seconds": 43.38842779700002,
+  "n_candidates": 15,
+  "plan_actions": [
+   "supplier_stretch:S1:+30dx1",
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day60x2",
+   "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 45,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5222,
+   "short_days": 11.6382
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.5004,
+   "short_days": 10.9452
+  },
+  "plan": {
+   "n_actions": 4,
+   "net_cost_paise": 10897593,
+   "clamped_cost_paise": 10897593,
+   "p_short": 0.043,
+   "short_days": 0.3755
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 9,
+  "opening_shift_paise": -81342771,
+  "target_met": true,
+  "p_short_sub": 0.039,
+  "p_verified_se": 0.002150303234429972,
+  "seconds": 114.61205010100002,
+  "n_candidates": 19,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+14dx1",
+   "overdraft:day60x8",
+   "overdraft:day45x1",
+   "chase:daa503db0e210c87105af71ec6d69eb8x1",
+   "chase:e04f4b556cdafaaae7c5363828b243ecx1",
+   "chase:2f5a0461765361ec70faaf7babb70c0dx1",
+   "overdraft:day75x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 9.550143217018455e-05,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 55,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5098,
+   "short_days": 11.0847
+  },
+  "discount_all_eligible": {
+   "n_actions": 4,
+   "net_cost_paise": 290345,
+   "clamped_cost_paise": 290345,
+   "p_short": 0.4808,
+   "short_days": 9.9417
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4858,
+   "short_days": 10.3138
+  },
+  "plan": {
+   "n_actions": 8,
+   "net_cost_paise": 7869719,
+   "clamped_cost_paise": 7869719,
+   "p_short": 0.0486,
+   "short_days": 0.5085
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 0,
+  "opening_shift_paise": -48275292,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0019454469923387786,
+  "seconds": 123.30068364499999,
+  "n_candidates": 22,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+14dx1",
+   "overdraft:day60x4",
+   "overdraft:day75x4",
+   "chase:d1fa72363ad699ad1c482b1af89ffcc7x1",
+   "chase:79e4733276381687e1862a05291493fcx1",
+   "treds_discount:dd6f7f11c0db8bce80c6809c15541506x1"
+  ],
+  "solver_status": 1,
+  "time_limited": true,
+  "mip_gap": 0.1935570293625091,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 54,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5049,
+   "short_days": 11.2192
+  },
+  "discount_all_eligible": {
+   "n_actions": 7,
+   "net_cost_paise": 244179,
+   "clamped_cost_paise": 244179,
+   "p_short": 0.4718,
+   "short_days": 10.1631
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4819,
+   "short_days": 10.4565
+  },
+  "plan": {
+   "n_actions": 7,
+   "net_cost_paise": 11040233,
+   "clamped_cost_paise": 11040233,
+   "p_short": 0.0394,
+   "short_days": 0.3719
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 1,
+  "opening_shift_paise": -64244922,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0020263166090223905,
+  "seconds": 98.497925286,
+  "n_candidates": 18,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+14dx1",
+   "overdraft:day60x6",
+   "overdraft:day45x1",
+   "overdraft:day75x1",
+   "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1",
+   "treds_discount:874ff44b70bf0196393ddca4bada16a1x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 4.917800755532052e-05,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 30,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4907,
+   "short_days": 10.6356
+  },
+  "discount_all_eligible": {
+   "n_actions": 3,
+   "net_cost_paise": 224032,
+   "clamped_cost_paise": 224032,
+   "p_short": 0.4653,
+   "short_days": 9.824
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4637,
+   "short_days": 9.8748
+  },
+  "plan": {
+   "n_actions": 7,
+   "net_cost_paise": 10771722,
+   "clamped_cost_paise": 10771722,
+   "p_short": 0.0429,
+   "short_days": 0.5237
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 2,
+  "opening_shift_paise": -157864939,
+  "target_met": true,
+  "p_short_sub": 0.039,
+  "p_verified_se": 0.0019046970887781605,
+  "seconds": 80.48931827599995,
+  "n_candidates": 20,
+  "plan_actions": [
+   "supplier_stretch:S1:+30dx1",
+   "supplier_stretch:S2:+30dx1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 63,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4817,
+   "short_days": 11.5815
+  },
+  "discount_all_eligible": {
+   "n_actions": 5,
+   "net_cost_paise": 240132,
+   "clamped_cost_paise": 240132,
+   "p_short": 0.4734,
+   "short_days": 11.1864
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4642,
+   "short_days": 10.8708
+  },
+  "plan": {
+   "n_actions": 2,
+   "net_cost_paise": 16902745,
+   "clamped_cost_paise": 16902745,
+   "p_short": 0.0377,
+   "short_days": 0.3114
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 3,
+  "opening_shift_paise": -315511519,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0021999772726098788,
+  "seconds": 89.34622227099999,
+  "n_candidates": 27,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day60x8",
+   "supplier_stretch:S1:+7dx1",
+   "overdraft:day45x2",
+   "chase:d1314ee84c88a934fc7ee97f54b2ea8ax1",
+   "treds_discount:33ad7776c144dd184a1b03c592e1e6edx1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 19,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5003,
+   "short_days": 9.5462
+  },
+  "discount_all_eligible": {
+   "n_actions": 12,
+   "net_cost_paise": 1283552,
+   "clamped_cost_paise": 1283552,
+   "p_short": 0.4479,
+   "short_days": 7.7868
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4939,
+   "short_days": 9.3235
+  },
+  "plan": {
+   "n_actions": 6,
+   "net_cost_paise": 8173405,
+   "clamped_cost_paise": 8173405,
+   "p_short": 0.051,
+   "short_days": 0.4596
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 4,
+  "opening_shift_paise": -210333477,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0019501753767289752,
+  "seconds": 65.41717972999993,
+  "n_candidates": 15,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+14dx1",
+   "overdraft:day45x5",
+   "overdraft:day60x3",
+   "overdraft:day30x1",
+   "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+   "overdraft:day75x1",
+   "chase:0a6f58adf031dbea05d15dcd3c48b566x1",
+   "chase:4a29ffb000fbdf8ef9e0dd606bd37288x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 34,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4898,
+   "short_days": 10.5445
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4659,
+   "short_days": 9.753
+  },
+  "plan": {
+   "n_actions": 9,
+   "net_cost_paise": 10844426,
+   "clamped_cost_paise": 10844426,
+   "p_short": 0.0396,
+   "short_days": 0.4069
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 5,
+  "opening_shift_paise": 70828988,
+  "target_met": true,
+  "p_short_sub": 0.032,
+  "p_verified_se": 0.002010451690541208,
+  "seconds": 131.071419236,
+  "n_candidates": 30,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+7dx1",
+   "overdraft:day60x4",
+   "overdraft:day30x3",
+   "overdraft:day45x3",
+   "chase:fc1d047960809e9a224fae1122c7e7b2x1",
+   "chase:d666aadbacb20c7d5291f9893c356ebax1",
+   "treds_discount:311743bc25c6bd82153b816f7b2be07cx1",
+   "chase:2198cd59c956a0df185e69342e4a10bfx1",
+   "treds_discount:a81aac6fe377b43d7d986bfe7ced38b5x1",
+   "treds_discount:4530a0ec5aea9e3340e1ee05c2044fe8x1",
+   "treds_discount:baf0ab4d22d045b2a3772aa1bfe6c711x1",
+   "treds_discount:091a8904411eb91650d736a2a3bd2f7bx1",
+   "treds_discount:20f655c09f04c6af2fde55595efb91e3x1"
+  ],
+  "solver_status": 1,
+  "time_limited": true,
+  "mip_gap": 0.8587918783384074,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 60,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4864,
+   "short_days": 11.6692
+  },
+  "discount_all_eligible": {
+   "n_actions": 15,
+   "net_cost_paise": 1715356,
+   "clamped_cost_paise": 1715356,
+   "p_short": 0.3314,
+   "short_days": 6.5605
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.44,
+   "short_days": 10.1483
+  },
+  "plan": {
+   "n_actions": 14,
+   "net_cost_paise": 9422107,
+   "clamped_cost_paise": 9422107,
+   "p_short": 0.0422,
+   "short_days": 0.5022
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 6,
+  "opening_shift_paise": -13079175,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.002191794698414977,
+  "seconds": 78.016631942,
+  "n_candidates": 20,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+14dx1",
+   "overdraft:day45x4",
+   "overdraft:day60x4",
+   "overdraft:day30x2",
+   "chase:e8020f06c39fd3fa159b47ed11775cefx1",
+   "treds_discount:653ec4dc56b1bf16b987994ae24655adx1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 8.885662674447559e-05,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 52,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.5119,
+   "short_days": 11.9481
+  },
+  "discount_all_eligible": {
+   "n_actions": 5,
+   "net_cost_paise": 1054646,
+   "clamped_cost_paise": 1054646,
+   "p_short": 0.418,
+   "short_days": 8.8057
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4864,
+   "short_days": 11.1054
+  },
+  "plan": {
+   "n_actions": 7,
+   "net_cost_paise": 10633063,
+   "clamped_cost_paise": 10633063,
+   "p_short": 0.0506,
+   "short_days": 0.5407
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 7,
+  "opening_shift_paise": -252082947,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.00215658966889856,
+  "seconds": 74.83264543400003,
+  "n_candidates": 15,
+  "plan_actions": [
+   "supplier_stretch:S1:+30dx1",
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day75x5",
+   "overdraft:day60x1",
+   "chase:e6202004069431866dc6196b5b0ee45ex1",
+   "chase:5ac939a87f31ca0a3ef88df53cc91640x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 73,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.501,
+   "short_days": 12.423
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4959,
+   "short_days": 12.1425
+  },
+  "plan": {
+   "n_actions": 6,
+   "net_cost_paise": 16440386,
+   "clamped_cost_paise": 16440386,
+   "p_short": 0.0489,
+   "short_days": 0.6023
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 8,
+  "opening_shift_paise": -246267708,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.0021334282270561626,
+  "seconds": 51.99576386900003,
+  "n_candidates": 15,
+  "plan_actions": [
+   "supplier_stretch:S1:+30dx1",
+   "supplier_stretch:S2:+30dx1",
+   "overdraft:day75x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 45,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4994,
+   "short_days": 11.5235
+  },
+  "discount_all_eligible": null,
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.488,
+   "short_days": 11.1141
+  },
+  "plan": {
+   "n_actions": 3,
+   "net_cost_paise": 14696712,
+   "clamped_cost_paise": 14696712,
+   "p_short": 0.0478,
+   "short_days": 0.4385
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 9,
+  "opening_shift_paise": -342286247,
+  "target_met": true,
+  "p_short_sub": 0.04,
+  "p_verified_se": 0.002244320832679677,
+  "seconds": 63.29333219600005,
+  "n_candidates": 19,
+  "plan_actions": [
+   "supplier_stretch:S2:+30dx1",
+   "supplier_stretch:S1:+14dx1",
+   "overdraft:day60x6",
+   "overdraft:day75x3",
+   "chase:daa503db0e210c87105af71ec6d69eb8x1"
+  ],
+  "solver_status": 0,
+  "time_limited": false,
+  "mip_gap": 0.0,
+  "eps_solve": 0.04000000000000001,
+  "money_owed_n": 55,
+  "money_owed_worth_claiming_n": 0,
+  "money_owed_net_paise": 0,
+  "do_nothing": {
+   "n_actions": 0,
+   "net_cost_paise": 0,
+   "clamped_cost_paise": 0,
+   "p_short": 0.4864,
+   "short_days": 10.0491
+  },
+  "discount_all_eligible": {
+   "n_actions": 4,
+   "net_cost_paise": 290345,
+   "clamped_cost_paise": 290345,
+   "p_short": 0.473,
+   "short_days": 9.4828
+  },
+  "chase_largest_buyer": {
+   "n_actions": 1,
+   "net_cost_paise": 50000,
+   "clamped_cost_paise": 50000,
+   "p_short": 0.4688,
+   "short_days": 9.5254
+  },
+  "plan": {
+   "n_actions": 5,
+   "net_cost_paise": 10093127,
+   "clamped_cost_paise": 10093127,
+   "p_short": 0.0532,
+   "short_days": 0.5805
+  }
+ }
+]

@@ -400,6 +400,17 @@ What ships, read from the same benchmark (no re-run: the 60/90-day result is the
 ACI at 1-30 days, engine band at 60-90. gamma is still the paper value (0.005); choosing it is
 left for the Berka shock replay or real tenants, as before.
 
+**In the production path (2026-10-25).** `run.py` now calibrates horizons 1, 7, 14 and 30 days
+(`calibrate.PRODUCTION_HORIZONS`).
+- **Each run:** it first scores the bands from earlier runs whose day's balance is now known
+  (`adapters.known_balances`, an as-of read of `ledger.balances`), then issues this run's bands
+  from the engine's paths, and writes `forecast.calibration_state`.
+- **State:** level, pending bands and recent outcomes are kept as JSON per tenant under
+  `<out>/calibration/`. JSON floats round-trip exactly, so reloading gives the same run as
+  keeping the object (tested over five daily runs).
+- **Still open:** the calibrated band has no contract table (question 11), so it is only in the
+  state file and the run's return value.
+
 ## Payment-timing model: due-week phase tried and dropped (2026-10-25)
 
 **Variant.** Three weekly chances instead of two: p_early before the due week (k < d), p_due in
@@ -715,6 +726,45 @@ no baseline matched the plan's p_short for less. Net and clamped costs are equal
 no plan chose a claim. Solve time median 94 s, max 129 s. Plan cost rises with the preset's
 margin pressure (healthy median about Rs 14k, distressed about Rs 1 lakh).
 
+**Follow-ups (same 30 worlds, same seeds).** Three changes. (1) The MILP solves at
+0.8 x eps in sample (`decision.solve_eps_factor`) and the plan is still judged at eps on fresh
+paths. (2) Solver status and MIP gap go into the run record (`solver_status`, `time_limited`,
+`mip_gap`, `eps_solve`) and the eval. (3) MSMED claims are no longer plan actions: their cash
+lands on day 90 and cannot lower p_short. `DecisionResult.money_owed` lists each overdue
+invoice with the amount owed and the net value of claiming (value after tax and recovery minus
+the relationship penalty), best first.
+
+| | solve at eps | solve at 0.8 eps |
+|---|---|---|
+| plan meets eps strictly on fresh paths | 5/30 | 24/30 |
+| within Monte Carlo error | 30/30 | 30/30 |
+| fresh p_short mean (sd) | 0.054 (0.005) | 0.046 (0.005) |
+| plan cost mean / median (Rs) | 54,431 / 27,059 | 61,899 / 50,819 |
+| stopped at the 60 s time limit | not recorded | 5/30 (max MIP gap 0.87) |
+
+The tighter in-sample target costs about Rs 7,500 a plan on average. Money owed: 1,453
+overdue invoices across the worlds, none worth claiming at the default recovery and penalty.
+Open: five plans stop at the time limit, one far from proven optimal.
+
+**Chase columns: trim tested and rejected.** Variant: chase only the 3 buyers with the most open
+cash, and drop the chase x invoice interaction variables (`decision.chase.max_buyers` = 3,
+`decision.chase.interaction` = false). Same 30 worlds and seeds
+(`eval/results/decision_baselines_chase-interaction-False_chase-max_buyers-3_worlds.json`):
+
+| | default | trimmed |
+|---|---|---|
+| strict target hits | 24/30 | 24/30 |
+| mean fresh p_short | 0.0455 | 0.0449 |
+| mean plan cost (Rs) | 61,899 | 65,520 |
+| stopped at the time limit | 5/30 | 4/30 |
+| median solve time | 86 s | 76 s |
+| median candidates | 26 | 19.5 |
+
+Paired cost difference +Rs 3,621 (95% CI +975 to +7,303); dearer in 21 of 30 worlds. The rule
+was to trim only if cost and strict hits were unchanged within noise; cost is not, so the
+defaults stay (every buyer with open cash, interaction on). The two settings remain in the
+constants file for later runs.
+
 **Claim sensitivity** (`eval/models/decision_sensitivity.py`, `decide(constants_overrides=...)`;
 default world, past seed 0, Rs 20 lakh cushion, same seeds in every run):
 
@@ -785,8 +835,229 @@ the empirical hazards inside the data are point estimates and carry no parameter
 **Guard.** `test_learned_mode_calibration_has_not_moved` (slow) fails if mean gap or mean |gap|
 moves more than 0.02 from the reference; `MATSYA_ORACLE_CACHE` reuses the oracle pickle.
 
-**Not re-run:** the Kaggle timing check (empirical vs Beta-geometric). This environment's network
-policy blocks www.kaggle.com, so the recorded Kaggle numbers are from before the fix. Open item.
+**Kaggle re-run after the fix** (same split, n = 5,955 test invoices): empirical C-index 0.741
+(0.733-0.748), integrated Brier 0.027, ECE at 4 / 8 / 12 weeks 0.028 / 0.011 / 0.009; Beta-geometric
+0.735, 0.031, 0.033 / 0.014 / 0.013. Still better on every metric, so the mode stays (before the
+fix: 0.743, 0.027, 0.026 / 0.011 / 0.010; the change is within the C-index interval).
+
+## Flow forecaster: unscheduled flows (2026-10-25)
+
+`intelligence/.../flows/`, wired into the engine as `build_learned_inputs(flow_forecaster="quantile")`.
+
+**Decision (2026-10-25): the same-weekday bootstrap stays the default; the quantile flow forecaster
+stays in the code as an option, off by default.** Reasons, from the results below:
+- On the 30- and 90-day totals of unscheduled flow it ties the bootstrap (CRPS 1.02x and 0.93x,
+  intervals across 1).
+- On the 90-day shortfall check (Berka outside check) it is worse: AUC 0.587 against 0.639,
+  paired -0.051 (CI -0.088 to -0.014).
+- Cause: it under-counts occasional large flows. Salaries, pensions and deposits land on a few
+  days a month, and five quantiles cannot carry their mass.
+
+Revisit with the two-part model proposed at the end of this section.
+
+**Scope.** Unscheduled flows only (bank charges, refunds, misc income and expense, cash
+withdrawals, owner transfers). Invoices and purchases belong to the payment-timing model and
+the sales forecaster, GST to the sales forecaster, fixed obligations to the obligations detector.
+
+**Model.** Per category, linear quantile regression (q 0.05/0.25/0.5/0.75/0.95, HiGHS, Rs
+thousand) on weekday, day-of-month band, month-end (last 3 days), an Indian festival window (the
+day and the 7 before; Diwali, Holi, Eid al-Fitr, Dussehra, Christmas, 2022-2027, constants,
+VERIFY) and a mean-reverting term: (yesterday's balance - usual) / spread, usual = median
+closing balance over the 180 days before the day (fixed at as_of in the forecast), spread = the
+interquartile range over the 180 days to as_of, floored at Rs 1 lakh. A 90-day window chased the
+balance: in a recovery the balance sits above its lagging median while flows are still
+positive, and the fit got the sign wrong (tested). Crossing quantiles are sorted per day.
+
+**Persistence.** An AR(1) Gaussian copula per category; rho is the lag-1 correlation of the
+normal scores of the history's PIT values. Sparse flows sit on a repeated quantile (zero) most
+days; such days take a PIT drawn within the tied range (randomised PIT, fixed seed). A mid-point
+made quiet days look persistent (owner transfers rho 0.39 on a world that draws them
+independently); with the randomised PIT the generator's independent flows come out at rho about 0.
+
+**Engine.** Unscheduled flows are simulated last, day by day, after every other flow, so each
+path's own balance feeds the deviation term. A consequence for the decision engine: an action's
+cash is partly offset later by the reverting flows, so its linear deltas are no longer exact
+(within 1% of the action's cash on the default world, tested); the fresh-path run is the check.
+
+**Short history.** Under 8 weeks: Chronos-2 zero-shot quantiles per category (optional extra
+`chronos`, CPU torch; amazon/chronos-2; no balance term), else the bootstrap. Tested on a weekly
+spike, which it places correctly.
+
+**Berka, unscheduled flows** (`eval/models/flows_benchmark.py`, n = 300 accounts with >= 1 year of
+history, origin 90 days before the last transaction, 1,000 sample paths; Kaggle copy of PKDD'99):
+
+| metric | flow forecaster | bootstrap (8 weeks) | same weekday last week |
+|---|---|---|---|
+| CRPS, daily | 792 (0.61) | 879 (0.68) | 1,296 |
+| pinball, daily | 368 (0.57) | 438 (0.68) | 648 |
+| CRPS, 30-day sum | 6,223 (0.37) | 6,101 (0.36) | 16,843 |
+| CRPS, 90-day sum | 12,635 (0.25) | 13,587 (0.27) | 50,369 |
+
+(ratio to same weekday last week in brackets). Against same weekday last week it wins on every
+metric with the paired interval clear of 0. Against the bootstrap: daily CRPS 0.90x (paired CI
+-97 to -77, better in 96% of accounts), pinball 0.84x; the 30- and 90-day sums are level (1.02x
+and 0.93x, intervals across 0). The gain is in day-to-day shape, not yet in the totals that
+move the balance.
+
+**Learned-mode calibration (guard).** 100 pasts: -0.041 / 0.143 / 0.746 (bootstrap: -0.045 /
+0.142 / 0.746; reference -0.033 / 0.133). Unscheduled mean gap at day 90: -Rs 20k (bootstrap
++Rs 21k). Guard passes.
+
+**Berka outside check** (`eval/models/berka_checks.py`, 682 loans, 76 bad, 10,000 paths, both flow
+models on the same seeds, Kaggle copy). The bootstrap engine and every balance-only baseline
+reproduce the recorded AUCs to three decimals on this copy (engine 0.639 / 0.652 / 0.658, best
+baseline 0.808), so its small differences do not move this check.
+
+| score | AUC (95% CI) | minus balance logistic 0.808 |
+|---|---|---|
+| engine, flow forecaster, p_short(90) thr 0 | 0.587 (0.509-0.662) | -0.221 |
+| engine, flow forecaster, p_short(90) thr payment | 0.609 (0.529-0.688) | -0.199 |
+| engine, flow forecaster, p_short(30) thr 0 | 0.653 (0.579-0.722) | -0.155 |
+| engine, bootstrap, p_short(90) thr 0 | 0.639 (0.558-0.716) | -0.170 |
+| engine, bootstrap, p_short(30) thr 0 | 0.658 (0.580-0.733) | -0.150 |
+
+Target (beat 0.808) not met, and the forecaster is worse than the bootstrap at 90 days: paired
+AUC difference -0.051 (CI -0.088 to -0.014); at 30 days -0.005 (CI -0.033 to 0.024). It raises
+good accounts' p_short(90) (0.286 to 0.330) and leaves bad ones' (0.430 to 0.438).
+
+**Cause: lumpy inflows.** On 60 benchmark accounts the forecaster's mean 90-day misc_income
+(salaries, pensions and deposits arrive as transfers in) is Rs 29,120 against Rs 42,009 at the
+historical rate and Rs 48,055 realised; outflow categories are close. Five quantiles cannot carry
+the mass of a flow that happens on a few days a month: the mean of the interpolated quantile
+function falls well below the true mean. Net 90-day sum: forecaster Rs 1,930, bootstrap
+Rs 10,989, realised Rs 14,163. Salaried (mostly good) accounts drift down and look riskier.
+
+**Proposed fix (not done).** A two-part model per category: P(non-zero day | features) by
+logistic regression, and quantile regression of the amount on non-zero days only; sampling
+draws the occurrence, then the amount. That keeps a lumpy flow's mean and is the standard form
+for intermittent series. Recurring income (a salary on a fixed day) may also belong with the
+obligations detector's recurrence detection, which today looks at outflows only.
+
+## Attribution (2026-10-25)
+
+`intelligence/.../attribute/drivers.py`, simple version: neutralise one driver at a time on the
+same seed (common random numbers) and measure the risk that goes away.
+- **Invoice:** the open invoice is paid in full on its due date (day 1 if already overdue). Only
+  that invoice's cash changes on each path, so its effect is computed exactly from the
+  baseline's payment days, with no re-run.
+- **Buyer:** its weekly payment chance is scaled to its group's typical chance (the median
+  posterior-mean p of the buyers in its sector) by a rate multiplier, and the engine is re-run on
+  the baseline's seed. The never-paid share is unchanged.
+- **Contribution:** baseline minus neutralised, for p_short and for the unconditional expected
+  shortfall (mean depth below the threshold), at days 30, 60 and 90.
+- **Output:** the top 10 by 90-day p_short go to `decisions.drivers` (`delta_p_short` = the
+  90-day value). The 30/60-day and expected-shortfall columns are in the result only.
+  - *Contract proposal (additive):* nullable `horizon_days` and `delta_es_paise` on
+    `decisions.drivers`.
+- **Called on demand**, like the decision engine; not in `run.py`.
+
+Default world (past seed 0, Rs 20 lakh cushion, 10,000 paths): 113 drivers in 62 s (about 20 s at
+4,000 paths). The top 10 are all overdue invoices; the largest would cut p_short(90) by 0.50 if
+paid on day 1.
+
+Tests:
+
+| test | result |
+|---|---|
+| driver with no effect (an invoice worth 0) | contributes exactly 0 |
+| planted late buyer (largest buyer at a tenth of its weekly chance throughout) | ranks first among buyers |
+| same inputs and seed | identical table |
+| top 5 across 3 seeds (slow test) | see below |
+
+The top 5 are stable within Monte Carlo error, not exactly. Ranks 1-4 are identical across three
+seeds at 4,000 paths. Ranks 5 and 6 swap: their contributions differ by 0.001-0.003, against a
+standard error of the difference of about 0.008. The test therefore checks that any driver moving
+in or out of the top 5 is within 2 standard errors of the 5th-place value.
+
+**Finding: a slowdown that starts mid-history is missed.** The planted buyer slowing to a tenth
+of its chance six months before as_of was not ranked first among buyers. The payment-timing model
+pools the whole history, so it estimated p 0.169 where the post-change truth is 0.015. Attribution
+ranks what the model believes, so it misses what the model misses. The overdue invoices that pile
+up do show as invoice drivers. Change-point detection (BOCPD in the handbook, not built) is what
+would catch the slowdown itself.
+
+## Audit simplifications (2026-10-25)
+
+From the audit in `docs/math-and-constants.md`.
+
+**Categoriser: majority vote replaces the label model.** The rules' votes are combined by a plain
+majority. Rule confidence is the share of fired functions that agree; it gates the rule step at
+0.5 and weights the weak training labels. The classifier and the LLM fallback for abstains stay.
+Template hold-out benchmark (synthetic, n = 3,134 per set):
+
+| | before (label model) | after (majority vote) |
+|---|---|---|
+| macro-F1, in template | 0.997 | 0.997 |
+| macro-F1, held out | 0.992 | 0.992 |
+| abstain share, held out | 0.002 | 0.002 |
+| own classifier alone, held out | 0.663 | 0.685 |
+
+`categorise/label_model.py` is gone.
+
+**Payment-timing group shrinkage: kept; thin-buyer test added**
+(`eval/models/thin_buyers.py`, 30 worlds with 40 buyers). Thin = 1-3 paid bills, n = 252; heavy =
+20 or more, n = 80. Error = |posterior mean - true value|, paired bootstrap over buyers.
+
+| buyers | quantity | MAE, group shrinkage | MAE, type prior only | difference (95% CI) |
+|---|---|---|---|---|
+| thin | p (weekly chance once due) | 0.0851 | 0.0816 | +0.0035 (+0.0002 to +0.0069) |
+| thin | p_early | 0.0348 | 0.0330 | +0.0018 (+0.0005 to +0.0032) |
+| thin | expected weeks to pay, 1/p | 7.96 | 4.60 | +3.37 (+1.46 to +6.06) |
+| heavy | p | 0.0538 | 0.0532 | +0.0006 (-0.0015 to +0.0029) |
+
+Shrinkage is slightly worse for thin buyers, not better.
+- **p and p_early:** both versions are unbiased on average (true mean p 0.222; shrunk 0.221,
+  type only 0.220), so the cost is a little extra error.
+- **Weeks to pay:** the large gap comes from the group priors' shape. At the strength cap of 8,
+  a group with a low mean gets alpha below 1, which allows p near 0, and the posterior mean of
+  1/p blows up. The type priors all have alpha above 1.
+- **Proposal (not done):** floor the group prior's alpha at 1.5, or shrink only p and pi and not
+  their spread. The placeholder type priors are not the generator's, so the comparison is
+  "group prior vs placeholder", as in production.
+
+**Calibration: online step-size method removed.** It was worse than plain ACI at every horizon
+on the replay benchmark (above). Its last numbers stay in `results.parquet`; the benchmark now
+checks the live replay against offline ACI at the paper gamma.
+
+**Sales forecaster: one variability mechanism left (none).**
+- **Removed first:** the persistent demand level (fitted, unused by default).
+- **Ablation of the other two** on the learned-mode calibration guard (100 pasts, 4,000 paths,
+  oracle 200 futures; guard = within 0.02 of the reference -0.033 / 0.133):
+
+| demand AR(1) | parameter bootstrap | mean gap | mean \|gap\| | corr | guard |
+|---|---|---|---|---|---|
+| on | on (before) | -0.0450 | 0.1422 | 0.746 | pass |
+| off | on | -0.0502 | 0.1473 | 0.739 | pass |
+| on | off | -0.0459 | 0.1440 | 0.744 | pass |
+| off | off (kept) | -0.0496 | 0.1484 | 0.738 | pass |
+
+- **Kept: both off**, the simplest variant that passes, as the rule set in advance.
+- **Cost:** it is the worst of the four on all three metrics, and its mean |gap| is 0.015 from
+  the reference against a limit of 0.02, so little guard margin is left.
+- **Contract:** `features.sales_process` loses the `demand_level_sigma` row. The enum member stays
+  (removal proposed for the next gate).
+
+**Decision engine: chase trim rejected** (see "Decision engine across worlds").
+
+**Constants: one source for legal and statutory numbers.**
+- **`matsya_intelligence/statutory.py`** reads them from the constants file; no literal copies
+  remain. It covers:
+  - s.15 deadline days (45 / 15);
+  - the MSMED 3x multiplier and the covered classes;
+  - the GST rate (new entry `gst.standard_rate`, 0.18, to verify);
+  - QRMP days 22 / 24 (to verify);
+  - the runway rule (`simulation.runway_p_short` 0.5).
+- **Generator:** reads the CA-fee TDS rate and its GST default from the file too.
+- **Removed (nothing read them):**
+  - `simulation.n_paths / horizon_days / seed`;
+  - `flows.quantiles / quantile_crossing_fix`;
+  - the `shocks` block;
+  - `decision.relationship_penalty`;
+  - `treds.discount_rate`.
+- **Moved:** the timing type priors into `payment_timing.type_default_priors` (status
+  placeholder).
+- **Kept:** sections 1-2 of the file (legal and dataset facts the handbook mirrors), whether or
+  not code reads them.
 
 ## Requests to Track A
 

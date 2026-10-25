@@ -24,13 +24,8 @@ Delayed feedback. A horizon-h band issued on day t targets day t + h and is scor
 that day's balance is known (update() is given the balances known at as_of). Until then it
 waits in `pending`; nothing about it touches alpha. Updates are applied in target-date order.
 
-Online step size (method="online", Gibbs & Candes 2022, DtACI). One expert per gamma in the
-grid, each running ACI on its own alpha^k. After each outcome, with beta_t the largest level
-whose band still covers the realised balance (beta = 2 min(F(y), 1 - F(y)), F the paths' CDF),
-each expert pays the pinball loss l(beta, alpha^k) = alpha (beta - alpha^k) - min(0, beta - alpha^k);
-weights w_k <- (1 - sigma) w_k exp(-eta l_k) / sum + sigma / K; the level used is
-sum w_k alpha^k (the paper samples an expert; the weighted mean is deterministic).
-eta and sigma follow the paper's formulas with T from the constants file.
+An online step-size variant (Gibbs & Candes 2022) was benchmarked and removed: it was worse
+than plain ACI at every horizon (docs/track-b-decisions.md, calibration component).
 
 No randomness anywhere, so replays are bit-identical.
 """
@@ -46,6 +41,7 @@ from matsya_intelligence.io.types import CALIBRATION_STATE
 from matsya_intelligence.synth.world import load_constants
 
 HORIZONS = (1, 7, 14, 30, 60, 90)
+PRODUCTION_HORIZONS = (1, 7, 14, 30)  # run.py calibrates these (calibration.adapt_max_horizon_days)
 MISS_WINDOW_DAYS = 28
 
 
@@ -62,16 +58,6 @@ def read_band(paths: np.ndarray, level: float) -> tuple[float, float]:
     return float(lo), float(hi)
 
 
-def realised_level(paths: np.ndarray, y: float) -> float:
-    """beta: the largest miscoverage level whose central band still covers y."""
-    return float(min(1.0, 2 * min(np.mean(paths <= y), np.mean(paths >= y))))
-
-
-def pinball(alpha: float, beta: float, theta: np.ndarray) -> np.ndarray:
-    d = beta - theta
-    return alpha * d - np.minimum(0.0, d)
-
-
 @dataclass
 class Pending:
     made_on: date
@@ -79,15 +65,11 @@ class Pending:
     level: float  # miscoverage level used for the band
     lo: float
     hi: float
-    paths: np.ndarray  # simulated balances on the target day (for beta, online method)
-    expert_levels: np.ndarray | None  # each expert's level when the band was issued
 
 
 @dataclass
 class HorizonState:
     alpha_t: float
-    experts: np.ndarray | None = None  # online: alpha^k per expert
-    weights: np.ndarray | None = None
     pending: list[Pending] = field(default_factory=list)
     history: list[tuple[date, int]] = field(default_factory=list)  # (target date, err)
 
@@ -96,8 +78,7 @@ class Calibrator:
     """Per-tenant calibration state, carried from one forecast run to the next."""
 
     def __init__(self, method: str = "aci", gamma: float | None = None, target_coverage: float | None = None,
-                 horizons: tuple[int, ...] = HORIZONS, grid: tuple[float, ...] | None = None,
-                 adapt_max_horizon: int | None = None):
+                 horizons: tuple[int, ...] = HORIZONS, adapt_max_horizon: int | None = None):
         c = constants()
         self.alpha = 1 - (target_coverage if target_coverage is not None else float(c["target_coverage"]["value"]))
         self.method = method
@@ -106,30 +87,18 @@ class Calibrator:
                                      else c["adapt_max_horizon_days"]["value"])
         if method == "aci":
             self.gamma = float(gamma if gamma is not None else c["aci_gamma"]["paper_value"])
-        elif method == "online":
-            self.grid = np.array(grid if grid is not None else c["aci_gamma"]["grid"], dtype=float)
-            T = float(c["aci_gamma"]["online"]["horizon_T"]["value"])
-            K, a = len(self.grid), self.alpha
-            self.sigma = 1 / (2 * T)
-            self.eta = math.sqrt(3 / T) * math.sqrt((math.log(K * T) + 2) / ((1 - a) ** 2 * a ** 3))
         elif method != "off":
-            raise ValueError(f"unknown method {method!r} (aci | online | off)")
+            raise ValueError(f"unknown method {method!r} (aci | off)")
         self.state = {h: self._fresh() for h in self.horizons}
 
     def _fresh(self) -> HorizonState:
-        if self.method == "online":
-            k = len(self.grid)
-            return HorizonState(alpha_t=self.alpha, experts=np.full(k, self.alpha), weights=np.full(k, 1 / k))
         return HorizonState(alpha_t=self.alpha)
 
     def level(self, h: int) -> float:
         """Miscoverage level the next horizon-h band is read at."""
         if not self.adapts(h):
             return self.alpha
-        st = self.state[h]
-        if self.method == "online":
-            return float(st.weights @ st.experts)
-        return st.alpha_t
+        return self.state[h].alpha_t
 
     def adapts(self, h: int) -> bool:
         return self.method != "off" and h <= self.adapt_max_horizon
@@ -148,8 +117,7 @@ class Calibrator:
             lo, hi = read_band(paths, lvl)
             nlo, nhi = read_band(paths, self.alpha)
             st = self.state[h]
-            st.pending.append(Pending(made_on, made_on + timedelta(days=h), lvl, lo, hi, paths,
-                                      None if st.experts is None else st.experts.copy()))
+            st.pending.append(Pending(made_on, made_on + timedelta(days=h), lvl, lo, hi))
             rows.append((h, made_on + timedelta(days=h), lvl, lo, hi, nlo, nhi))
         return pl.DataFrame(rows, schema={"horizon": pl.Int32, "target_date": pl.Date, "level": pl.Float64,
                                           "lo": pl.Float64, "hi": pl.Float64, "nominal_lo": pl.Float64,
@@ -169,7 +137,7 @@ class Calibrator:
                 y = float(known[p.target])
                 err = int(y < p.lo or y > p.hi)
                 if self.adapts(h):
-                    self._step(st, p, y, err)
+                    st.alpha_t += self.gamma * (self.alpha - err)
                 st.history.append((p.target, err))
                 scored.append((h, p.made_on, p.target, p.level, p.lo, p.hi, y, err))
             st.pending = keep
@@ -177,17 +145,30 @@ class Calibrator:
                                             "level": pl.Float64, "lo": pl.Float64, "hi": pl.Float64,
                                             "actual": pl.Float64, "miss": pl.Int8}, orient="row")
 
-    def _step(self, st: HorizonState, p: Pending, y: float, err: int) -> None:
-        if self.method == "aci":
-            st.alpha_t += self.gamma * (self.alpha - err)
-        elif self.method == "online":
-            beta = realised_level(p.paths, y)
-            loss = pinball(self.alpha, beta, p.expert_levels)
-            w = st.weights * np.exp(-self.eta * loss)
-            st.weights = (1 - self.sigma) * w / w.sum() + self.sigma / len(w)
-            errs = (beta < p.expert_levels).astype(float)
-            st.experts = st.experts + self.grid * (self.alpha - errs)
-            st.alpha_t = float(st.weights @ st.experts)
+    # ------------------------------------------------------------ persistence between runs
+
+    def to_json(self) -> dict:
+        """JSON-safe state (floats round-trip exactly through json), for the next run."""
+        return {"method": self.method, "alpha": self.alpha, "gamma": getattr(self, "gamma", None),
+                "horizons": list(self.horizons), "adapt_max_horizon": self.adapt_max_horizon,
+                "state": {str(h): {"alpha_t": st.alpha_t,
+                                   "pending": [[p.made_on.isoformat(), p.target.isoformat(), p.level, p.lo, p.hi]
+                                               for p in st.pending],
+                                   "history": [[d.isoformat(), e] for d, e in st.history]}
+                          for h, st in self.state.items()}}
+
+    @classmethod
+    def from_json(cls, d: dict) -> "Calibrator":
+        cal = cls(method=d["method"], gamma=d["gamma"], target_coverage=1 - d["alpha"],
+                  horizons=tuple(d["horizons"]), adapt_max_horizon=d["adapt_max_horizon"])
+        cal.alpha = d["alpha"]
+        for h, st in d["state"].items():
+            cal.state[int(h)] = HorizonState(
+                alpha_t=st["alpha_t"],
+                pending=[Pending(date.fromisoformat(a), date.fromisoformat(b), lvl, lo, hi)
+                         for a, b, lvl, lo, hi in st["pending"]],
+                history=[(date.fromisoformat(t), int(e)) for t, e in st["history"]])
+        return cal
 
     # ------------------------------------------------------------ contract output
 

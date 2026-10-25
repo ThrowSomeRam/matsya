@@ -14,7 +14,8 @@ Per path:
      day from the two-phase weekly chances, the rest of the partly elapsed week
      first; future invoices: the same from age 0;
   4. linked purchases; GST per month from that path's sales and purchases;
-  5. fixed obligations, unscheduled flows, overrides; cumulative balance.
+  5. fixed obligations, overrides; then unscheduled flows (given each path's balance so far when
+     the flow forecaster asks for it); cumulative balance.
 
 Scenario effects (scenarios component) are applied here at run time, never to stored
 tables. Their own randomness (cash event days in a window, extra orders) comes from a
@@ -36,6 +37,7 @@ import numpy as np
 import polars as pl
 
 from matsya_intelligence.seeding import rng_for, seed_from_run_id
+from matsya_intelligence.statutory import runway_p_short
 from matsya_intelligence.timing.empirical import J_HI, J_LO, N_BINS
 
 # Bumped whenever the same seed gives different draws. v2: payment simulation draws a uniform
@@ -80,6 +82,7 @@ class Invoices:
     gross: np.ndarray  # int64 paise, for GST
     taxable: np.ndarray  # float paise, for GST
     path: np.ndarray | None = None  # per-path invoices (sales); None = every path (open invoices)
+    due_day: np.ndarray | None = None  # due date relative to as_of (open invoices; attribution)
 
 
 @dataclass(frozen=True)
@@ -125,7 +128,8 @@ SalesSampler = Callable[..., tuple[Invoices, pl.DataFrame]]
 # (n_paths, horizon, rng[, order_mult=, extra_rng=]) -> (future invoices with path set, purchases: path, day,
 # amount_paise > 0). order_mult/extra_rng/purchase_sticky_days are passed only when a scenario changes the order rate.
 UnscheduledSampler = Callable[[int, int, np.random.Generator], np.ndarray]
-# (n_paths, horizon, rng) -> int64 (n_paths, horizon + 1) net flows, column 0 unused
+# (n_paths, horizon, rng) -> int64 (n_paths, horizon + 1) net flows, column 0 unused. An object with
+# balance_feedback = True is called as .sample(n_paths, horizon, rng, pre_balance=...) instead.
 ShiftFn = Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]
 # (path, buyer, week_start_day) -> logit shift; the sector shock hook
 
@@ -420,16 +424,24 @@ def run_engine(inp: EngineInputs, run_id: str, n_paths: int = 10_000, horizon: i
     if inp.fixed:
         days, amounts = np.array([d for d, _ in inp.fixed]), np.array([a for _, a in inp.fixed], dtype=np.int64)
         add("fixed_obligations", None, days, -amounts)
-    if inp.unscheduled is not None:
-        u = inp.unscheduled(n_paths, H, rng["unscheduled"]).astype(np.int64)
-        u[:, 0] = 0
-        flows["unscheduled"] = u
     for ev in overrides:
         day = (ev.on - inp.as_of).days
         add("overrides", None, np.array([day]), np.array([ev.amount_paise], dtype=np.int64))
     for first, last, amount in (sc.cash if sc is not None else ()):
         days = rng_sc.integers(first, last + 1, n_paths) if last > first else np.full(n_paths, first)
         add("scenario_cash", np.arange(n_paths), days, np.full(n_paths, amount, dtype=np.int64))
+    # Unscheduled flows last: a sampler with balance_feedback sees each path's balance from every
+    # other flow and adds its own day by day (flow forecaster mean reversion).
+    if inp.unscheduled is not None:
+        if getattr(inp.unscheduled, "balance_feedback", False):
+            other = sum(flows.values()) if flows else np.zeros((n_paths, H + 1), dtype=np.int64)
+            pre = inp.opening_balance_paise + np.cumsum(other, axis=1)
+            pre[:, 0] = inp.opening_balance_paise
+            u = inp.unscheduled.sample(n_paths, H, rng["unscheduled"], pre_balance=pre).astype(np.int64)
+        else:
+            u = inp.unscheduled(n_paths, H, rng["unscheduled"]).astype(np.int64)
+        u[:, 0] = 0
+        flows["unscheduled"] = u
 
     # 8. Balance. A freeze takes a share of the balance before it starts out of use and gives it
     # back after `days` days, as two flows, so balances still add up from the flows.
@@ -510,6 +522,6 @@ def summarise(balance: np.ndarray, threshold: int, as_of: date, run_id: str, ten
         "expected_shortfall_cond_paise": cond,  # average depth over paths short by date
         "expected_shortfall_uncond_paise": np.round(p_short * cond).astype(np.int64),
     })
-    over = np.flatnonzero(p_short >= 0.5)
+    over = np.flatnonzero(p_short >= runway_p_short())
     runway = int(over[0] + 1) if over.size else None
     return bq, sf, runway

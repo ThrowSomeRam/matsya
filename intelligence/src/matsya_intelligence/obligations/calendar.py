@@ -9,9 +9,9 @@ Only GST is shifted; the constants file records the Sunday rule for GST only.
 
 from datetime import date, timedelta
 
+from matsya_intelligence.statutory import qrmp_day
 from matsya_intelligence.synth.world import load_constants
 
-QRMP_DAY = {1: 22, 2: 24}  # VERIFY: state-group to day mapping, per constants note "22 or 24 by state group 1 / 2"
 
 
 def _months(start: date, end: date):
@@ -37,5 +37,5 @@ def statutory_dates(start: date, end: date, qrmp: bool = False, state_group: int
         if not qrmp:
             out.append(("gst", _off_sunday(date(y, m, cal["gstr3b_monthly"]["day"]))))
         elif m in (1, 4, 7, 10):  # month after each quarter
-            out.append(("gst", _off_sunday(date(y, m, QRMP_DAY[state_group]))))
+            out.append(("gst", _off_sunday(date(y, m, qrmp_day(state_group)))))
     return sorted({(k, d) for k, d in out if start <= d <= end}, key=lambda x: (x[1], x[0]))

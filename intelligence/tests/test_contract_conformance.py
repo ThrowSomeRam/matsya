@@ -86,7 +86,8 @@ def test_data_source_switch_is_bit_identical(tmp_path):
 def test_every_output_table_is_written_and_validates(outputs, tmp_path):
     assert set(outputs) == set(WRITES)
     for name, df in outputs.items():
-        assert df.height > 0, name
+        # a tenant's first calibration run has no outcome to score yet (rows: test_calibrate)
+        assert df.height > 0 or name == "forecast.calibration_state", name
         validate(df, name)  # every row
     assert len(write_outputs(outputs, tmp_path)) == len(WRITES)
 
@@ -235,8 +236,8 @@ def test_datetime_as_of_is_not_widened_to_end_of_day(world):
     assert late.height > 0  # rows known between noon and the world's 18:00 cut
     assert adapters.as_of_cutoff(noon) == noon
     cats = truth.transactions.select("txn_uid", "category")
-    at_noon = build_learned_inputs(tables, cats, noon, "dt", sales_uncertainty=False)
-    end_of_day = build_learned_inputs(tables, cats, cfg.as_of_date, "dt", sales_uncertainty=False)
+    at_noon = build_learned_inputs(tables, cats, noon, "dt")
+    end_of_day = build_learned_inputs(tables, cats, cfg.as_of_date, "dt")
     snap = lambda inp: dict(s.split(":", 1) for s in inp.input_snapshot_ids)
     assert snap(at_noon)["transactions"] != snap(end_of_day)["transactions"]
     assert at_noon.as_of == end_of_day.as_of == cfg.as_of_date

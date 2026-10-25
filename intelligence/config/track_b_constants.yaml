@@ -83,13 +83,22 @@ statutory_calendar:
     esi_deposit:      {day: 15}
     gstr3b_monthly:   {day: 20}
   quarterly:
-    gstr3b_qrmp:      {day: "22 or 24 of month after quarter", by: "state group 1 / 2"}
+    gstr3b_qrmp:      {state_group_1: 22, state_group_2: 24, status: verify, note: "day of the month after the quarter, by state group"}
   rules:
     - "GST due dates shift to next working day when they fall on Sunday (seen Sep 2026)."
     - "PF/ESI treated as hard deadlines; model as due on the 15th."
   sources:
     - https://treelife.in/?p=16782
     - https://treelife.in/?p=16358
+
+gst:
+  standard_rate:
+    value: 0.18
+    status: verify
+    note: >
+      One rate per tenant (its main goods). Since the 2025 rationalisation the slabs are 5% and 18%
+      (40% on a short list); a tenant on 5% needs this as a per-tenant input. Used for taxable
+      values, GST payable and the 43B(h) deduction net of GST.
 
 e_invoicing:
   status: verified
@@ -113,7 +122,6 @@ treds:
       - "B3 priors: CPSE type default = TReDS settlement behaviour"
       - "B9: TReDS discount always available for CPSE invoices"
   fy26_discounting_volume: "Rs 3.47 lakh crore (Rs 40,000 crore in FY22)"
-  discount_rate: {status: decide, note: "no source yet for typical TReDS discount rates; needed for B9 cost"}
   sources:
     - https://www.taxmann.com/post/blog/companies-with-turnover-above-rs-250-crore-must-get-onboarded-on-trade-receivables-discounting-platforms/
     - https://knnindia.co.in/news/newsdetails/msme/msme-payment-reforms-gain-momentum-as-treds-discounting-reaches-rs-347-lakh-crore-cii
@@ -161,16 +169,14 @@ chronos_2:
 # ---------------------------------------------------------------
 
 simulation:          # B6
-  n_paths: {value: 10000, status: logic, why: "SE of p_short = sqrt(p(1-p)/N) ~ 0.002 at p=0.05"}
-  horizon_days: {value: 90, status: assumption, why: "covers 45-day statutory max plus typical delays"}
-  seed: {rule: "derived from run_id", status: logic}
+  runway_p_short: {value: 0.5, status: assumption, why: "runway = first day P(shortfall by then) reaches this (docs/track-b-decisions.md, shortfall definitions)"}
 
 decision:            # B9
   milp_path_subsample: {value: 1000, status: logic, why: "SE ~ 0.007 at p=0.05, so re-check chosen plan on all 10,000 paths (mandatory)"}
   verify_paths: {value: 10000, status: logic, why: "fresh paths (own seed stream) for the out-of-sample check"}
   shortfall_target_eps: {value: 0.05, status: decide, note: "owner-set; labelled default, shown to the owner as 'default 5%'"}
+  solve_eps_factor: {value: 0.8, status: assumption, why: "solve at 0.8 eps: the in-sample count is optimistic (30 worlds at 1.0: fresh p_short 0.054 vs 0.049 in sample, 5/30 strictly under eps)"}
   shortfall_day: {value: 90, status: assumption, why: "the brief: no breach by day 90"}
-  relationship_penalty: {status: decide, note: "owner-set; ask a few MSME owners"}
   milp_time_limit_s: {value: 60, status: assumption}
   treds:
     # VERIFY: no source yet for typical TReDS discount rates (see treds.discount_rate).
@@ -181,6 +187,8 @@ decision:            # B9
     factor: {value: 1.5, status: assumption, why: "weekly payment chance x 1.5 while chased; not measured"}
     weeks: {value: 2, status: assumption}
     cost_paise: {value: 50000, status: assumption, why: "Rs 500: owner time, calls, a visit"}
+    max_buyers: {value: null, status: assumption, note: "chase candidates: the largest buyers by open cash; null = every buyer with open cash"}
+    interaction: {value: true, status: logic, note: "a chased invoice that is also discounted loses its chase effect (y variables); false treats the effects as additive"}
   msmed_claim:
     # Claims go to the MSME ODR portal (Samadhaan); MSEFC to decide within 90 days of reference (s.18(5)).
     enabled: {value: true, status: decide, note: "owner can rule out claims; sensitivity runs switch them off"}
@@ -213,12 +221,28 @@ payment_timing:      # B4
   pi_prior: {status: tune, note: "derive stock-to-flow correction from steady-state equation; keep wide. Weakest number."}
   gibbs_sweeps: {value: 50, status: tune, check: "R-hat < 1.01 across chains on synthetic data", note: "burn-in; 20 gave max R-hat 1.021 for pi"}
   gibbs_draws: {value: 400, status: tune, note: "kept draws after burn-in"}
+  # Type default priors for the Beta-geometric fit: (alpha, beta) on p and p_early, (a, b) on pi.
+  # Placeholders until the buyer priors component supplies Schedule III disclosure-based rows.
+  type_default_priors:
+    status: placeholder
+    cpse:     {alpha: 2.4, beta: 5.6, a: 0.08, b: 7.92, alpha_e: 0.4, beta_e: 7.6}   # p 0.30, pi 0.01, p_early 0.05
+    listed:   {alpha: 2.0, beta: 6.0, a: 0.16, b: 7.84, alpha_e: 0.4, beta_e: 7.6}   # p 0.25, pi 0.02
+    unlisted: {alpha: 1.6, beta: 6.4, a: 0.4, b: 7.6, alpha_e: 0.4, beta_e: 7.6}     # p 0.20, pi 0.05
   empirical_min_exposure: {value: 5, status: assumption, why: "invoice-weeks at risk a bin needs before its empirical hazard is used; beyond the last such bin the Beta-geometric chance applies"}
 
 flows:               # B5
-  quantiles: [0.05, 0.25, 0.50, 0.75, 0.95]
-  quantile_crossing_fix: sort_per_day
   chronos_fallback_below_weeks: {value: 8, status: tune, method: "Berka backtest at 2..16 weeks, CRPS crossover"}
+  scope: {value: unscheduled, status: decided, why: "one owner per flow: invoices, purchases and GST belong to the sales forecaster and payment-timing model, fixed obligations to the obligations detector"}
+  festivals:
+    # VERIFY: Diwali (Lakshmi Puja), Holi, Eid al-Fitr, Dussehra (Vijayadashami), Christmas. Lunar dates move by a day by
+    # region and sighting; the flag covers the day and the 7 days before, so a one-day error barely matters.
+    status: verify
+    dates: [2022-03-18, 2022-05-03, 2022-10-05, 2022-10-24, 2022-12-25,
+            2023-03-08, 2023-04-22, 2023-10-24, 2023-11-12, 2023-12-25,
+            2024-03-25, 2024-04-11, 2024-10-12, 2024-11-01, 2024-12-25,
+            2025-03-14, 2025-03-31, 2025-10-02, 2025-10-20, 2025-12-25,
+            2026-03-04, 2026-03-21, 2026-10-20, 2026-11-08, 2026-12-25,
+            2027-03-10, 2027-03-22, 2027-10-09, 2027-10-29, 2027-12-25]
 
 calibration:         # B7
   target_coverage: {value: 0.80, status: assumption}
@@ -238,20 +262,12 @@ calibration:         # B7
     note: >
       At ~90 daily outcomes per tenant, gamma=0.005 barely adapts
       (coverage bound ~ (1+gamma)/(gamma*N) is vacuous). Tune on the Berka
-      shock replay or use the online step-size version (Gibbs & Candes 2022).
+      shock replay. (The online step-size version, Gibbs & Candes 2022, was benchmarked
+      and removed: worse than plain ACI at every horizon.)
       Horizon-h intervals get feedback only after h days.
-    online:            # Gibbs & Candes 2022 (DtACI): one expert per grid gamma, exponential weights
-      horizon_T: {value: 365, status: assumption, why: "sets eta and sigma by the paper's formulas; about a year of daily outcomes per horizon"}
-      sigma: "1 / (2 T)"
-      eta: "sqrt(3 / T) * sqrt((log(K T) + 2) / ((1 - alpha)^2 alpha^3))"
     sources:
       - https://arxiv.org/pdf/2106.00170
       - https://arxiv.org/pdf/2208.08401
-
-shocks:              # B8
-  kalman_rho: {status: tune, method: "MLE on sector lateness residuals; must recover planted value on synthetic"}
-  kalman_noise_scales: {status: tune, method: "MLE"}
-  bocpd_hazard: {status: tune, method: "detection-delay vs false-alarm curve on injected shifts"}
 
 privacy_gate:        # A8, listed for reference
   k_min_suppliers: {status: decide}

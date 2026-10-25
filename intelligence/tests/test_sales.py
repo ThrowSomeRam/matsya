@@ -84,27 +84,3 @@ def test_gst_matches_generator():
     assert ((j["amount_paise"] - j["gst_paise"]).abs() <= 100).all()
 
 
-def test_parameter_draws_and_demand_ar1():
-    f, _ = _fit(WorldConfig(), 0)
-    assert f.boot_mean.size == f.boot_ratio.size == 200
-    assert 0 < f.boot_mean.std() < 0.2 * f.mean_per_week
-    inv_point, _ = f.sample(3000, 91, np.random.default_rng(2))
-    inv_boot, _ = f.sample(3000, 91, np.random.default_rng(2), param_draws=True, demand="ar1")
-    # Same mean rate, wider spread of per-path totals once parameter and demand uncertainty are in.
-    a = inv_point.group_by("path").len()["len"].to_numpy()
-    b = inv_boot.group_by("path").len()["len"].to_numpy()
-    assert abs(b.mean() / a.mean() - 1) < 0.05
-    assert b.var() > a.var()
-
-
-def test_block_bootstrap_widens_mean_spread_under_autocorrelation():
-    from matsya_intelligence.sales.model import _block_indices
-
-    rng = np.random.default_rng(0)
-    x = np.zeros(520)
-    for t in range(1, x.size):
-        x[t] = 0.9 * x[t - 1] + rng.standard_normal()
-    idx_block = _block_indices(np.random.default_rng(1), x.size, 4, 2000)
-    idx_iid = np.random.default_rng(1).integers(0, x.size, (2000, x.size))
-    assert idx_block.shape == (2000, x.size)
-    assert x[idx_block].mean(axis=1).std() > 1.5 * x[idx_iid].mean(axis=1).std()

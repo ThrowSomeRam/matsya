@@ -5,7 +5,6 @@ import pytest
 from matsya_intelligence.categories import CATEGORIES
 from matsya_intelligence.categorise import ABSTAIN_LABEL, Categoriser, add_override, empty_overrides
 from matsya_intelligence.categorise.evaluate import TRAIN_STYLE, build, run
-from matsya_intelligence.categorise.label_model import LabelModel
 from matsya_intelligence.categorise.lfs import ABSTAIN, LF_NAMES, apply_lfs
 from matsya_intelligence.categorise.llm import llm_label, strip_pii
 from matsya_contracts.validate import validate
@@ -42,21 +41,13 @@ def test_output_rows_validate(fitted, train):
     assert out.filter(pl.col("category") == ABSTAIN_LABEL)["needs_llm"].all()
 
 
-def test_label_model_recovers_planted_accuracies():
-    rng = np.random.default_rng(0)
-    k, n = 6, 20000
-    acc = np.array([0.95, 0.9, 0.8, 0.7, 0.6])
-    y = rng.integers(k, size=n)
-    votes = np.full((n, len(acc)), ABSTAIN)
-    for j, a in enumerate(acc):
-        fires = rng.random(n) < 0.6
-        right = rng.random(n) < a
-        wrong = (y + rng.integers(1, k, size=n)) % k
-        votes[fires, j] = np.where(right, y, wrong)[fires]
-    lm = LabelModel(k).fit(votes)
-    assert np.abs(lm.accuracy - acc).max() < 0.03
-    covered = (votes != ABSTAIN).any(axis=1)
-    assert (lm.predict_proba(votes).argmax(axis=1) == y)[covered].mean() > 0.9
+def test_vote_share():
+    from matsya_intelligence.categorise.pipeline import vote
+
+    votes = np.array([[2, 2, ABSTAIN], [1, 3, 3], [ABSTAIN, ABSTAIN, ABSTAIN], [4, 5, ABSTAIN]])
+    cat, share = vote(votes)
+    assert list(cat) == [2, 3, ABSTAIN, 4]  # ties go to the lower index
+    assert share == pytest.approx([1.0, 2 / 3, 0.0, 0.5])
 
 
 def test_benchmark_beats_or_matches_baselines(results):

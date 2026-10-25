@@ -73,7 +73,9 @@ def test_outputs_and_run_record(learned):
     assert (sf["expected_shortfall_uncond_paise"].to_numpy() <= sf["expected_shortfall_cond_paise"].to_numpy()).all()
     q = res.balance_quantiles
     assert (q["q05"] <= q["q25"]).all() and (q["q25"] <= q["q50"]).all() and (q["q75"] <= q["q95"]).all()
-    over = np.flatnonzero(p >= 0.5)
+    from matsya_intelligence.statutory import runway_p_short
+
+    over = np.flatnonzero(p >= runway_p_short())
     assert res.run["runway_days"] == (int(over[0] + 1) if over.size else None)
     for key in ("run_id", "as_of", "seed", "seed_streams", "model_versions", "input_snapshot_ids", "overrides_json"):
         assert key in res.run

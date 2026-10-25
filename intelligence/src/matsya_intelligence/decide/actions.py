@@ -4,7 +4,7 @@
 |------------------|--------------------------------------------------|------------------------------------------|
 | treds_discount   | invoice_cash replace: A - discount on day L      | the discount                             |
 | chase            | rate_multiplier buyer x factor for N weeks       | chase cost                               |
-| msmed_interest   | invoice_cash if_unpaid: P + interest on day lag  | penalty - recovery x P(unpaid) x interest |
+| msmed_interest   | invoice_cash if_unpaid: P + interest on day lag  | penalty - value (reported, not planned)   |
 | overdraft        | cash_event + k units on draw day d               | interest from d to day H + 1             |
 | supplier_stretch | date_shift supplier_payments, share s, N days    | penalty + MSMED interest + 43B(h) delay  |
 
@@ -30,6 +30,7 @@ import polars as pl
 from matsya_intelligence.decide import costs as C
 from matsya_intelligence.engine.core import EngineInputs, EngineResult
 from matsya_intelligence.scenarios.transforms import CashEvent, DateShift, InvoiceCash, RateMultiplier
+from matsya_intelligence.statutory import msmed_classes, s15_deadline
 
 MsmeClass = Literal["micro", "small", "medium", "none"]
 EntityType = Literal["proprietor", "partnership", "company"]
@@ -49,9 +50,10 @@ class Supplier:
 
     @property
     def msmed_deadline_days(self) -> int:
-        """s.15 deadline in days from acceptance: the written terms capped at 45, else 15.
+        """s.15 deadline in days from acceptance: the written terms capped at the s.15 maximum, else
+        the no-agreement default (statutory.s15_deadline; 45 / 15 days in the constants file).
         # VERIFY: s.15 wording (agreed date in writing, at most 45 days; else the appointed day)."""
-        return min(self.terms_days, 45) if self.terms_in_writing else 15
+        return s15_deadline(self.terms_days, self.terms_in_writing)
 
 
 @dataclass
@@ -139,11 +141,14 @@ def candidate_actions(inp: EngineInputs, dinp: DecisionInputs, base: EngineResul
                            _transforms=[InvoiceCash(invoice_id=row["invoice_id"], on=as_of + timedelta(days=lag),
                                                     amount_paise=cash, mode="replace")]))
 
-    # Chase: every buyer with open cash.
+    # Chase: buyers with open cash, the largest max_buyers of them (null: all).
     ch = k["chase"]
-    for b_i, b in enumerate(inp.buyer_ids):
-        if oi.cash[oi.buyer == b_i].sum() <= 0:
-            continue
+    open_cash = {b_i: int(oi.cash[oi.buyer == b_i].sum()) for b_i in range(len(inp.buyer_ids))}
+    chased = sorted((b_i for b_i, c in open_cash.items() if c > 0), key=lambda b_i: (-open_cash[b_i], inp.buyer_ids[b_i]))
+    if ch["max_buyers"]["value"] is not None:
+        chased = chased[: int(ch["max_buyers"]["value"])]
+    for b_i in sorted(chased):
+        b = inp.buyer_ids[b_i]
         acts.append(Action("chase", b, ch["cost_paise"]["value"], buyer=b_i,
                            detail={"factor": ch["factor"]["value"], "weeks": ch["weeks"]["value"],
                                    "open_paise": int(oi.cash[oi.buyer == b_i].sum())},
@@ -154,7 +159,7 @@ def candidate_actions(inp: EngineInputs, dinp: DecisionInputs, base: EngineResul
 
     # MSMED claim: micro/small tenant, invoice past its s.15 deadline. The recovered interest is
     # taxable income, so its value is net of tax at the owner's rate.
-    if dinp.tenant_msme_class in C.MSMED_SUPPLIERS and k["msmed_claim"]["enabled"]["value"]:
+    if dinp.tenant_msme_class in msmed_classes() and k["msmed_claim"]["enabled"]["value"]:
         mc = k["msmed_claim"]
         claim_day = mc["cash_lag_days"]["value"]
         pay = base.open_pay
@@ -203,7 +208,7 @@ def candidate_actions(inp: EngineInputs, dinp: DecisionInputs, base: EngineResul
         for s in dinp.suppliers:
             if s.tightened or purch is None:
                 continue
-            if tax is None and s.msme_class in C.MSMED_SUPPLIERS:
+            if tax is None and s.msme_class in msmed_classes():
                 raise ValueError(f"supplier {s.supplier_id} is micro/small: a stretch past its s.15 deadline can defer "
                                  "the 43B(h) deduction, so give the income-tax rate (tax_rate) or entity_type='company'")
             for n in st["days"]["value"]:
@@ -238,7 +243,7 @@ def stretch_cost(s: Supplier, n: int, purch: np.ndarray, as_of: date, hist, tax_
     late_after = max(s.terms_days + n - deadline, 0)
     interest = deferral = 0
     amount_years = 0.0
-    if s.msme_class in C.MSMED_SUPPLIERS and late_after > 0:
+    if s.msme_class in msmed_classes() and late_after > 0:
         start = as_of + timedelta(days=1)
         interest = (C.msmed_interest(amount, start, start + timedelta(days=late_after), hist)
                     - C.msmed_interest(amount, start, start + timedelta(days=late_before), hist))
@@ -268,7 +273,7 @@ def owed_interest(inp: EngineInputs, dinp: DecisionInputs, hist=None) -> pl.Data
     """
     hist = hist if hist is not None else (dinp.bank_rates if dinp.bank_rates is not None else C.bank_rate_history())
     rows = []
-    eligible = dinp.tenant_msme_class in C.MSMED_SUPPLIERS
+    eligible = dinp.tenant_msme_class in msmed_classes()
     for i, r in enumerate(dinp.invoices.iter_rows(named=True)):
         principal = int(inp.open_invoices.cash[i])
         # VERIFY: the s.15 clock starts at acceptance; issue date stands in for it.

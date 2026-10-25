@@ -33,7 +33,8 @@ SHORTFALL = schema("forecast.shortfall")
 READS = ("ledger.transactions", "ledger.balances", "ledger.invoices", "ledger.matches", "labels.invoice_outcomes",
          "labels.txn_corrections", "ref.buyers", "ref.tenant_buyers")
 WRITES = ("features.txn_category", "features.obligations", "features.invoice_timing", "features.sales_process",
-          "forecast.shock_state", "forecast.runs", "forecast.balance_quantiles", "forecast.shortfall")
+          "forecast.shock_state", "forecast.runs", "forecast.balance_quantiles", "forecast.shortfall",
+          "forecast.calibration_state")
 
 # Internal inputs (adapter outputs).
 
