@@ -9,7 +9,8 @@ States are the contract's ConsentStatus. Allowed transitions:
 
 Every change rewrites the tenant's ops.consents partition and appends a consent_changed
 event. Entering a terminal state triggers erasure:
-- the consent's raw objects and their raw.aa_payloads rows are removed;
+- the consent's raw objects and their raw.aa_payloads rows are removed, from the table's
+  history too (a purge: reads as of earlier times then raise);
 - when no other consent of the tenant is still live, the tenant's key is destroyed. Every raw
   object and every table part under it becomes unreadable, wherever a copy sits, and the
   noise is then removed from both stores. Only the platform-key parts of ops.consents and
@@ -171,7 +172,8 @@ class ConsentService:
         for pid in mine["payload_id"]:
             self.raw.delete(c.tenant_id, pid)
         rest = payloads.filter(pl.col("consent_id") != c.consent_id)
-        self.tables.replace("raw.aa_payloads", rest, c.tenant_id)
+        # purge: the store keeps history, and the revoked consent's rows must leave it too.
+        self.tables.replace("raw.aa_payloads", rest, c.tenant_id, purge=True)
         live = self.consents(c.tenant_id).filter(~pl.col("status").is_in([s.value for s in TERMINAL]))
         destroyed = 0
         if live.is_empty():

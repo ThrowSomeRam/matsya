@@ -52,6 +52,7 @@ from matsya_platform.consent.service import ConsentService
 from matsya_platform.fetch.adapter import LocalFolderAdapter
 from matsya_platform.fetch.runner import fetch, stored_payload
 from matsya_platform.store.keys import KeyStore
+from matsya_platform.store.objects import open_objects
 from matsya_platform.store.raw import RawStore
 from matsya_platform.store.tables import TableStore
 
@@ -81,9 +82,10 @@ def _accept_from_log(fault_log: list[dict], payload_id: str) -> tuple[AcceptGap,
 
 def services(store_dir: Path) -> ConsentService:
     """Consent service, encrypted raw store and encrypted table store over one folder, sharing
-    one KeyStore (the master key comes from MATSYA_MASTER_KEY; unset, this fails loudly)."""
-    keys = KeyStore(store_dir)
-    return ConsentService(TableStore(store_dir, keys), keys, RawStore(store_dir, keys))
+    one KeyStore (the master key comes from MATSYA_MASTER_KEY; unset, this fails loudly) and
+    one object store (the folder, or MinIO when MATSYA_S3_ENDPOINT is set)."""
+    keys, objects = KeyStore(store_dir), open_objects(store_dir)
+    return ConsentService(TableStore(store_dir, keys, objects), keys, RawStore(store_dir, keys, objects))
 
 
 def open_consent(svc: ConsentService, manifest: dict, cut: datetime) -> str:
@@ -710,6 +712,8 @@ def score(out_dir: str | Path, match_overrides: dict | None = None) -> dict:
 
     # Everything scored below is what the store holds after the run, not in-memory frames.
     store_dir = out / "store"
+    # Clear the objects even with no folder: under MinIO they outlive a removed output folder.
+    open_objects(store_dir).clear()
     if store_dir.exists():
         shutil.rmtree(store_dir)
     svc = services(store_dir)

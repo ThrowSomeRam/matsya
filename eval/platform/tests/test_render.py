@@ -361,7 +361,7 @@ def test_loop_fetches_under_an_active_consent_into_the_encrypted_raw_store(world
     assert stored.height == len(originals) and set(stored["consent_id"]) == {LOOP_CONSENT}
     for d in originals:  # the ledger was built from these bytes, decrypted from the raw store
         assert svc.raw.get(tenant, d["payload_id"]) == (out / d["file"]).read_bytes()
-        assert not svc.raw.path(tenant, d["payload_id"]).read_bytes().startswith(b"{")
+        assert not svc.raw.backend.get(svc.raw.key(tenant, d["payload_id"])).startswith(b"{")
 
 
 def test_repeat_delivery_is_dropped_at_fetch(world, tmp_path):

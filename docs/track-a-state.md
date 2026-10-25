@@ -7,10 +7,10 @@ came from. Longer treatments live in `docs/matcher-design.md` (the matcher),
 (contract positions, gaps F1 to F16, storage decisions); this file points at them rather than
 repeating them.
 
-State of the repository: the last commit is `c9b03a4` on `main`. The persistence wiring, the
-export for Track B, the encrypted table store and the fetch path in the loop (sections 2.7 to
-2.10) are written and tested but **not committed**: 14 files, about 640 lines, as of this
-writing (`git diff --stat c9b03a4`).
+State of the repository: the persistence wiring, export, encrypted table store and fetch path
+(sections 2.7 to 2.10) are committed in `c69a7cc` on `main`. The object-store change (MinIO
+backend, DuckDB reading encrypted Parquet in place, store history and reproducible exports;
+section 2.7) came after it.
 
 ## 1. What this project is
 
@@ -41,7 +41,9 @@ of flat files named `<namespace>.<table>.parquet` (`intelligence/src/matsya_inte
 ## 2. What is built, component by component
 
 Test counts are collected tests (`pytest --collect-only`), as of this writing. Totals:
-platform 155 (154 pass, 1 strict xfail pinning contract gap F1), eval 28, contracts 101.
+platform 201 (the store tests run once per backend: locally 161 pass, 39 MinIO cases skip and
+1 strict xfail pins contract gap F1; with MinIO configured 199 pass, 1 local-only skip, the
+xfail), eval 28, contracts 101.
 "Wired" means used by the running path, which today is the eval loop (`python -m render.cli
 loop|score|sweep`, section 5); there is no other running path yet.
 
@@ -106,7 +108,8 @@ golden files per bank do not exist.
   data. Destroying a tenant key overwrites and deletes its wrapped key file. A platform key
   (`keys.PLATFORM`) covers data that must outlive a tenant (section 2.7).
 - **Files:** `platform/src/matsya_platform/store/keys.py`, `store/raw.py`. Uses the
-  `cryptography` library, not home-made crypto.
+  `cryptography` library, not home-made crypto. Payload blobs live in the object store
+  (section 2.7); keys stay on local disk and never go to the bucket.
 - **Wired:** yes, the loop fetches every delivery into it and builds from the decrypted bytes
   (uncommitted).
 - **Tests:** in `tests/store/test_store.py` (30 tests in total for 2.5 to 2.9): 5 on keys, 5 on
@@ -131,23 +134,35 @@ golden files per bank do not exist.
 - **Tests:** 9 consent and 4 fetch tests in `tests/store/test_store.py`; 3 loop tests in
   `eval/platform/tests/test_render.py`.
 
-### 2.7 Table store (persistence), encrypted
+### 2.7 Table store: encrypted per tenant, with history, on local disk or MinIO
 - **Does:** writes and reads every table `build()`, ingest and the matcher produce. Layout
-  `tables/<schema>/<name>/<tenant or _shared>/part-<seq>.<k>.enc`, each part a Parquet file
-  encrypted with AES-256-GCM under the tenant key (`k = t`) or the platform key (`k = p`).
-  Platform key: `ref.buyers` and `ref.buyer_disclosures` (no tenant), `ops.consents`, and the
-  lifecycle events (`consent_changed`, `fetch_failed`, `erasure_completed`) so the record of a
-  consent survives the erasure it triggers. Contract tables are validated on every row on
-  write (stricter than the contract's sampled validation for real writes). DuckDB queries
-  decrypt the named tables to a temporary directory in `/dev/shm` and remove it after the
-  query; without pyarrow DuckDB cannot be given in-memory frames. All stores in a process
-  must share one `KeyStore`, enforced, because each instance caches unwrapped keys.
-- **Files:** `store/tables.py`, `store/persist.py` (`persist_build`, `persist_match`,
-  `persist_invoices`, `persist_refs`, `read_*`).
-- **Wired:** yes, uncommitted: the loop persists as it runs and scores what it reads back from
-  the store, not in-memory frames. Row lineage (which payload and row each ledger row came
-  from) stays in memory; it is used only by scoring and has no contract table (F2).
-- **Tests:** 7 table-store and persistence tests in `tests/store/test_store.py`.
+  `tables/<schema>/<name>/<tenant or _shared>/<part|snap>-<seq>-<commit ns>.<k>.parquet` in
+  an object store: a local folder by default, or MinIO when `MATSYA_S3_ENDPOINT` is set
+  (`store/objects.py`, `.env.example`, `infra/compose.platform.yml`). Each part is Parquet
+  with modular encryption (AES-GCM, encrypted footer), written by DuckDB under the tenant key
+  (`k = t`) or the platform key (`k = p`: `ref.buyers`, `ref.buyer_disclosures`,
+  `ops.consents`, lifecycle events).
+- **DuckDB reads in place.** Frames cross to DuckDB as Arrow C streams (no pyarrow); reads and
+  `query()` hand DuckDB the part URLs and the key in memory, so no plaintext file is written
+  anywhere and a query reads only what it needs, over S3 too. A key destroy bumps
+  `KeyStore.epoch` and the store reopens its DuckDB connection (tested).
+- **History.** A replace keeps what it supersedes; `read(..., as_of=t)` and
+  `query(..., as_of=t)` return what the store held at t. History is deleted only by a tenant's
+  erasure and by revoking one consent of a tenant with another live one; both leave a purge
+  marker, and reads as of earlier times then raise. The export is reproducible through it
+  (section 2.9).
+- **Guards:** the S3 backend refuses a bucket with versioning or object lock. Contract tables
+  are validated on every row on write and cast back to the contract schema on read. All stores
+  in a process must share one `KeyStore`, enforced.
+- **Weak spot:** a part has no associated data, so one moved between two tables of the same
+  tenant would decrypt (moved across tenants it fails, and reads check `tenant_id`).
+- **Wired:** yes: the loop persists as it runs and scores what it reads back. The loop uses
+  the local backend unless `MATSYA_S3_ENDPOINT` is set. Row lineage stays in memory (F2).
+- **Tests:** in `tests/store/test_store.py`, every test once per backend (MinIO cases need
+  `MATSYA_TEST_S3_*`), including as-of reads after appends and replaces, `ref.buyers`
+  history, the revoke purge, an erased tenant gone from history while the other tenant's
+  history reads back unchanged, and an export rebuilt identically at its recorded time.
+  Write-up, and the Iceberg trial that was reverted: positions doc, end of section H.
 
 ### 2.8 Erasure
 A terminal consent deletes that consent's raw objects. When no other consent of the tenant is
@@ -164,7 +179,11 @@ fail it.
 `<namespace>.<table>.parquet`, validated. The loop writes it to `<out>/contract/`. Checked
 against a line-for-line copy of Track B's `read_contract_dir`, not the function itself (its
 module needs `yaml`, absent from the platform environment). The export is plaintext and
-outside the erasure. Uncommitted. Tested by 1 test in `tests/store/test_store.py`.
+outside the erasure. It is a read of the store as of one time (`as_of`, default now),
+recorded with a sha256 per file in `_export.json`; re-exporting at that time writes the same
+files, or raises if an erasure or revoke purged history in between. A forecast is
+reproducible once Track B records `store_as_of` (section 9). Tested by 2 tests in
+`tests/store/test_store.py`.
 
 ### 2.10 The eval renderer and scoring loop
 - **Does:** renders a Track B generator world into the files Track A would receive (ReBIT AA
@@ -175,7 +194,8 @@ outside the erasure. Uncommitted. Tested by 1 test in `tests/store/test_store.py
   `csv_generic.py`, `tally_daybook.py`, `gst_einvoice.py`, `faults.py`, `truth.py`,
   `score.py`, `sweep.py`).
 - **Tests:** 28 (`eval/platform/tests/test_render.py` 27, `test_sweep.py` 1). The suite takes
-  about 21 s (it was about 14 s before encryption and the fetch path).
+  about 43 s locally and 87 s with the store on MinIO (21 s before the object store, 14 s
+  before encryption and the fetch path). Most of it is the sweep test's 108 runs.
 - **Needs** `MATSYA_MASTER_KEY` set for `score`, `loop` and `sweep`; the tests set a random one
   per test (`eval/platform/tests/conftest.py`).
 - The `score.py` module docstring still says invoices are ingested "with the generic CSV
@@ -378,7 +398,12 @@ renderer and the readers all share our assumptions; agreement between them is no
   full table read 23.3 against 29.6 (the encrypted store consolidates a table into one file
   per query, which outweighs decryption). A whole scored run takes 4.81 s, against 2.65 s with
   no store and about 2.9 s with the plaintext store; most of the increase is the fetch path
-  (per-delivery consent checks, one encrypted file per event, 326 files per run).
+  (per-delivery consent checks, one encrypted file per event, 326 files per run). These
+  figures predate in-place reads. After them (local backend, `python -m render.cli score`
+  wall clock including startup, on a dense0 render at default rates): 9.6 s against 8.1 s on
+  `c69a7cc`; on the test suite's small world, `score()` 0.65 s against 0.50 s. With history
+  added: 8.9 s and 0.65 s (no measurable cost). The Iceberg trial took 19.8 s and 1.35 s. The
+  query timings above were not re-measured.
 
 ## 7. Known limitations
 
@@ -422,6 +447,14 @@ positions doc section H, plus what writing this document found.
 
 ## 8. Decisions and their reasoning
 
+- **Reproducible forecasts without Iceberg** (positions doc, end of section H): the store keeps
+  history and exports can be rebuilt at their recorded time. Iceberg was built, worked, and
+  was reverted: about twice the run time (23 ms per commit), semi-internal pyiceberg API, and
+  nothing the history does not give. Kept as a scaling item for many writers or large tables.
+- **MinIO: added, for scaling** (positions doc, end of section H): one machine's disk does not
+  take more than one writer. Crypto-shredding already covers residue, as long as the bucket
+  keeps no old versions (enforced) and keys never go to it. DuckDB reads the encrypted parts
+  from it in place. Supersedes the "No MinIO" part of the next item.
 - **No MinIO, Iceberg, Trino, Redpanda or Temporal** (positions doc section H). They are the
   scaling story; none changes a number a viewer sees, and each adds a service. Storage is local
   files: Parquet queried in process with DuckDB, with per-tenant envelope encryption over both
@@ -479,7 +512,9 @@ Full text: positions doc section F (items 12 to 16 sit after section G in that f
 15. `erasure_completed` cannot say what was erased.
 16. `ledger.invoices` has no taxable value (round-off and other charges distort the TDS base).
 
-Asks to Track B (positions doc section E): review Track A's definitions in their namespaces
+Asks to Track B (positions doc section E, plus the end of section H): record the export's
+`store_as_of` in `forecast.runs.input_snapshot_ids` so a forecast's inputs can be rebuilt;
+review Track A's definitions in their namespaces
 (`forecast.shock_state`, `forecast.calibration_state.as_of`) and ours (`ops.owner_inputs`,
 `ops.dq_quarantine`, the `ops.events` payload models); set the CPSE/TReDS constant to
 `verify`; use link evidence strength when fitting payment timing; send source links for
@@ -504,7 +539,7 @@ Against the handbook's A1 to A10 and phases P0 to P5.
 | A10 drafting service | not built | pending; the handbook allows moving it to Track B |
 | owner input loader (`ops.owner_inputs`), `labels.txn_corrections` writer | not built | pending (agreed in positions doc B) |
 | `ops.match_runs` metrics and alerting | not built | pending (F13) |
-| Compose base and `compose.platform.yml` | not built (`infra/` has only Track B's file, which points at a missing base) | not needed by the current stack; Track B's file is dangling |
+| Compose base and `compose.platform.yml` | `compose.platform.yml` built (MinIO and bucket init); no base file | Track B's file still points at the missing base |
 | Track A CI | not built (only `.github/workflows/track-b.yml`) | pending |
 | P4 chaos suite, scale test, naive-stack comparison | partial: the stress sweep covers AA fault injection; no scale test or naive-stack run | pending |
 | owner view, dashboard (P5) | not built | pending |

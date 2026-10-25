@@ -6,12 +6,13 @@ requires-python = ">=3.11"
 dependencies = [
     "polars>=1.0",
     "pydantic>=2.7",
-    "duckdb>=1.0",  # local queries over the Parquet table store
+    "duckdb>=2.0",  # writes and reads the encrypted Parquet table parts in place; tested on 2.0.0
     "cryptography>=42",  # A3: AES-256-GCM payloads, RFC 3394 key wrap
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+s3 = ["boto3>=1.34"]  # MinIO / S3 object storage (store/objects.py); DuckDB reads it through httpfs
 
 [build-system]
 requires = ["hatchling"]

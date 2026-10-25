@@ -276,7 +276,8 @@ turns SILENT, as min/median/max over world x seed.
 
 ## H. Persistence, raw store, consent and fetch (2026-10-25)
 
-**Decision: no Iceberg, MinIO, Trino, Redpanda or Temporal.** The handbook's full stack is
+**Decision: no Iceberg, MinIO, Trino, Redpanda or Temporal.** (MinIO was added later the same
+day, for scaling; see "Object storage and in-place reads" at the end of this section.) The handbook's full stack is
 the scaling story: table format, object store, query engine, event bus, workflow engine. None
 of it changes a single number in the output, nobody looking at a forecast or a review set
 can see it, and each adds a service to run, configure and debug. What the output does depend
@@ -289,8 +290,9 @@ show, such as data volume one process cannot hold or more than one writer.
   (`infra/compose.base.yml`) does not exist; `infra/` holds only Track B's
   `compose.intelligence.yml`, so there is no Postgres container to reuse. Parquet keeps the
   Polars frames as they are (no type mapping), and DuckDB queries them in process. Layout
-  `tables/<schema>/<name>/<partition>/part-<seq>.<k>.enc`; partitioning by tenant makes
-  erasure a directory removal. Every part is encrypted (see "Derived tables are encrypted"
+  `tables/<schema>/<name>/<partition>/<part|snap>-<seq>-<commit ns>.<k>.parquet` in the
+  object store, with history (see "History and reproducible exports" at the end of this
+  section); partitioning by tenant makes erasure a prefix removal. Every part is encrypted (see "Derived tables are encrypted"
   below). Contract tables are validated on every write, on every row; outputs
   with no contract table go to `aux.*` with the producing `run_id`
   (`platform/src/matsya_platform/store/`). `build()` and `match()` stay pure:
@@ -337,9 +339,10 @@ show, such as data volume one process cannot hold or more than one writer.
 **Derived tables are encrypted under the tenant key (2026-10-25).** Until this change the
 table store wrote plain Parquet, so destroying a tenant key made the raw payloads noise and
 left every ledger row, invoice, match and label readable: the erasure claim held for half the
-data. Now every table part is AES-256-GCM under the partition's tenant key, with table and
-partition as associated data, so key destruction covers raw payloads and derived tables
-alike. Two exceptions use the platform key (`keys.PLATFORM`, wrapped under the master key,
+data. Now every table part is encrypted under the partition's tenant key (since the MinIO
+change, Parquet modular encryption written by DuckDB; before it, AES-256-GCM over the whole
+file with table and partition as associated data), so key destruction covers raw payloads and
+derived tables alike. Two exceptions use the platform key (`keys.PLATFORM`, wrapped under the master key,
 never destroyed by a tenant's erasure):
 - `ref.buyers` and `ref.buyer_disclosures`, which have no tenant. They are public reference
   facts, but encrypting them costs nothing and keeps the rule "no plaintext Parquet under the
@@ -349,10 +352,8 @@ never destroyed by a tenant's erasure):
   `fetch_failed`, `erasure_completed`) in `ops.events`: the proof that consent existed and
   was ended must outlive the erasure. Every other event is under the tenant key.
 
-Reads decrypt to memory. DuckDB cannot read encrypted Parquet and, without pyarrow, cannot
-be handed in-memory frames, so `query()` decrypts only the tables the SQL names into a
-temporary directory in `/dev/shm` (RAM-backed), runs the query and removes the directory.
-The erasure proof destroys a tenant's key, then from a fresh process (nothing cached) tries
+Reads first decrypted named tables into a temporary directory in `/dev/shm` for DuckDB;
+superseded by in-place reads (below). The erasure proof destroys a tenant's key, then from a fresh process (nothing cached) tries
 every stored object of that tenant, raw and derived, with a regenerated key, the other
 tenant's key and the platform key: every one fails a real AES-GCM decrypt; the other tenant
 reads back unchanged; and no plaintext Parquet is left anywhere under the store. All three
@@ -394,7 +395,7 @@ from the environment) covering both raw payloads and derived tables, so destroyi
 key is erasure of everything the store holds for that tenant. Not taken:
 - **MinIO.** Same bytes behind an S3 API. Encryption is ours either way, so it adds nothing
   to erasure, and nothing a viewer sees changes. Worth it only for a cloud deployment or more
-  than one writer machine.
+  than one writer machine. *Superseded the same day: added for scaling, below.*
 - **Iceberg.** Cost, as above: pyarrow weight, a catalog, and non-key-based deletes still
   need expiry and orphan cleanup we would write ourselves. Time travel is the one real
   capability it adds, and the demo does not replay old snapshots.
@@ -409,3 +410,90 @@ Limitations:
   master key would undo an erasure.
 - The mid-fetch discard holds only within a single process: the consent generation that
   detects a change during a fetch is held in memory.
+
+
+**Object storage and in-place reads (2026-10-25, supersedes "Not taken: MinIO").** Decided by
+the project owner: local disk does not scale past one machine or one writer, so the store
+needs object storage, and MinIO is the self-hosted S3. Crypto-shredding already settles the
+residue problem (old versions, orphan copies) at the tenant level, so object storage costs
+erasure nothing as long as the bucket keeps no old versions.
+- **Backends** (`store/objects.py`): a local folder (the default, and what the eval loop
+  uses) or an S3 bucket, chosen by `MATSYA_S3_ENDPOINT` (`.env.example`). Each store root gets
+  its own prefix in the bucket. `infra/compose.platform.yml` runs MinIO, pinned by digest,
+  and creates the bucket.
+- **Keys stay out of the bucket.** `KeyStore` keeps wrapped keys on local disk. An old
+  version or replica of a wrapped key plus the master key would undo an erasure, and
+  overwrite-before-unlink means nothing on S3.
+- **The store refuses a bucket with versioning (enabled or suspended) or object lock**, the
+  same refuse-to-start rule as a missing master key. The erasure proof under MinIO also
+  checks that the bucket lists no object version or delete marker beyond the live objects.
+- **DuckDB reads the encrypted parts in place.** Table parts are Parquet with modular
+  encryption (AES-GCM, encrypted footer), written by DuckDB with the tenant's data key as the
+  footer key; frames cross to DuckDB as Arrow C streams, so no pyarrow and no plaintext file
+  anywhere. Reads and `query()` give DuckDB the part URLs (`s3://` or local paths) and the
+  key in memory, so a query reads only the row groups and columns it needs. Every destroy
+  bumps `KeyStore.epoch`, and the table store reopens its DuckDB connection so a destroyed
+  key does not survive there.
+- **Weaker binding than before.** DuckDB exposes no AAD prefix, so a part no longer carries
+  table and tenant as associated data. A part moved to another tenant still fails (other
+  key), and reads check every row's `tenant_id` against the partition. A part moved between
+  two tables of the same tenant would decrypt and is caught only by the schema check. Raw
+  payloads keep their AES-GCM blobs with associated data.
+- **Atomic replace on S3.** `replace()` writes a snapshot with the next seq and reads take
+  the latest snapshot plus later parts, so a replace is one PUT. The old rename-based replace
+  had no S3 equivalent and briefly showed an empty table even on disk.
+- **Cost.** On the small test world a scored run goes from 0.50 s to 0.65 s, and on dense0
+  from about 8.1 s to 9.6 s (both local backend, wall clock, this machine). DuckDB's fixed
+  cost per query is the remainder: about 80 reads per small run, 41 of them consent lookups.
+  The eval suite under MinIO takes about 86 s against about 45 s local.
+- **Iceberg stays out.** It is a table format, not storage; nothing above needs it.
+  *Superseded the same day: below.*
+
+**History and reproducible exports (2026-10-25).** Forecasts must be reproducible. Track B
+already writes a content hash of every input frame into `forecast.runs.input_snapshot_ids`,
+so a rerun can tell that its inputs differ; what was missing is getting the old inputs back,
+and Track B reads exports, not the store, so that is where it has to work.
+- **The store keeps history.** Nothing a `replace()` supersedes is deleted, and every object
+  name carries its commit time, so `read(table, tenant, as_of=t)` and `query(sql, as_of=t)`
+  take only what was committed by t and return what a read at t returned. Appends never
+  produced garbage; only replaces (`ops.consents`, `raw.aa_payloads`, `ref.*`,
+  `ref.tenant_buyers`) grow history, so no retention is needed yet. `ref.buyers`, replaced on
+  every run, now keeps its versions (tested). No metadata layer and no extra commits: run time
+  is unchanged (dense0 8.9 s, small world 0.65 s).
+- **Exports are reproducible.** `export_contract_dir(store, dir, as_of=t)` reads every table
+  as of t (default now) and writes `_export.json` with `store_as_of` and a sha256 per file.
+  Re-exporting at the recorded time writes identical files after the store has moved on
+  (tested: identical manifest, hashes included). Track B's reader opens named files only, so
+  the manifest does not disturb it.
+- **History is deleted in exactly two places**, each leaving a purge marker
+  (`<partition>/purged-<ns>`): a tenant's erasure, and the revoke of one consent while the
+  tenant has another live one (`replace(..., purge=True)` on `raw.aa_payloads`). A read or
+  re-export as of a time before a purge raises `Unreadable` instead of returning less, so a
+  reproduction never differs quietly. Tenant erasure is still by key: every historical part is
+  under the tenant key.
+- **Ask for Track B:** record the export's `store_as_of` in `input_snapshot_ids` (for
+  example `store:<iso time>`), so a rerun knows which export to rebuild. Their hashes then
+  confirm the rebuild.
+- **Limits.** Commit times are wall clock and one writer per store is assumed; two writers
+  racing a reader could make a re-read include a part the first read missed. The ledger rows
+  of a revoked consent under a live tenant still stay (no lineage, F2), now and in history.
+
+**Iceberg: tried, measured, reverted; a scaling item for later (2026-10-25).** Built the same
+day, before the history above, with pyiceberg 0.12 holding schemas, tenant
+partitions and snapshots, and DuckDB still writing and reading the per-tenant encrypted files
+(pyiceberg writes no encrypted data files; its only encryption option is S3 server-side
+encryption, so the store registered its own files, key reference in `key_metadata`, no column
+statistics). It worked, without pyarrow (fsspec for metadata I/O), and passed every test on
+disk and MinIO. Reverted on cost and fit:
+- Each commit took about 23 ms in pyiceberg, mostly copying table metadata that grows with
+  the snapshots kept: dense0 19.8 s against 9.6 s, the eval suite 85 s against 43 s locally
+  and 202 s against 86 s on MinIO.
+- Registering our own encrypted files used semi-internal pyiceberg API (`DataFile.from_args`,
+  `spec_id`), pinned to 0.12.
+- It added a catalog, and pyiceberg expires snapshot metadata but deletes no files, so
+  retention cleanup was ours to write anyway.
+- It gave nothing the history above does not, for the forecasts that need it.
+When to reconsider: many writers, tables too large to list a prefix per read, or engines
+other than DuckDB reading the tables. The prerequisite is an Iceberg writer that encrypts data
+files per tenant (Iceberg's table encryption spec, not in pyiceberg 0.12), or registering our
+files as above with event writes batched per fetch.

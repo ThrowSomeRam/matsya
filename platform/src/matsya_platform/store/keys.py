@@ -4,6 +4,9 @@ The master key comes only from the environment variable MATSYA_MASTER_KEY: 32 ra
 base64-encoded (see .env.example). It is never a literal in code and never committed; if it
 is unset or malformed, KeyStore refuses to start rather than falling back to a default.
 
+Keys stay on local disk and never go to the object store (objects.py): a copy of a wrapped key
+there, in an old object version or a replica, plus the master key would undo an erasure.
+
 Each tenant gets a random 256-bit data key, stored on disk only in wrapped form (RFC 3394
 AES key wrap under the master key). destroy() overwrites the wrapped key file with random
 bytes, deletes it, and drops any cached copy: there is no "destroyed" flag to flip back, and
@@ -57,6 +60,9 @@ class KeyStore:
         self.dir.mkdir(parents=True, exist_ok=True)
         self._master = master_key if master_key is not None else master_key_from_env()
         self._cache: dict[str, bytes] = {}
+        # Bumped by every destroy, so holders of a key outside this cache (a DuckDB
+        # connection) know to drop theirs.
+        self.epoch = 0
 
     def _path(self, tenant_id: str) -> Path:
         return self.dir / f"{tenant_id}.wrapped"
@@ -82,6 +88,7 @@ class KeyStore:
     def destroy(self, tenant_id: str) -> bool:
         """Irreversibly destroy the tenant's key. Returns whether a key existed."""
         self._cache.pop(tenant_id, None)
+        self.epoch += 1
         p = self._path(tenant_id)
         if not p.exists():
             return False

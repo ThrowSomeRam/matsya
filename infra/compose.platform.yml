@@ -1,0 +1,49 @@
+# Track A object storage: MinIO holding the encrypted raw payloads and table parts.
+#   docker compose -f infra/compose.platform.yml up -d
+# then set the MATSYA_S3_* variables from .env.example. Only ciphertext goes in here; tenant
+# keys stay on local disk (KeyStore) and must never be put in this bucket.
+#
+# The bucket is created without versioning and without object lock, and must stay that way:
+# either keeps old object versions after a delete, which would undo an erasure. The store
+# refuses to start on a bucket that has them (store/objects.py).
+#
+# Image pinned by digest: minio RELEASE.2025-09-07T16-13-09Z (mc RELEASE.2025-08-13 inside).
+x-minio-image: &minio-image minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+
+services:
+  minio:
+    image: *minio-image
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MATSYA_S3_ACCESS_KEY:?set MATSYA_S3_ACCESS_KEY (see .env.example)}
+      MINIO_ROOT_PASSWORD: ${MATSYA_S3_SECRET_KEY:?set MATSYA_S3_SECRET_KEY (see .env.example)}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  minio-init:
+    image: *minio-image
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MATSYA_S3_ACCESS_KEY: ${MATSYA_S3_ACCESS_KEY}
+      MATSYA_S3_SECRET_KEY: ${MATSYA_S3_SECRET_KEY}
+      MATSYA_S3_BUCKET: ${MATSYA_S3_BUCKET:-matsya}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        mc alias set m http://minio:9000 "$$MATSYA_S3_ACCESS_KEY" "$$MATSYA_S3_SECRET_KEY" &&
+        mc mb --ignore-existing "m/$$MATSYA_S3_BUCKET" &&
+        mc version info "m/$$MATSYA_S3_BUCKET"
+    restart: "no"
+
+volumes:
+  minio-data:

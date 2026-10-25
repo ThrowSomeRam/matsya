@@ -2,8 +2,11 @@ import base64
 import json
 import os
 import shutil
+import time
+import uuid
 from datetime import date, datetime, timedelta, timezone
 
+import duckdb
 import polars as pl
 import pytest
 from conftest import FIXTURES
@@ -19,7 +22,9 @@ from matsya_platform.fetch.adapter import LocalFolderAdapter
 from matsya_platform.fetch.runner import FetchGaveUp, fetch, stored_payloads
 from matsya_platform.ledger.build import build
 from matsya_platform.match.engine import match
-from matsya_platform.store.keys import MASTER_KEY_ENV, KeyDestroyed, KeyError_, KeyStore
+from matsya_platform.store.keys import MASTER_KEY_ENV, PLATFORM, KeyDestroyed, KeyError_, KeyStore
+from matsya_platform.store.objects import (S3_ACCESS_KEY_ENV, S3_BUCKET_ENV, S3_ENDPOINT_ENV, S3_PREFIX_ENV,
+                                           S3_SECRET_KEY_ENV, S3Objects, StoreConfigError)
 from matsya_platform.store.persist import persist_build, persist_match, read_build, read_match
 from matsya_platform.store.raw import RawStore, Unreadable
 from matsya_platform.store.tables import TableStore
@@ -29,6 +34,30 @@ A = "3b2f7c1e-9a4d-4e8b-b6c5-1d2e3f4a5b6c"
 B = "9c8d7e6f-1a2b-4c3d-8e9f-0a1b2c3d4e5f"
 T0 = datetime(2026, 4, 1, tzinfo=UTC)
 DELIVERIES = [("april", "2026-05-01T00:30:00+00:00"), ("may", "2026-06-01T00:30:00+00:00")]
+
+
+# MinIO runs: set MATSYA_TEST_S3_ENDPOINT, _BUCKET, _ACCESS_KEY and _SECRET_KEY (an unversioned
+# bucket; infra/compose.platform.yml makes one). Without them the s3 cases skip.
+S3_TEST = {v: os.environ.get(v.replace("MATSYA_", "MATSYA_TEST_"))
+           for v in (S3_ENDPOINT_ENV, S3_BUCKET_ENV, S3_ACCESS_KEY_ENV, S3_SECRET_KEY_ENV)}
+
+
+@pytest.fixture(autouse=True, params=["local", "s3"])
+def backend(request, monkeypatch):
+    """Every test runs against a local folder and, when configured, against MinIO, under a
+    prefix of its own that is removed afterwards."""
+    if request.param == "local":
+        monkeypatch.delenv(S3_ENDPOINT_ENV, raising=False)
+        yield "local"
+        return
+    if not all(S3_TEST.values()):
+        pytest.skip("MinIO not configured (MATSYA_TEST_S3_*)")
+    prefix = f"pytest-{uuid.uuid4().hex[:12]}"
+    for k, v in {**S3_TEST, S3_PREFIX_ENV: prefix}.items():
+        monkeypatch.setenv(k, v)
+    yield "s3"
+    S3Objects(S3_TEST[S3_ENDPOINT_ENV], S3_TEST[S3_BUCKET_ENV], S3_TEST[S3_ACCESS_KEY_ENV],
+              S3_TEST[S3_SECRET_KEY_ENV], prefix=prefix).clear()
 
 
 @pytest.fixture
@@ -111,7 +140,7 @@ def test_erasure_proof_destroyed_tenant_unreadable_other_untouched(master, tmp_p
     objects = svc.raw.objects()
     assert sorted({t for t, _ in objects}) == sorted([A, B]) and len(objects) == 4
     # A copy of A's ciphertext taken before erasure, as a backup or a stray copy would be.
-    stray = {pid: svc.raw.path(A, pid).read_bytes() for t, pid in objects if t == A}
+    stray = {pid: svc.raw.backend.get(RawStore.key(A, pid)) for t, pid in objects if t == A}
 
     assert svc.keys.destroy(A) is True
 
@@ -143,7 +172,7 @@ def test_object_moved_to_another_tenant_cannot_be_read_there(master, tmp_path, f
     for t in (A, B):
         consent(svc, t)
         fetch(svc, LocalFolderAdapter(folder), t, "C1")
-    shutil.copy(svc.raw.path(A, "PL-a-april"), svc.raw.path(B, "PL-a-april"))
+    svc.raw.backend.put(RawStore.key(B, "PL-a-april"), svc.raw.backend.get(RawStore.key(A, "PL-a-april")))
     with pytest.raises(Unreadable, match="authentication failed"):
         svc.raw.get(B, "PL-a-april")
 
@@ -202,7 +231,7 @@ def test_revoke_erases_raw_key_and_derived_rows_for_that_tenant_only(master, tmp
         consent(svc, t)
         fetch(svc, LocalFolderAdapter(folder), t, "C1")
         persist_build(svc.tables, build(stored_payloads(svc, t)), t, "run-1")
-    blobs = {pid: svc.raw.path(A, pid).read_bytes() for t, pid in svc.raw.objects() if t == A}
+    blobs = {pid: svc.raw.backend.get(RawStore.key(A, pid)) for t, pid in svc.raw.objects() if t == A}
     b_txns = svc.tables.read("ledger.transactions", B)
 
     svc.transition(A, "C1", S.REVOKED, T0 + timedelta(days=1))
@@ -423,7 +452,7 @@ def test_export_is_the_flat_layout_track_b_reads(master, tmp_path, folder):
         persist_build(svc.tables, build(stored_payloads(svc, t)), t, "run-1")
     written = export_contract_dir(svc.tables, tmp_path / "contract")
     files = sorted(p.name for p in (tmp_path / "contract").iterdir())
-    assert files == sorted(f"{t}.parquet" for t in EXPORTED)  # every A table, empty ones too
+    assert files == sorted([*(f"{t}.parquet" for t in EXPORTED), "_export.json"])  # every A table, empty ones too
     # Track B's reader (intelligence io.source.read_contract_dir): read_parquet + validate per table.
     for t in ("ledger.transactions", "ledger.balances", "ledger.invoices", "ledger.matches", "labels.invoice_outcomes",
               "labels.txn_corrections", "ref.buyers", "ref.tenant_buyers"):
@@ -438,30 +467,50 @@ def test_export_is_the_flat_layout_track_b_reads(master, tmp_path, folder):
 # ---------------------------------------------------------------- erasure proof: raw and derived
 
 
-def _all_tenant_files(root, tenant):
-    """Every stored object of the tenant on disk: raw payloads and table parts."""
-    return sorted([*(root / "raw" / tenant).glob("*.bin"), *(root / "tables").glob(f"*/*/{tenant}/part-*.enc")])
+def _all_tenant_objects(backend, tenant):
+    """Every stored object of the tenant: raw payloads and table parts (not purge markers)."""
+    return sorted([*backend.list_keys(f"raw/{tenant}/"),
+                   *(k for k in backend.list_keys("tables/") if k.split("/")[3] == tenant and k.endswith(".parquet"))])
+
+
+def _parquet_decrypts(blob: bytes, key: bytes, tmp) -> bool:
+    """A real decrypt of one encrypted Parquet part under key, by a fresh DuckDB."""
+    f = tmp / f"probe-{uuid.uuid4().hex}.parquet"
+    f.write_bytes(blob)
+    con = duckdb.connect()
+    con.execute(f"PRAGMA add_parquet_key('k', '{base64.b64encode(key).decode()}')")
+    try:
+        con.sql(f"SELECT count(*) FROM read_parquet('{f}', encryption_config = {{footer_key: 'k'}})").fetchall()
+        return True
+    except duckdb.InvalidInputException as e:
+        assert "AES tag" in str(e)
+        return False
+    finally:
+        con.close()
+        f.unlink()
 
 
 def test_erasure_proof_covers_raw_and_derived_tables(master, tmp_path, folder):
     """Both tenants hold raw payloads and derived tables (ledger rows, balances, events).
     Destroy A's key; from a fresh process, every A object, raw or derived, fails a real
     decrypt under a regenerated A key, B's key and the platform key; B reads back unchanged;
-    and no plaintext Parquet is left anywhere under the store."""
+    no object anywhere is plaintext; and under MinIO no old object version is left."""
     root = tmp_path / "store"
     svc = services(root)
     for t in (A, B):
         consent(svc, t)
         fetch(svc, LocalFolderAdapter(folder), t, "C1")
         persist_build(svc.tables, build(stored_payloads(svc, t)), t, "run-1")
-    svc.tables.query("select count(*) from ledger.transactions")  # its temporary plaintext must not remain
-    every = _all_tenant_files(root, A)
+    narration = svc.tables.read("ledger.transactions", A)["narration_raw"][0].encode()
+    svc.tables.query("select count(*) from ledger.transactions")
+    backend = svc.tables.backend
+    every = _all_tenant_objects(backend, A)
     # The platform-key parts are A's consent record and lifecycle events, kept on purpose and
     # checked below; every other A object is under A's key and must become noise.
-    audit = [p for p in every if p.name.endswith(".p.enc")]
-    a_files = [p for p in every if p not in audit]
-    assert {p.parts[-4] for p in a_files if p.suffix == ".enc"} >= {"ledger", "ops", "raw", "aux"}
-    stray = {p: p.read_bytes() for p in a_files}  # copies taken before erasure
+    audit = [k for k in every if k.endswith(".p.parquet")]
+    a_objects = [k for k in every if k not in audit]
+    assert {k.split("/")[1] for k in a_objects if k.startswith("tables/")} >= {"ledger", "ops", "raw", "aux"}
+    stray = {k: backend.get(k) for k in a_objects}  # copies taken before erasure
     b_before = {t: svc.tables.read(t, B) for t in ("ledger.transactions", "ledger.balances", "raw.aa_payloads")}
 
     assert svc.keys.destroy(A) is True
@@ -476,24 +525,160 @@ def test_erasure_proof_covers_raw_and_derived_tables(master, tmp_path, folder):
             raw.get(A, pid)
     with pytest.raises(Unreadable):
         tables.query("select count(*) from ledger.transactions")  # A's parts poison a cross-tenant query
-    candidates = [keys.tenant_key(A, create=True), keys.tenant_key(B), keys.tenant_key("_platform")]
-    for p, blob in stray.items():
-        table = ".".join(p.parts[-4:-2]) if p.suffix == ".enc" else None
-        aads = ([f"{table}|{A}".encode(), f"{table}|{B}".encode()] if table
-                else [f"{A}|{p.stem}".encode(), f"{B}|{p.stem}".encode()])
-        for k in candidates:
-            for aad in aads:
-                with pytest.raises(InvalidTag):
-                    AESGCM(k).decrypt(blob[:12], blob[12:], aad)
+    candidates = [keys.tenant_key(A, create=True), keys.tenant_key(B), keys.tenant_key(PLATFORM)]
+    for k, blob in stray.items():
+        for key in candidates:
+            if k.startswith("tables/"):
+                assert not _parquet_decrypts(blob, key, tmp_path), k
+            else:
+                pid = k.rsplit("/", 1)[-1].removesuffix(".bin")
+                for aad in (f"{A}|{pid}".encode(), f"{B}|{pid}".encode()):
+                    with pytest.raises(InvalidTag):
+                        AESGCM(key).decrypt(blob[:12], blob[12:], aad)
     for t, df in b_before.items():
         assert tables.read(t, B).equals(df), t
-    assert {".".join(p.parts[-4:-2]) for p in audit} == {"ops.consents", "ops.events"}
+    assert {".".join(k.split("/")[1:3]) for k in audit} == {"ops.consents", "ops.events"}
     assert set(tables.read("ops.consents", A)["consent_id"]) == {"C1"}
     with pytest.raises(Unreadable):  # A's events table mixes both keys: its data events are noise
         tables.read("ops.events", A)
-    for p in root.rglob("*"):
-        if p.is_file():
-            assert not p.read_bytes().startswith(b"PAR1"), f"plaintext Parquet at {p}"
+    stored = [backend.get(k) for k in backend.list_keys("")]
+    stored += [p.read_bytes() for p in root.rglob("*") if p.is_file()]  # local objects, keys, nothing else
+    assert stored and not any(b.startswith(b"PAR1") or narration in b for b in stored)
+    if isinstance(backend, S3Objects):
+        assert {p.relative_to(root).parts[0] for p in root.rglob("*") if p.is_file()} == {"keys"}
+        assert svc.tables.erase_tenant(A) and backend.versions() == backend.list_keys("")
+
+
+def test_destroyed_key_does_not_survive_in_duckdb(master, tmp_path, folder):
+    """The table store hands keys to DuckDB; a destroy must reach that copy too."""
+    svc = services(tmp_path)
+    consent(svc, A)
+    fetch(svc, LocalFolderAdapter(folder), A, "C1")
+    persist_build(svc.tables, build(stored_payloads(svc, A)), A, "run-1")
+    assert svc.tables.read("ledger.transactions", A).height > 0  # A's key is now inside DuckDB
+    svc.keys.destroy(A)
+    with pytest.raises(Unreadable):
+        svc.tables.read("ledger.transactions", A)
+
+
+def test_every_commit_is_a_snapshot_and_reads_as_of_return_it(master, tmp_path):
+    """Reproducibility: a reader that records when it read gets the same rows again later,
+    after appends and replaces, from a fresh process."""
+    store = TableStore(tmp_path)
+    store.append("aux.coverage", pl.DataFrame({"x": [1]}), A)
+    store.append("aux.coverage", pl.DataFrame({"x": [2]}), A)
+    t1 = datetime.now(UTC)
+    first = store.read("aux.coverage", A)
+    time.sleep(0.01)
+    store.replace("aux.coverage", pl.DataFrame({"x": [10]}), A)
+    store.append("aux.coverage", pl.DataFrame({"x": [11]}), A)
+    store.append("aux.coverage", pl.DataFrame({"x": [7]}), B)
+    again = TableStore(tmp_path, KeyStore(tmp_path))
+    assert again.read("aux.coverage", A)["x"].to_list() == [10, 11]
+    assert again.read("aux.coverage", A, as_of=t1).equals(first) and first["x"].to_list() == [1, 2]
+    assert again.read("aux.coverage", B, as_of=t1).is_empty()
+    assert again.read("aux.coverage", A, as_of=datetime(2000, 1, 1, tzinfo=UTC)).is_empty()
+    assert again.query("select sum(x) as s from aux.coverage", as_of=t1).item() == 3
+    assert again.query("select sum(x) as s from aux.coverage").item() == 28
+
+
+def test_reference_buyers_keep_their_history(master, tmp_path):
+    """ref.buyers is replaced on every run; the version a forecast used stays readable."""
+    store = TableStore(tmp_path)
+    pan = "ABCCA1234F"
+    buyer = T.Buyer(buyer_id=ids.buyer_id(pan), id_basis="pan", pan=pan, gstin=None, name="ACME", type="listed",
+                    sector="textiles", sector_source="exchange", treds_mandated=None)
+    store.replace("ref.buyers", frame(T.Buyer, [buyer]))
+    t1 = datetime.now(UTC)
+    time.sleep(0.01)
+    store.replace("ref.buyers", frame(T.Buyer, [T.Buyer.model_validate({**buyer.model_dump(), "sector": "fmcg"})]))
+    assert store.read("ref.buyers")["sector"].to_list() == ["fmcg"]
+    assert store.read("ref.buyers", as_of=t1)["sector"].to_list() == ["textiles"]
+
+
+def test_revoking_one_of_two_consents_purges_its_rows_from_history(master, tmp_path, folder):
+    svc = services(tmp_path)
+    consent(svc, A, "C1")
+    consent(svc, A, "C2")
+    fetch(svc, LocalFolderAdapter(folder), A, "C1")
+    t1 = datetime.now(UTC)
+    assert svc.tables.read("raw.aa_payloads", A, as_of=t1).height == 2
+    svc.transition(A, "C1", S.REVOKED, T0)
+    assert svc.tables.read("raw.aa_payloads", A).is_empty()
+    with pytest.raises(Unreadable, match="purged"):
+        svc.tables.read("raw.aa_payloads", A, as_of=t1)
+    assert len(svc.tables.backend.list_keys(f"tables/raw/aa_payloads/{A}/")) == 2  # the empty snapshot, the marker
+
+
+def test_an_export_can_be_made_again_as_of_its_time(master, tmp_path, folder):
+    """The reproducibility seam: Track B reads exports. One made at t is made again, file for
+    file, after the store has moved on; a purge in between makes it refuse, not differ."""
+    from matsya_platform.store.export import MANIFEST, export_contract_dir
+
+    svc = services(tmp_path / "store")
+
+    def onboard(t):
+        consent(svc, t)
+        fetch(svc, LocalFolderAdapter(folder), t, "C1")
+        persist_build(svc.tables, build(stored_payloads(svc, t)), t, "run-1")
+
+    onboard(A)
+    export_contract_dir(svc.tables, tmp_path / "e1")
+    first = json.loads((tmp_path / "e1" / MANIFEST).read_text())
+    onboard(B)  # the store moves on
+    svc.tables.replace("ref.buyers", svc.tables.read("ref.buyers"))
+    export_contract_dir(svc.tables, tmp_path / "e2", as_of=datetime.fromisoformat(first["store_as_of"]))
+    assert json.loads((tmp_path / "e2" / MANIFEST).read_text()) == first
+    assert first["tables"]["ledger.transactions"]["rows"] > 0
+    export_contract_dir(svc.tables, tmp_path / "e3")
+    assert json.loads((tmp_path / "e3" / MANIFEST).read_text())["tables"]["ledger.transactions"]["rows"] > \
+        first["tables"]["ledger.transactions"]["rows"]
+    svc.transition(A, "C1", S.REVOKED, T0 + timedelta(days=1))
+    with pytest.raises(Unreadable, match="purged"):
+        export_contract_dir(svc.tables, tmp_path / "e4", as_of=datetime.fromisoformat(first["store_as_of"]))
+
+
+def test_erased_tenant_is_gone_from_old_snapshots_too(master, tmp_path, folder):
+    svc = services(tmp_path)
+    for t in (A, B):
+        consent(svc, t)
+        fetch(svc, LocalFolderAdapter(folder), t, "C1")
+        persist_build(svc.tables, build(stored_payloads(svc, t)), t, "run-1")
+    t1 = datetime.now(UTC)
+    b_then = svc.tables.read("ledger.transactions", B, as_of=t1)
+    svc.transition(A, "C1", S.REVOKED, T0 + timedelta(days=1))
+    with pytest.raises(Unreadable):
+        svc.tables.read("ledger.transactions", A, as_of=t1)
+    assert svc.tables.read("ledger.transactions", B, as_of=t1).equals(b_then) and b_then.height > 0
+
+
+def test_query_reads_the_encrypted_parts_in_place(master, tmp_path, folder):
+    svc = services(tmp_path)
+    consent(svc, A)
+    fetch(svc, LocalFolderAdapter(folder), A, "C1")
+    persist_build(svc.tables, build(stored_payloads(svc, A)), A, "run-1")
+    n = svc.tables.query("select count(*) from ledger.transactions").item()
+    (view,) = svc.tables._connection().sql(
+        "select sql from duckdb_views() where schema_name = 'ledger' and view_name = 'transactions'").fetchall()[0]
+    (part,) = svc.tables.files("ledger.transactions", A)
+    assert n > 0 and svc.tables.backend.url(part) in view and "encryption_config" in view
+
+
+def test_s3_refuses_a_bucket_that_keeps_old_versions(backend):
+    if backend != "s3":
+        pytest.skip("MinIO only")
+    import boto3
+
+    c = boto3.client("s3", endpoint_url=S3_TEST[S3_ENDPOINT_ENV], aws_access_key_id=S3_TEST[S3_ACCESS_KEY_ENV],
+                     aws_secret_access_key=S3_TEST[S3_SECRET_KEY_ENV], region_name="us-east-1")
+    bucket = f"matsya-versioned-{uuid.uuid4().hex[:8]}"
+    c.create_bucket(Bucket=bucket)
+    try:
+        c.put_bucket_versioning(Bucket=bucket, VersioningConfiguration={"Status": "Enabled"})
+        with pytest.raises(StoreConfigError, match="versioning"):
+            S3Objects(S3_TEST[S3_ENDPOINT_ENV], bucket, S3_TEST[S3_ACCESS_KEY_ENV], S3_TEST[S3_SECRET_KEY_ENV])
+    finally:
+        c.delete_bucket(Bucket=bucket)
 
 
 def test_a_consent_record_survives_the_erasure_it_triggers(master, tmp_path, folder):
@@ -508,7 +693,8 @@ def test_a_consent_record_survives_the_erasure_it_triggers(master, tmp_path, fol
     assert tables.read("ops.consents", A)["status"].to_list() == ["revoked"]
     kinds = set(tables.read("ops.events", A)["kind"])
     assert kinds == {"consent_changed", "erasure_completed"}  # payload_fetched went with the tenant key
-    assert _all_tenant_files(root, A) == sorted((root / "tables").glob(f"*/*/{A}/part-*.p.enc"))
+    left = _all_tenant_objects(tables.backend, A)
+    assert left and all(k.startswith("tables/ops/") and k.endswith(".p.parquet") for k in left)
 
 
 def test_service_refuses_stores_with_their_own_key_caches(master, tmp_path):
@@ -523,5 +709,6 @@ def test_reference_buyers_are_under_the_platform_key(master, tmp_path):
     store.replace("ref.buyers", frame(T.Buyer, [T.Buyer(
         buyer_id=ids.buyer_id(pan), id_basis="pan", pan=pan, gstin=None, name="ACME", type="listed",
         sector="textiles", sector_source="exchange", treds_mandated=None)]))
-    (p,) = store.files("ref.buyers")
-    assert p.name.endswith(".p.enc") and not p.read_bytes().startswith(b"PAR1")
+    (k,) = store.files("ref.buyers")
+    blob = store.backend.get(k)
+    assert k.endswith(".p.parquet") and blob.startswith(b"PARE") and b"ACME" not in blob
