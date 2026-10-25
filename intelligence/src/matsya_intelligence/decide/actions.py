@@ -4,7 +4,7 @@
 |------------------|--------------------------------------------------|------------------------------------------|
 | treds_discount   | invoice_cash replace: A - discount on day L      | the discount                             |
 | chase            | rate_multiplier buyer x factor for N weeks       | chase cost                               |
-| msmed_interest   | invoice_cash if_unpaid: P + interest on day lag  | penalty - recovery x P(unpaid) x interest |
+| msmed_interest   | invoice_cash if_unpaid: P + interest on day lag  | penalty - value (reported, not planned)   |
 | overdraft        | cash_event + k units on draw day d               | interest from d to day H + 1             |
 | supplier_stretch | date_shift supplier_payments, share s, N days    | penalty + MSMED interest + 43B(h) delay  |
 

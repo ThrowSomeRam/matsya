@@ -10,6 +10,9 @@ of the do-nothing 90-day minimum balance, and the opening balance is lowered by 
 same arithmetic as a threshold at that median (the opening balance adds a constant to every
 path) without a non-zero cushion. The realised do-nothing p_short on the fresh paths is reported.
 
+The plan is solved at 0.8 eps in sample (decision.solve_eps_factor) and judged at eps on fresh
+paths. MSMED claims are reported as money owed, not planned. Solver status and MIP gap per plan.
+
 Strategies, all on the same fresh paths: do nothing, discount every eligible invoice, chase the
 largest buyer, the plan. Costs: net (signed, claims can be negative) and clamped (as stored).
 
@@ -60,7 +63,12 @@ def one_world(args) -> dict:
     clamped = {"do_nothing": 0, "plan": sum(max(a.cost(k), 0) for a, k in res.chosen)}
     out = {"preset": preset, "seed": seed, "opening_shift_paise": shift, "target_met": res.target_met,
            "p_short_sub": res.p_short_sub, "p_verified_se": res.p_short_verified_se, "seconds": elapsed,
-           "n_candidates": res.n_candidates, "plan_actions": [f"{a.kind}:{a.target_id}x{k}" for a, k in res.chosen]}
+           "n_candidates": res.n_candidates, "plan_actions": [f"{a.kind}:{a.target_id}x{k}" for a, k in res.chosen],
+           "solver_status": res.solver["status"], "time_limited": res.solver["time_limited"],
+           "mip_gap": res.solver["mip_gap"], "eps_solve": res.eps_solve,
+           "money_owed_n": res.money_owed.height,
+           "money_owed_worth_claiming_n": int((res.money_owed["net_value_paise"] > 0).sum()),
+           "money_owed_net_paise": int(res.money_owed["net_value_paise"].clip(lower_bound=0).sum())}
     for s in STRATEGIES:
         r = b.get(s)
         out[s] = None if r is None else {
@@ -107,6 +115,13 @@ def summarise(worlds: list[dict]) -> tuple[str, list[dict]]:
               f"- Plan meets eps strictly (fresh p_short <= {EPS}): {strict}/{n}. Within Monte Carlo error "
               f"(<= eps + 2 x {se_target:.4f}, the solve and fresh-path se at eps): {within}/{n}.",
               f"- Target unreachable with the available actions: {unreachable}/{n}.",
+              f"- Solver stopped at the time limit: {sum(w['time_limited'] for w in worlds)}/{n}; MIP gap median "
+              f"{np.median([w['mip_gap'] for w in worlds if w['mip_gap'] is not None] or [np.nan]):.4f}, max "
+              f"{max([w['mip_gap'] for w in worlds if w['mip_gap'] is not None] or [np.nan]):.4f}.",
+              f"- Money owed (MSMED claims, reported apart from the plan): {sum(w['money_owed_n'] for w in worlds)} "
+              f"invoices across worlds, {sum(w['money_owed_worth_claiming_n'] for w in worlds)} worth claiming "
+              f"(net value after tax and penalty > 0), Rs {sum(w['money_owed_net_paise'] for w in worlds) / 100:,.0f} "
+              "net in total.",
               f"- Solve time per world: median {np.median([w['seconds'] for w in worlds]):.0f} s, "
               f"max {max(w['seconds'] for w in worlds):.0f} s.", ""]
     rows += [row("decision_baselines", "synthetic_30_worlds", "decision engine", "plan", "meets_eps_strict", strict / n, n,
@@ -114,7 +129,9 @@ def summarise(worlds: list[dict]) -> tuple[str, list[dict]]:
              row("decision_baselines", "synthetic_30_worlds", "decision engine", "plan", "meets_eps_within_mc", within / n, n,
                  "do_nothing", horizon=DAY),
              row("decision_baselines", "synthetic_30_worlds", "decision engine", "plan", "target_unreachable",
-                 unreachable / n, n, "do_nothing", horizon=DAY)]
+                 unreachable / n, n, "do_nothing", horizon=DAY),
+             row("decision_baselines", "synthetic_30_worlds", "decision engine", "plan", "time_limited",
+                 sum(w["time_limited"] for w in worlds) / n, n, "do_nothing", horizon=DAY)]
 
     # Losses: the plan misses eps beyond Monte Carlo error, or a baseline reaches the plan's p_short (or eps)
     # at no more cost.
@@ -133,7 +150,9 @@ def summarise(worlds: list[dict]) -> tuple[str, list[dict]]:
         per.append({"world": f"{w['preset']}:{w['seed']}", "do-nothing p": w["do_nothing"]["p_short"],
                     "plan p (fresh)": plan["p_short"], "plan p (solve)": w["p_short_sub"],
                     "plan net Rs": plan["net_cost_paise"] / 100, "plan clamped Rs": plan["clamped_cost_paise"] / 100,
-                    "actions": plan["n_actions"], "target met": w["target_met"], "loss": ", ".join(loss) or "-"})
+                    "actions": plan["n_actions"], "target met": w["target_met"],
+                    "solver": "time limit" if w["time_limited"] else "optimal",
+                    "gap": "" if w["mip_gap"] is None else f"{w['mip_gap']:.4f}", "loss": ", ".join(loss) or "-"})
     lines.append(md_table(pl.DataFrame(per)))
     losses = [p for p in per if p["loss"] != "-"]
     lines += ["", f"Losses: {len(losses)}/{n}." + ("".join(f"\n- {p['world']}: {p['loss']}" for p in losses))]

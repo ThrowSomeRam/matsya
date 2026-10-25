@@ -87,7 +87,7 @@ def test_plan_meets_the_target_out_of_sample(result):
     assert r.target_met
     do_nothing = r.baselines.filter(r.baselines["baseline"] == "do_nothing")["p_short"][0]
     assert do_nothing > 0.5  # the world is risky, so the plan has work to do
-    assert r.p_short_sub <= r.eps
+    assert r.eps_solve == pytest.approx(0.8 * r.eps) and r.p_short_sub <= r.eps_solve
     # Monte Carlo error of the in-sample constraint (N_SUB paths) plus the check (N_VER paths)
     se = math.sqrt(r.eps * (1 - r.eps) / N_SUB) + math.sqrt(r.eps * (1 - r.eps) / N_VER)
     assert r.p_short_verified <= r.eps + 3 * se
@@ -113,6 +113,23 @@ def test_plan_table_and_baselines(result):
     # amount owed is reported for every overdue invoice, chosen or not
     owed = r.msmed_owed.drop_nulls("interest_to_as_of_paise")
     assert owed.height > 0 and (owed["interest_to_as_of_paise"] > 0).all()
+
+
+def test_claims_are_money_owed_not_plan_actions(result):
+    r = result
+    assert "msmed_interest" not in set(r.plan["action"])
+    m = r.money_owed
+    overdue = set(r.msmed_owed.drop_nulls("interest_to_as_of_paise")["invoice_id"])
+    assert m.height > 0 and set(m["invoice_id"]) == overdue
+    assert (m["net_value_paise"] == m["value_after_tax_paise"] - m["penalty_paise"]).all()
+    assert m["net_value_paise"].to_list() == sorted(m["net_value_paise"].to_list(), reverse=True)
+
+
+def test_run_record_has_solver_status_and_gap(result):
+    rec = result.record
+    assert rec["solver_status"] in (0, 1) and rec["time_limited"] == (rec["solver_status"] == 1)
+    assert rec["mip_gap"] is None or rec["mip_gap"] >= 0
+    assert rec["eps_solve"] == pytest.approx(0.8 * rec["eps"])
 
 
 def test_replay_is_deterministic(world, result):
@@ -336,6 +353,6 @@ def test_decide_records_its_overrides(world):
     _, _, inp, dinp = world
     r = decide(inp, dinp, RUN, n_sub=100, n_verify=200, constants_overrides={"msmed_claim.enabled": False})
     assert r.record["constants_overrides"] == {"msmed_claim.enabled": False}
-    assert "msmed_interest" not in set(r.plan["action"])
+    assert r.money_owed.height == 0  # claims off: none listed either
     again = decide(inp, dinp, RUN, n_sub=100, n_verify=200, constants_overrides={"msmed_claim.enabled": False})
     assert again.plan.equals(r.plan) and again.record == r.record

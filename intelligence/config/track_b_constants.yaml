@@ -169,6 +169,7 @@ decision:            # B9
   milp_path_subsample: {value: 1000, status: logic, why: "SE ~ 0.007 at p=0.05, so re-check chosen plan on all 10,000 paths (mandatory)"}
   verify_paths: {value: 10000, status: logic, why: "fresh paths (own seed stream) for the out-of-sample check"}
   shortfall_target_eps: {value: 0.05, status: decide, note: "owner-set; labelled default, shown to the owner as 'default 5%'"}
+  solve_eps_factor: {value: 0.8, status: assumption, why: "solve at 0.8 eps: the in-sample count is optimistic (30 worlds at 1.0: fresh p_short 0.054 vs 0.049 in sample, 5/30 strictly under eps)"}
   shortfall_day: {value: 90, status: assumption, why: "the brief: no breach by day 90"}
   relationship_penalty: {status: decide, note: "owner-set; ask a few MSME owners"}
   milp_time_limit_s: {value: 60, status: assumption}

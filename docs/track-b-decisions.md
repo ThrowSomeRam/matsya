@@ -715,6 +715,26 @@ no baseline matched the plan's p_short for less. Net and clamped costs are equal
 no plan chose a claim. Solve time median 94 s, max 129 s. Plan cost rises with the preset's
 margin pressure (healthy median about Rs 14k, distressed about Rs 1 lakh).
 
+**Follow-ups (same 30 worlds, same seeds).** Three changes. (1) The MILP solves at
+0.8 x eps in sample (`decision.solve_eps_factor`) and the plan is still judged at eps on fresh
+paths. (2) Solver status and MIP gap go into the run record (`solver_status`, `time_limited`,
+`mip_gap`, `eps_solve`) and the eval. (3) MSMED claims are no longer plan actions: their cash
+lands on day 90 and cannot lower p_short. `DecisionResult.money_owed` lists each overdue
+invoice with the amount owed and the net value of claiming (value after tax and recovery minus
+the relationship penalty), best first.
+
+| | solve at eps | solve at 0.8 eps |
+|---|---|---|
+| plan meets eps strictly on fresh paths | 5/30 | 24/30 |
+| within Monte Carlo error | 30/30 | 30/30 |
+| fresh p_short mean (sd) | 0.054 (0.005) | 0.046 (0.005) |
+| plan cost mean / median (Rs) | 54,431 / 27,059 | 61,899 / 50,819 |
+| stopped at the 60 s time limit | not recorded | 5/30 (max MIP gap 0.87) |
+
+The tighter in-sample target costs about Rs 7,500 a plan on average. Money owed: 1,453
+overdue invoices across the worlds, none worth claiming at the default recovery and penalty.
+Open: five plans stop at the time limit, one far from proven optimal.
+
 **Claim sensitivity** (`eval/models/decision_sensitivity.py`, `decide(constants_overrides=...)`;
 default world, past seed 0, Rs 20 lakh cushion, same seeds in every run):
 

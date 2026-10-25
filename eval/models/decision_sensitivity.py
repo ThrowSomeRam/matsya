@@ -50,11 +50,12 @@ def one(name: str) -> dict:
                            suppliers=[Supplier("S1", 0.5, "micro", 30), Supplier("S2", 0.3, "none", 30)],
                            entity_type="company")
     r = decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER, constants_overrides=RUNS[name])
-    claims = [(a, k) for a, k in r.chosen if a.kind == "msmed_interest"]
+    worth = r.money_owed.filter(pl.col("net_value_paise") > 0)
     return {"run": name, "actions": [f"{a.kind} {a.target_id[:12]}" + (f" x{k}" if a.kind == "overdraft" else "")
                                      for a, k in r.chosen],
             "net_paise": sum(a.cost(k) for a, k in r.chosen), "clamped_paise": int(r.plan["cost_paise"].sum()),
-            "n_claims": len(claims), "claims_net_paise": sum(a.cost(k) for a, k in claims),
+            "n_claims": worth.height, "claims_net_paise": int(worth["net_value_paise"].sum()),
+            "solver": "time limit" if r.solver["time_limited"] else "optimal",
             "p_short": r.p_short_verified, "p_short_sub": r.p_short_sub, "target_met": r.target_met}
 
 
@@ -63,9 +64,10 @@ def main(workers: int = 4) -> None:
     with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn")) as ex:
         res = dict(zip(RUNS, ex.map(one, RUNS)))
     d = res["default"]
-    table = [{"run": n, "actions": len(x["actions"]), "claims": x["n_claims"], "net cost Rs": x["net_paise"] / 100,
+    table = [{"run": n, "actions": len(x["actions"]), "net cost Rs": x["net_paise"] / 100,
               "vs default Rs": (x["net_paise"] - d["net_paise"]) / 100, "clamped Rs": x["clamped_paise"] / 100,
-              "claims net Rs": x["claims_net_paise"] / 100, "p_short fresh": f"{x['p_short']:.4f}",
+              "money owed worth claiming": x["n_claims"], "its net value Rs": x["claims_net_paise"] / 100,
+              "solver": x["solver"], "p_short fresh": f"{x['p_short']:.4f}",
               "plan same as default": sorted(x["actions"]) == sorted(d["actions"])} for n, x in res.items()]
     lines = ["# Decision engine: sensitivity to MSMED claim settings\n",
              f"Default world (past seed 0), Rs 20 lakh cushion, small company tenant, overdraft limit Rs 10 lakh, S1 micro "

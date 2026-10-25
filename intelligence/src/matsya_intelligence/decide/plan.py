@@ -5,7 +5,8 @@ Formulation, on N subsample paths (seed `<run>:decide`), balance B[n, t] for day
 
   minimise   sum_a cost_a x_a
   subject to B[n, t] + sum_v delta_v[n, t] x_v + M[n, t] z_n >= theta   every kept (n, t)
-             sum_n z_n <= floor(eps N)
+             sum_n z_n <= floor(f eps N)    (f = solve_eps_factor, 0.8: the in-sample count is
+                                             optimistic, so the solve aims below eps)
              at most one action per invoice, one stretch length per supplier, overdraft units <= limit
              y_{c,i} = x_c (1 - sum x_{a on i})   (linearised: a chased invoice that is also discounted
                                                     or claimed loses its chase effect)
@@ -18,6 +19,10 @@ claim on a chased invoice are the remaining approximations, which the fresh-path
 Row pruning. lo[n, t] = B + sum_v min(0, ub_v delta_v): a row with lo >= theta holds for every plan
 and is dropped; M[n, t] = theta - lo is the tightest valid big-M. A path with
 B + sum_v max(0, ub_v delta_v) < theta on some day cannot be saved: z_n is fixed to 1.
+
+MSMED claims are not plan actions: their cash lands on the claim day (day 90), so they cannot
+lower p_short, and including them only mixed their expected value into the plan's cost. They are
+reported as a separate list of money the tenant is owed, with the net value of claiming each.
 
 If no plan reaches eps, a first MILP minimises sum z (the smallest achievable shortfall share) and a
 second finds the cheapest plan at that share; the result says the target was not met.
@@ -114,7 +119,7 @@ def _short_days(bal: np.ndarray, theta: int, day: int) -> float:
 
 
 def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
-    """Returns (x per variable, sum z, status message, target met)."""
+    """Returns (x per variable, sum z, solver info, target met, rows). eps is the in-sample target."""
     B = cols.base.balance[:, 1:cols.day + 1].astype(float)
     n, V = B.shape[0], cols.n_vars
     lo, hi = B.copy(), B.copy()
@@ -202,7 +207,10 @@ def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
             res = r1
     x = np.round(res.x[:V]).astype(np.int64)
     x[len(acts):] = np.clip(x[len(acts):], 0, 1)
-    return x, int(round(res.x[V:].sum())), res.message, met, R
+    gap = getattr(res, "mip_gap", None)
+    info = {"status": int(res.status), "message": res.message, "time_limited": int(res.status) == 1,
+            "mip_gap": None if gap is None or not np.isfinite(gap) else float(gap)}
+    return x, int(round(res.x[V:].sum())), info, met, R
 
 
 @dataclass
@@ -222,6 +230,9 @@ class DecisionResult:
     p_short_verified_se: float
     baselines: pl.DataFrame
     msmed_owed: pl.DataFrame
+    money_owed: pl.DataFrame  # MSMED claims: amount owed and the net value of claiming, best first
+    solver: dict  # status, message, time_limited, mip_gap of the final solve
+    eps_solve: float
     message: str
     n_candidates: int
     n_rows: int
@@ -235,6 +246,20 @@ class DecisionResult:
         from matsya_contracts.validate import schema
 
         return {"decisions.plans": self.plan.select(list(schema("decisions.plans")))}
+
+
+def _money_owed(inp: EngineInputs, dinp: DecisionInputs, claims: list[Action]) -> pl.DataFrame:
+    """One row per invoice with a possible MSMED claim, highest net value first."""
+    buyer = dict(zip(dinp.invoices["invoice_id"], dinp.invoices["buyer_id"]))
+    rows = [{"tenant_id": inp.tenant_id, "invoice_id": a.target_id, "buyer_id": buyer.get(a.target_id),
+             "principal_paise": a.detail["principal_paise"], "interest_paise": a.detail["interest_paise"],
+             "claim_day": a.detail["on_day"], "p_unpaid_by_claim_day": a.detail["p_unpaid_by_claim_day"],
+             "value_after_tax_paise": a.detail["value_paise"], "penalty_paise": a.detail["penalty_paise"],
+             "net_value_paise": -a.cost_paise} for a in claims]
+    schema = {"tenant_id": pl.String, "invoice_id": pl.String, "buyer_id": pl.String, "principal_paise": pl.Int64,
+              "interest_paise": pl.Int64, "claim_day": pl.Int64, "p_unpaid_by_claim_day": pl.Float64,
+              "value_after_tax_paise": pl.Int64, "penalty_paise": pl.Int64, "net_value_paise": pl.Int64}
+    return pl.DataFrame(rows, schema=schema).sort(["net_value_paise", "invoice_id"], descending=[True, False])
 
 
 def _baseline_row(name: str, bal: np.ndarray, theta: int, day: int, cost: int, n_actions: int) -> dict:
@@ -274,9 +299,12 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
     sub_id, ver_id = f"{run_id}:subsample", f"{run_id}:verify"
 
     base = run_engine(inp_a, sub_id, n_sub, horizon, keep_flows=True)
-    acts = candidate_actions(inp_a, dinp, base, horizon, active)
+    every = candidate_actions(inp_a, dinp, base, horizon, active)
+    acts = [a for a in every if a.kind != "msmed_interest"]
+    money_owed = _money_owed(inp_a, dinp, [a for a in every if a.kind == "msmed_interest"])
     cols = _columns(inp, active, acts, base, sub_id, n_sub, horizon, day)
-    x, z_sum, message, met, n_rows = _solve(cols, theta, eps, k["milp_time_limit_s"]["value"])
+    eps_solve = k["solve_eps_factor"]["value"] * eps
+    x, z_sum, solver, met, n_rows = _solve(cols, theta, eps_solve, k["milp_time_limit_s"]["value"])
     chosen_idx = [j for j in range(len(acts)) if x[j] > 0]
 
     # In-sample plan balance (linear model) and leave-one-out importance for the ranking.
@@ -334,7 +362,8 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
     baselines = pl.DataFrame(base_rows)
 
     if met:
-        msg = f"target met in sample: {z_sum}/{n_sub} paths short by day {day} (cap {math.floor(eps * n_sub + 1e-9)})"
+        msg = (f"target met in sample: {z_sum}/{n_sub} paths short by day {day} "
+               f"(cap {math.floor(eps_solve * n_sub + 1e-9)} at {eps_solve:.3f}, target {eps:.3f})")
     else:
         msg = (f"target {eps:.3f} cannot be met with the available actions; plan minimises p_short "
                f"({z_sum}/{n_sub} paths short in sample)")
@@ -343,11 +372,13 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
               "input_snapshot_ids": inp.input_snapshot_ids, "seed_ids": {"subsample": sub_id, "verify": ver_id},
               "active_transforms_json": to_json(active), "plan_transforms_json": to_json(plan_ts),
               "plan_transforms_hash": transforms_hash(plan_ts), "eps": eps, "day": day, "threshold_paise": theta,
-              "n_sub": n_sub, "n_verify": n_verify, "solver": message}
+              "n_sub": n_sub, "n_verify": n_verify, "eps_solve": eps_solve, "solver": solver["message"],
+              "solver_status": solver["status"], "time_limited": solver["time_limited"], "mip_gap": solver["mip_gap"]}
     return DecisionResult(
         run_id=run_id, tenant_id=inp.tenant_id, plan=plan, chosen=[(acts[j], int(x[j])) for j in order],
         transforms=plan_ts, target_met=met, eps=eps, day=day, n_sub=n_sub, n_verify=n_verify,
         p_short_sub=p_plan_sub, p_short_verified=p_ver,
         p_short_verified_se=math.sqrt(max(p_ver * (1 - p_ver), 1e-12) / n_verify),
-        baselines=baselines, msmed_owed=owed_interest(inp_a, dinp), message=msg, n_candidates=len(acts),
+        baselines=baselines, msmed_owed=owed_interest(inp_a, dinp), money_owed=money_owed, solver=solver,
+        eps_solve=eps_solve, message=msg, n_candidates=len(acts),
         n_rows=n_rows, record=json.loads(json.dumps(record, default=str)))
