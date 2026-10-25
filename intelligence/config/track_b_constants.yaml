@@ -183,6 +183,7 @@ decision:            # B9
     cost_paise: {value: 50000, status: assumption, why: "Rs 500: owner time, calls, a visit"}
   msmed_claim:
     # Claims go to the MSME ODR portal (Samadhaan); MSEFC to decide within 90 days of reference (s.18(5)).
+    enabled: {value: true, status: decide, note: "owner can rule out claims; sensitivity runs switch them off"}
     cash_lag_days: {value: 90, status: verify, why: "s.18(5) award window; buyers often pay on notice, so this is the slow end"}
     recovery_share: {value: 0.5, status: assumption, why: "expected share of the interest actually recovered through MSEFC; scales the claim's value in the objective only. The cash effect stays principal + interest on day cash_lag_days (lands on the horizon's last day, so it cannot fix an earlier dip)"}
     relationship_penalty_share: {value: 0.10, status: decide, why: "owner-set; default 10% of principal as the value of the relationship put at risk"}

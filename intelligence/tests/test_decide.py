@@ -304,3 +304,38 @@ def test_stretch_needs_a_tax_rate_unless_the_tenant_is_a_company(world):
                                                        cost_of_funds=dinp.overdraft_rate or 0.11), base, 90, [])
              if a.target_id == "S1:+30d")
     assert a.cost_paise == b.cost_paise
+
+
+# ---------------------------------------------------------------- constants overrides
+
+
+def test_constants_overrides_apply_inside_the_block_only(world):
+    from matsya_intelligence.decide import costs as C
+
+    _, _, inp, dinp = world
+    base = run_engine(inp, "d-ovr", 200, keep_flows=True)
+    claims = lambda: {a.target_id: a for a in candidate_actions(inp, dinp, base, 90, []) if a.kind == "msmed_interest"}  # noqa: E731
+    default = claims()
+    assert default
+    with C.overrides({"msmed_claim.recovery_share": 0.25, "msmed_claim.relationship_penalty_share": 0.2}):
+        low = claims()
+        assert C.constants()["msmed_claim"]["recovery_share"]["value"] == 0.25
+    for i, a in low.items():
+        d = default[i].detail
+        assert a.detail["value_paise"] < d["value_paise"]
+        assert abs(a.detail["penalty_paise"] - 2 * d["penalty_paise"]) <= 1  # each rounded to the paisa
+    with C.overrides({"msmed_claim.enabled": False}):
+        assert not claims()
+    assert claims().keys() == default.keys()  # nothing leaks out of the block
+    with pytest.raises(KeyError):
+        with C.overrides({"msmed_claim.no_such_constant": 1}):
+            pass
+
+
+def test_decide_records_its_overrides(world):
+    _, _, inp, dinp = world
+    r = decide(inp, dinp, RUN, n_sub=100, n_verify=200, constants_overrides={"msmed_claim.enabled": False})
+    assert r.record["constants_overrides"] == {"msmed_claim.enabled": False}
+    assert "msmed_interest" not in set(r.plan["action"])
+    again = decide(inp, dinp, RUN, n_sub=100, n_verify=200, constants_overrides={"msmed_claim.enabled": False})
+    assert again.plan.equals(r.plan) and again.record == r.record

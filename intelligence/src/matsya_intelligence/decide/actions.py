@@ -154,7 +154,7 @@ def candidate_actions(inp: EngineInputs, dinp: DecisionInputs, base: EngineResul
 
     # MSMED claim: micro/small tenant, invoice past its s.15 deadline. The recovered interest is
     # taxable income, so its value is net of tax at the owner's rate.
-    if dinp.tenant_msme_class in C.MSMED_SUPPLIERS:
+    if dinp.tenant_msme_class in C.MSMED_SUPPLIERS and k["msmed_claim"]["enabled"]["value"]:
         mc = k["msmed_claim"]
         claim_day = mc["cash_lag_days"]["value"]
         pay = base.open_pay

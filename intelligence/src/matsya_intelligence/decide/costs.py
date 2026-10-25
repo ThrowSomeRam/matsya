@@ -12,7 +12,11 @@ constants file; the ones without a source are marked status verify there.
                      minus the FY it had (0 when a late payment stays in the same FY)
 """
 
+import copy
 import math
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date, timedelta
 from decimal import Decimal
 from fractions import Fraction
@@ -24,8 +28,38 @@ MSMED_SUPPLIERS = ("micro", "small")  # s.15/16 and 43B(h) cover micro and small
 ENTITY_TYPES = ("proprietor", "partnership", "company")
 
 
+_OVERRIDES: ContextVar[dict] = ContextVar("decision_constants_overrides", default={})
+
+
 def constants() -> dict:
-    return load_constants()["decision"]
+    """The constants file's decision section, with any overrides active in this context applied."""
+    k = load_constants()["decision"]
+    if not _OVERRIDES.get():
+        return k
+    k = copy.deepcopy(k)  # load_constants is cached: never edit its dict
+    for path, v in _OVERRIDES.get().items():
+        *head, last = path.split(".")
+        node = k
+        for part in head:
+            node = node[part]
+        if last not in node:
+            raise KeyError(f"no decision constant {path!r}")
+        if isinstance(node[last], dict) and "value" in node[last]:
+            node[last]["value"] = v
+        else:
+            node[last] = v
+    return k
+
+
+@contextmanager
+def overrides(values: dict | None) -> Iterator[None]:
+    """Override decision constants by dotted path (e.g. {"msmed_claim.recovery_share": 0.25}) inside the block."""
+    token = _OVERRIDES.set(dict(values or {}))
+    try:
+        constants()  # unknown paths fail here, before any work
+        yield
+    finally:
+        _OVERRIDES.reset(token)
 
 
 def frac(x) -> Fraction:

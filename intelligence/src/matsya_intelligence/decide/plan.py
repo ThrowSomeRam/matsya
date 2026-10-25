@@ -243,8 +243,20 @@ def _baseline_row(name: str, bal: np.ndarray, theta: int, day: int, cost: int, n
 
 
 def decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_transforms: list | None = None,
-           n_sub: int | None = None, n_verify: int | None = None, horizon: int = 90) -> DecisionResult:
-    """The cheapest plan meeting the target for this tenant at as_of, verified on fresh paths."""
+           n_sub: int | None = None, n_verify: int | None = None, horizon: int = 90,
+           constants_overrides: dict | None = None) -> DecisionResult:
+    """The cheapest plan meeting the target for this tenant at as_of, verified on fresh paths.
+
+    constants_overrides: decision constants by dotted path, for this call only (sensitivity runs);
+    kept in the run record for replay."""
+    with C.overrides(constants_overrides):
+        res = _decide(inp, dinp, base_run_id, active_transforms, n_sub, n_verify, horizon)
+    res.record["constants_overrides"] = dict(sorted((constants_overrides or {}).items()))
+    return res
+
+
+def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_transforms: list | None,
+            n_sub: int | None, n_verify: int | None, horizon: int) -> DecisionResult:
     k = C.constants()
     active = list(active_transforms or [])
     eps = dinp.eps if dinp.eps is not None else k["shortfall_target_eps"]["value"]
