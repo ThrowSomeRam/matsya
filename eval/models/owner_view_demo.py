@@ -2,8 +2,8 @@
 
     uv run --project intelligence python eval/models/owner_view_demo.py
 
-Demo world: the default (borderline) world, past seed 0, with a Rs 10 lakh owner cushion, where the true
-chance of running short by day 90 is 0.46 (the demo world of naive_vs_ours.py). Small company tenant, overdraft limit
+Demo world: the default (borderline) world, past seed 2, with no owner cushion, where the true
+chance of running short by day 90 is about 0.27 (the demo world of naive_vs_ours.py). Small company tenant, overdraft limit
 Rs 10 lakh, suppliers S1 micro 50% and S2 not MSME 30% on 30-day written terms. Categories come from the
 categoriser, as in the production run; no calibration history (a first run). 10,000 paths.
 
@@ -17,8 +17,8 @@ import time
 from pathlib import Path
 
 DEMO_DIR = Path(__file__).resolve().parents[1] / "demo"
-PAST_SEED, CUSHION = 0, 10_00_000_00
-RUN_ID = "demo:borderline:0"
+PAST_SEED, CUSHION = 2, 0
+RUN_ID = "demo:borderline:2"
 
 
 def main(n_paths: int = 10_000) -> None:

@@ -1,8 +1,8 @@
 {
- "run_id": "demo:borderline:0:decide:verify",
+ "run_id": "demo:borderline:2:decide:verify",
  "plan_record": {
-  "run_id": "demo:borderline:0:decide:cvar",
-  "base_run_id": "demo:borderline:0",
+  "run_id": "demo:borderline:2:decide:cvar",
+  "base_run_id": "demo:borderline:2",
   "tenant_id": "5f0c6a1e-2b7d-4c3a-9e8f-1a2b3c4d5e6f",
   "as_of": "2026-03-31",
   "model_version": "saa-milp-highs-v1",
@@ -13,23 +13,23 @@
    "unscheduled": "bootstrap-8w-v0"
   },
   "input_snapshot_ids": [
-   "buyers:809fc284ae120e2b",
-   "invoice_outcomes:fed8a3efbd7b0c07",
-   "invoices:18c893196517c2a6",
-   "transactions:c9e46d1405e3a640",
+   "buyers:f619bd0fb892bd73",
+   "invoice_outcomes:7cfb4ac6b28ff86b",
+   "invoices:d5f22540a94749f6",
+   "transactions:7e9c922743185cc6",
    "opening_balance:286000000@2026-03-31",
    "complete_through:2026-03-29"
   ],
   "seed_ids": {
-   "subsample": "demo:borderline:0:decide:subsample",
-   "verify": "demo:borderline:0:decide:verify"
+   "subsample": "demo:borderline:2:decide:subsample",
+   "verify": "demo:borderline:2:decide:verify"
   },
   "active_transforms_json": "[]",
-  "plan_transforms_json": "[{\"days\":30,\"ids\":[],\"share\":0.5,\"target\":\"supplier_payments\",\"type\":\"date_shift\"},{\"days\":30,\"ids\":[],\"share\":0.3,\"target\":\"supplier_payments\",\"type\":\"date_shift\"},{\"amount_paise\":19406606,\"invoice_id\":\"ceda0ddd8f0b3921b9f2520a915f5546\",\"mode\":\"replace\",\"on\":\"2026-04-02\",\"type\":\"invoice_cash\"},{\"factor\":1.5,\"ids\":[\"a506f6e2d1a119e5a295c9cd74027edd\"],\"purchase_stickiness_days\":null,\"target\":\"buyer\",\"type\":\"rate_multiplier\",\"weeks\":2},{\"amount_paise\":20000000,\"label\":\"overdraft draw\",\"on\":\"2026-05-15\",\"type\":\"cash_event\",\"window_end\":null},{\"amount_paise\":14075529,\"invoice_id\":\"b73f5691f54b76b7cabb7b512c184164\",\"mode\":\"replace\",\"on\":\"2026-04-02\",\"type\":\"invoice_cash\"}]",
-  "plan_transforms_hash": "a7b2d731ee7bcb1befeee4737237a1c00ec5dfec99a22da470685d213445dbd0",
+  "plan_transforms_json": "[{\"days\":30,\"ids\":[],\"share\":0.5,\"target\":\"supplier_payments\",\"type\":\"date_shift\"},{\"days\":30,\"ids\":[],\"share\":0.3,\"target\":\"supplier_payments\",\"type\":\"date_shift\"},{\"amount_paise\":80000000,\"label\":\"overdraft draw\",\"on\":\"2026-06-14\",\"type\":\"cash_event\",\"window_end\":null},{\"factor\":1.5,\"ids\":[\"bd8a68da6228062f07ff968dd5d50bf1\"],\"purchase_stickiness_days\":null,\"target\":\"buyer\",\"type\":\"rate_multiplier\",\"weeks\":2},{\"factor\":1.5,\"ids\":[\"84f23d6b02adcfa454abc05809c0f3d7\"],\"purchase_stickiness_days\":null,\"target\":\"buyer\",\"type\":\"rate_multiplier\",\"weeks\":2},{\"amount_paise\":20000000,\"label\":\"overdraft draw\",\"on\":\"2026-05-30\",\"type\":\"cash_event\",\"window_end\":null},{\"factor\":1.5,\"ids\":[\"9acee0fbd3c24c88575819948eae2b40\"],\"purchase_stickiness_days\":null,\"target\":\"buyer\",\"type\":\"rate_multiplier\",\"weeks\":2}]",
+  "plan_transforms_hash": "b07c5742607ab82fc8b4dd9cf254df41cfeda2b9d44c75ec96e79ad607fb0d35",
   "eps": 0.05,
   "day": 90,
-  "threshold_paise": 100000000,
+  "threshold_paise": 0,
   "n_sub": 1000,
   "n_verify": 10000,
   "eps_solve": 0.04000000000000001,
@@ -40,7 +40,7 @@
   "method": "cvar",
   "cvar_alpha": 0.05,
   "cvar_budget_paise": 0,
-  "cvar_sub_paise": 0.0,
+  "cvar_sub_paise": 4277201.960000001,
   "constants_overrides": {}
  },
  "solver": {
@@ -48,21 +48,21 @@
   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
   "time_limited": false,
   "mip_gap": 0.0,
-  "seconds": 0.4433634120005081
+  "seconds": 0.881509140000162
  },
- "attribution_seconds": 75.4713830260007,
- "seconds": 620.1665315680002,
+ "attribution_seconds": 47.43301902900021,
+ "seconds": 449.7762874750006,
  "n_paths": 10000,
  "breaking_points": {
   "delayed_customer_payments": {
-   "magnitude": 0.8671875,
+   "magnitude": 0.849609375,
    "monotone": true,
    "evaluations": 16
   },
   "unexpected_expense": {
-   "magnitude": -58565370.0,
+   "magnitude": -89424053.0,
    "monotone": true,
-   "evaluations": 33
+   "evaluations": 34
   },
   "reduced_sales": {
    "magnitude": null,
@@ -70,7 +70,7 @@
    "evaluations": 9
   },
   "supplier_tightens_terms": {
-   "magnitude": 26.0,
+   "magnitude": 23.0,
    "monotone": true,
    "evaluations": 11
   },
