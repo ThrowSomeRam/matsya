@@ -1,4 +1,5 @@
 // The OwnerView payload (intelligence/src/matsya_intelligence/present/owner_view.py). Read-only here.
+// Fields the view-model can live without are optional: a payload that lacks one hides that element.
 
 export interface Money { paise: number; text: string }
 export interface Pct { value: number; text: string }
@@ -11,36 +12,43 @@ export interface FanDay {
 
 export interface Driver {
   rank: number; kind: "invoice" | "buyer"; driver_id: string; buyer: string; label: string; amount: Money | null;
-  contribution: Pct; contribution_es: Money; days_overdue: number | null; days_to_due: number | null;
-  buyer_usual_days_late: number | null; chance_never_paid: Pct | null; reason: string;
+  contribution: Pct; contribution_es?: Money; days_overdue?: number | null; days_to_due?: number | null;
+  buyer_usual_days_late?: number | null; chance_never_paid?: Pct | null; reason: string;
 }
 
-export interface PlanAction { rank: number; kind: string; target_id: string | null; description: string; cost: Money; risk_after: Pct }
+export interface PlanAction {
+  rank: number; kind: string; target_id: string | null; description: string; cost: Money; risk_after?: Pct;
+  amount?: Money | null; days?: number | null; on_date?: string | null;
+}
 
 export interface WhatIf {
-  preset: string; name: string; description: string; risk_90: Pct; change_90: number; change_text: string;
-  runway_lost_days: number; runway_text: string; breaking_point: string; breaking_magnitude: number | null;
-  fan: FanDay[]; risk_by_day: number[];
+  preset: string; name: string; description: string; risk_90: Pct; change_90: number; change_text?: string;
+  runway_lost_days?: number; runway_text?: string; breaking_point?: string; breaking_magnitude: number | null;
+  share?: Pct | null; amount?: Money | null; days?: number | null; days_from?: number | null; on_date?: string | null;
+  breaking_share?: Pct | null; breaking_amount?: Money | null; breaking_days?: number | null;
+  fan?: FanDay[]; risk_by_day?: number[];
 }
+
+export interface Owed { invoice_id: string; buyer: string; amount: Money; days_late: number; interest: Money }
 
 export interface OwnerView {
   headline: {
-    balance_today: Money; balance_date: string; risk: RiskAt[]; runway_day: number | null; runway_date: string | null;
-    runway_text: string; drivers_sentence: string;
+    balance_today: Money; balance_date: string; risk: RiskAt[]; runway_day: number | null; runway_date?: string | null;
+    runway_text?: string; drivers_sentence?: string;
   };
-  fan: { days: FanDay[]; threshold: Money; calibrated_through_day: number; note: string };
+  fan: { days: FanDay[]; threshold?: Money; calibrated_through_day?: number; note?: string };
   risk_by_day: { day: number; date: string; before: number; after: number | null }[];
   drivers: Driver[];
   plan: {
-    method: string; actions: PlanAction[]; total_cost: Money; risk_before: Pct; risk_after: Pct; target: Pct;
-    target_met: boolean; summary: string; caveat: string | null;
+    method?: string; actions: PlanAction[]; n_steps?: number; total_cost: Money; risk_before: Pct; risk_after: Pct;
+    target?: Pct | null; target_met: boolean; summary?: string; caveat: string | null;
   };
   what_ifs: WhatIf[];
-  owed: { items: { invoice_id: string; buyer: string; amount: Money; days_late: number; interest: Money }[]; total_interest: Money; note: string };
+  owed: { items: Owed[]; total_interest: Money; note?: string };
   meta: {
     schema_version: string; tenant_id: string; run_id: string; as_of: string; data_through: string;
-    data_lag_days: number; data_freshness: string; model_versions: Record<string, string>; plan_method: string;
-    plan_run_id: string; n_paths: number;
+    data_lag_days: number; data_freshness?: string; model_versions?: Record<string, string>; plan_method?: string;
+    plan_run_id?: string; n_paths?: number;
   };
 }
 

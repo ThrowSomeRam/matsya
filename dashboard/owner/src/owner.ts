@@ -29,7 +29,7 @@ function headline(v: OwnerView): HTMLElement {
 
 function overlay(): Overlay | undefined {
   const w = view.what_ifs.find((x) => x.preset === selected);
-  return w ? { name: w.name, fan: w.fan, risk: w.risk_by_day } : undefined;
+  return w ? { name: w.name, fan: w.fan ?? [], risk: w.risk_by_day ?? [] } : undefined;
 }
 
 function chartSection(id: string, title: string, sub: string | null, draw: (w: number) => Node, note?: string): HTMLElement {
@@ -49,7 +49,7 @@ function plan(v: OwnerView): HTMLElement {
     el("ol", { cls: "plain" }, ...p.actions.map((a) => el("li", {},
       el("div", { cls: "row" },
         el("span", {}, el("span", { cls: "step-num" }, `${a.rank}.`), a.description),
-        el("span", { cls: "right nums" }, `${a.cost.text}, then ${a.risk_after.text} chance`))))),
+        el("span", { cls: "right nums" }, `${a.cost.text}, then ${a.risk_after?.text} chance`))))),
     el("p", { cls: "totals" }, `Total cost ${p.total_cost.text}. Chance of running short within 90 days: ${p.risk_before.text} now, ${p.risk_after.text} with the plan.`),
     p.caveat ? el("p", { cls: "caveat" }, p.caveat) : null);
 }
@@ -102,7 +102,7 @@ function redrawCharts() {
 function render(v: OwnerView) {
   const dates = v.risk_by_day.map((r) => r.date);
   const fan = chartSection("outlook", "Balance outlook", "Your bank balance over the next 90 days, across the futures we simulate.",
-    (w) => fanChart(v.fan.days, v.fan.threshold.paise, w, overlay()), v.fan.note);
+    (w) => fanChart(v.fan.days, v.fan.threshold?.paise ?? 0, w, overlay()), v.fan.note);
   const risk = chartSection("risk", "Chance of running short, by date", "Doing nothing, and with the plan below.",
     (w) => riskChart(dates, v.risk_by_day.map((r) => r.before), v.risk_by_day.map((r) => r.after), w, overlay()));
   const drivers = chartSection("drivers", "What's driving the risk",
