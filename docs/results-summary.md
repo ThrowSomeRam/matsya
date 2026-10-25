@@ -31,9 +31,10 @@ also in `eval/results/results.parquet` unless marked "doc only".
 | same | calibration error at 4 weeks (ECE) | 5,955 | due date (0.050) | 0.028 | win | `38ec284` |
 | same | ECE at 4 weeks | 5,955 | LightGBM (0.005), forest (0.007) | 0.028 | **loss** | `38ec284` |
 | three-phase due-week variant | C-index | 5,955 | two-phase (0.735) | 0.721 | **loss** (dropped) | `27d37a1` |
-| thin buyers (1-3 paid bills), generator, 30 worlds x 40 buyers | MAE of p | 252 buyers | type prior only (0.0816) | group shrinkage 0.0851 | **loss** (+0.0035, CI +0.0002 to +0.0069) | batch |
-| same | MAE of expected weeks to pay | 252 | type prior only (4.60) | 7.96 | **loss** | batch |
-| heavy buyers (>= 20 paid bills) | MAE of p | 80 | type prior only (0.0532) | 0.0538 | tie | batch |
+| thin buyers (1-3 paid bills), generator, 30 worlds x 40 buyers, group prior alpha floored at 1.5 | MAE of p | 252 buyers | type prior only (0.0816) | group shrinkage 0.0847 | tie (+0.0031, CI -0.0003 to +0.0065) | batch |
+| same | MAE of expected weeks to pay | 252 | type prior only (4.60) | 5.24 | **loss** (+0.65, CI +0.42 to +0.90) | batch |
+| same, before the floor | MAE of p / weeks to pay | 252 | type prior only (0.0816 / 4.60) | 0.0851 / 7.96 | **loss** / **loss** | `7c3aebe` (stale: floor added) |
+| heavy buyers (>= 20 paid bills) | MAE of p | 80 | type prior only (0.0532) | 0.0537 | tie | batch |
 
 ## Sales forecaster
 
@@ -43,10 +44,11 @@ also in `eval/results/results.parquet` unless marked "doc only".
 | same | mean log score, per customer | 3,364 | Poisson (-2.11) | -2.02 | win | `10c0c19` |
 | same | 80% interval coverage, overall | 90 | target 0.80 | 0.97 | **fail** (too wide) | `10c0c19` |
 | same | 80% interval coverage, per customer | 3,364 | target 0.80 | 0.86 | fail (slightly wide) | `10c0c19` |
-| variability mechanisms on the calibration guard | mean \|gap\| p_short(90) | 100 pasts | both on (0.1422) | none (kept) 0.1484 | **loss**, inside the guard | batch (doc only) |
+| variability mechanisms on the calibration guard | mean \|gap\| p_short(90) | 100 pasts | both on (0.1422) | none 0.1484 | **loss**, inside the guard | `7c3aebe` (doc only) |
+| parameter bootstrap restored, demand AR(1) still off (with the alpha floor) | mean gap / mean \|gap\| p_short(90) | 100 pasts, 4,000 paths | reference -0.033 / 0.133 | -0.0510 / 0.1472 | pass (guard 0.02): margins 0.0020 / 0.0058 | batch (doc only) |
 
-The count model is unchanged since `10c0c19`. Since then the demand AR(1), parameter bootstrap
-and demand level were removed (batch), which changes paths but not the count fit.
+The count model is unchanged since `10c0c19`. The demand AR(1) and demand level stay removed;
+the parameter bootstrap is back on (batch), which changes paths but not the count fit.
 
 ## Categoriser
 
@@ -66,7 +68,8 @@ Synthetic text only; no real bank narrations have been scored.
 |---|---|---|---|---|---|---|
 | true-parameter mode vs oracle, 3 pasts x days 30/60/90 | p_short difference / standard error | 9 checks, 10,000 paths, 200 futures | within Monte Carlo error | max \|z\| 2.1 | pass | `38ec284` (doc only) |
 | engine stream change (v1 to v2), same seeds | learned mean gap, mean \|gap\|, corr; breaking points | 100 pasts; 10,000 paths | v1 | within 1.1 standard errors | pass | `38ec284` (doc only) |
-| learned mode vs oracle (calibration guard) | mean gap / mean \|gap\| / corr of p_short(90) | 100 pasts, 4,000 paths | reference -0.033 / 0.133 / 0.770 (ef5a591) | -0.0496 / 0.1484 / 0.738 | pass (guard 0.02), **worse than reference** | batch (doc only) |
+| learned mode vs oracle (calibration guard) | mean gap / mean \|gap\| / corr of p_short(90) | 100 pasts, 4,000 paths | reference -0.033 / 0.133 / 0.770 (ef5a591) | -0.0510 / 0.1472 / 0.739 | pass (guard 0.02, margin 0.0020 on the mean gap), **worse than reference** | batch (doc only) |
+| same, by bin | predicted vs oracle p_short(90) | 100 pasts | diagonal | 0.05-0.20 bin: 0.126 vs 0.214 (n 28) | **fail** (low risk under-predicted) | batch |
 | same, by bin | predicted vs oracle p_short(90) | 100 pasts | diagonal | 0.05-0.20 bin: 0.12 vs 0.19 | **fail** (low risk under-predicted) | `38ec284` |
 | Berka loans, outside check | AUC for bad loans, p_short(90) | 682 loans (76 bad) | balance logistic regression (0.808) | 0.639 (0.558-0.716) | **loss** (-0.170) | `38ec284` (81890e9) |
 | same | AUC, p_short(30) | 682 | balance logistic regression (0.808) | 0.658 | **loss** (-0.150) | `38ec284` |

@@ -262,3 +262,12 @@ def test_empirical_prediction_takes_the_shock_shift():
     p0, _, _ = m.predict_invoice(post, "b", 0, 6, 2)
     p1, _, _ = m.predict_invoice(post, "b", 0, 6, 2, shift=-1.0)
     assert p1[0] < p0[0] and p1.sum() < p0.sum()
+
+
+def test_group_prior_alpha_floored_at_same_mean():
+    from matsya_intelligence.timing.hierarchy import group_prior
+
+    p_means = np.array([0.05, 0.06, 0.12, 0.02])  # low mean, wide spread: alpha would be < 1 at the cap
+    gp = group_prior(p_means, np.full(4, 0.05), cap=8.0)
+    assert gp.alpha >= 1.5 - 1e-12
+    assert abs(gp.p_mean - p_means.mean()) < 1e-9

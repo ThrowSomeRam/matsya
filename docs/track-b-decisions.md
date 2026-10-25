@@ -1059,6 +1059,44 @@ checks the live replay against offline ACI at the paper gamma.
 - **Kept:** sections 1-2 of the file (legal and dataset facts the handbook mirrors), whether or
   not code reads them.
 
+## Thin-buyer floor and sales bootstrap restored (2026-10-25)
+
+**Payment-timing model: group prior alpha floored at 1.5.** The proposal from the thin-buyer test,
+done. The group's p prior keeps its method-of-moments mean, and its strength is raised where needed so
+that alpha >= 1.5 (`payment_timing.group_prior_min_alpha`, `timing/hierarchy.py`). Only p is floored:
+1/p is the quantity that blew up. Same 30 worlds, 40 buyers, seeds and bootstrap as before
+(`eval/results/thin_buyers.md`):
+
+| buyers | quantity | type prior only | shrinkage, before | shrinkage, alpha >= 1.5 | difference now (95% CI) |
+|---|---|---|---|---|---|
+| thin (n = 252) | p, MAE vs truth | 0.0816 | 0.0851 | 0.0847 | +0.0031 (-0.0003 to +0.0065) |
+| thin | expected weeks to pay (1/p), MAE vs truth | 4.60 | 7.96 | 5.24 | +0.65 (+0.42 to +0.90) |
+| thin | p_early | 0.0330 | 0.0348 | 0.0349 | +0.0019 (+0.0005 to +0.0033) |
+| heavy (n = 80) | p | 0.0532 | 0.0538 | 0.0537 | +0.0005 (-0.0016 to +0.0028) |
+
+- **What improved:** the weeks-to-pay error falls by 2.7 weeks.
+- **What did not:** shrinkage is still worse than the type prior alone on weeks to pay. On p it is
+  now a tie (the CI crosses 0).
+- **Heavy buyers:** unaffected.
+- **Decision:** shrinkage stays on, as before. The floor is kept because it removes the blow-up and costs
+  nothing on p.
+
+**Sales forecaster: parameter bootstrap restored; demand AR(1) stays removed.** Per-path block-bootstrap
+draws of (m, k, purchase ratio) are back in `sales/model.py` (`sample(param_draws=True)`), and the engine
+uses them by default (`build_learned_inputs(sales_uncertainty=True)`; model version `negbin-v1+boot`).
+The two tests for them are back as well. Learned-mode calibration guard, with the alpha floor also in
+(100 pasts, oracle 200 futures, 4,000 paths):
+
+| variant | mean gap | mean \|gap\| | corr | guard (within 0.02 of -0.033 / 0.133) |
+|---|---|---|---|---|
+| both off (audit) | -0.0496 | 0.1484 | 0.738 | pass, margins 0.0034 / 0.0046 |
+| bootstrap on, AR(1) off (now) | -0.0510 | 0.1472 | 0.739 | pass, margins 0.0020 / 0.0058 |
+
+- **Better:** mean |gap| and corr, close to the audit's off/on run (-0.0502 / 0.1473 / 0.739).
+- **Worse:** the mean-gap margin, now 0.0020 and the binding one. Any further change that pushes
+  forecasts more optimistic will trip the guard.
+- **Bins:** the 0.05-0.20 bin still under-predicts (0.126 predicted vs 0.214 oracle, n 28).
+
 ## Requests to Track A
 
 - Add 0% to the matcher's TDS candidate rates (below-threshold invoices carry no TDS).
