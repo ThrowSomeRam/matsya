@@ -45,5 +45,34 @@ services:
         mc version info "m/$$MATSYA_S3_BUCKET"
     restart: "no"
 
+  # Owner view on the demo world: the API serves the payloads Track B precomputed in eval/demo
+  # (no engine runs on request); the dashboard is the static owner screen with /api proxied to it.
+  #   make owner-view-up   then open http://127.0.0.1:8080 (and /evidence/)
+  api:
+    build:
+      context: ..
+      dockerfile: infra/api.Dockerfile
+    environment:
+      MATSYA_PAYLOAD_DIR: /payloads
+    volumes:
+      - ../eval/demo:/payloads:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: dashboard/owner/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:80"
+
 volumes:
   minio-data:

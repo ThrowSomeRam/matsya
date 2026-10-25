@@ -14,12 +14,15 @@ Fit from history at as_of:
     invoice amounts with 7-day smoothed daily supplier payments L days earlier;
   - purchase ratio: supplier payments in [h0, as_of - L] over invoices issued
     in [h0 + L, as_of], so both windows cover the same orders.
-Weekly counts are sampled independently, at the fitted (m, k) and purchase ratio. Three ways of
-spreading demand were tried and removed: a persistent per-path demand level (unused by default),
-an AR(1) on the log order rate, and per-path bootstrap draws of (m, k, ratio). On the learned-mode
-calibration guard (100 pasts) all four combinations of the last two passed; with neither, mean
-|gap| was 0.148 against 0.142 with both, and the simplest passing variant was kept
+Weekly counts are sampled independently (demand autocorrelation is not modelled). A persistent
+per-path demand level and an AR(1) on the log order rate were tried and removed
 (docs/track-b-decisions.md).
+
+Parameter uncertainty (param_draws=True in sample, the engine's default): each path uses one of
+N_BOOT bootstrap replicates of (m, k, purchase ratio). Weeks are resampled as moving blocks of
+BOOT_BLOCK_WEEKS (so demand autocorrelation inflates the spread of m as it should; an iid-week
+bootstrap understates it), months are resampled for the ratio. Removed with the AR(1) in the
+audit and restored afterwards (calibration guard margins in docs/track-b-decisions.md).
 
 Scenario order rate (order_mult in sample, from the scenarios component): the base orders
 are drawn exactly as without it, then thinned (k < 1, each order kept with chance k) or
@@ -40,10 +43,13 @@ import polars as pl
 from matsya_contracts.enums import SalesParam
 
 from matsya_intelligence.io.types import SALES_PROCESS
+from matsya_intelligence.seeding import rng_for
 
 MIN_OWN_INVOICES = 10
 K_MAX = 1e4
 MAX_LAG_DAYS = 30
+N_BOOT = 200
+BOOT_BLOCK_WEEKS = 4
 
 
 @dataclass
@@ -59,6 +65,9 @@ class SalesModel:
     purchase_ratio: float
     purchase_lag_days: int
     tds_ratio: dict[str, float]  # buyer_id -> expected TDS / gross, median over history
+    boot_mean: np.ndarray  # (N_BOOT,) bootstrap replicates
+    boot_var: np.ndarray
+    boot_ratio: np.ndarray
 
     def features(self) -> pl.DataFrame:
         rows = [
@@ -67,17 +76,20 @@ class SalesModel:
             ("history_weeks", None, float(self.n_weeks)),
             ("purchase_ratio", None, self.purchase_ratio),
             ("purchase_lag_days", None, float(self.purchase_lag_days)),
+            ("order_mean_boot_sd", None, float(self.boot_mean.std())),
+            ("purchase_ratio_boot_sd", None, float(self.boot_ratio.std())),
         ] + [("buyer_share", b, float(s)) for b, s in zip(self.buyer_ids, self.mix)]
         return pl.DataFrame(
             [(self.tenant_id, self.as_of, n, k, v) for n, k, v in rows], schema=SALES_PROCESS, orient="row")
 
     def contract_features(self) -> pl.DataFrame:
-        """features.sales_process: only names in the contract's SalesParam enum."""
+        """features.sales_process: only names in the contract's SalesParam enum. The bootstrap-spread
+        rows wait for an additive enum change (requested from Track A)."""
         known = [m.value for m in SalesParam]
         return self.features().filter(pl.col("name").is_in(known))
 
     def sample(self, n_paths: int, horizon_days: int, rng: np.random.Generator,
-               order_mult: float = 1.0,
+               param_draws: bool = False, order_mult: float = 1.0,
                extra_rng: np.random.Generator | None = None,
                purchase_sticky_days: int = 0) -> tuple[pl.DataFrame, pl.DataFrame]:
         """Future invoices issued in (as_of, as_of + horizon] and purchases paid in that window, per path.
@@ -89,8 +101,16 @@ class SalesModel:
         """
         L = self.purchase_lag_days
         n_weeks = -(-(horizon_days + L) // 7)
-        m, k, ratio = self.mean_per_week, self.dispersion, np.full(n_paths, self.purchase_ratio)
-        lam = rng.gamma(k, m / k, size=(n_paths, n_weeks))
+        if param_draws:
+            j = rng.integers(0, N_BOOT, n_paths)
+            m, v, ratio = self.boot_mean[j], self.boot_var[j], self.boot_ratio[j]
+        else:
+            m = np.full(n_paths, self.mean_per_week)
+            v = np.full(n_paths, self.mean_per_week + self.mean_per_week**2 / self.dispersion)
+            ratio = np.full(n_paths, self.purchase_ratio)
+        excess = v - m
+        k = np.where(excess > 0, np.minimum(K_MAX, m * m / np.maximum(excess, 1e-12)), K_MAX)
+        lam = rng.gamma(k[:, None], (m / k)[:, None], size=(n_paths, n_weeks))
         path, day, buyer, gross, terms = self._orders(rng.poisson(lam), rng)
         sticky = None  # dropped orders whose purchases are still paid: (path, day, gross)
         if order_mult != 1.0:
@@ -190,9 +210,29 @@ def fit_sales(invoices: pl.DataFrame, txns: pl.DataFrame, categories: pl.DataFra
     tds = inv.group_by("buyer_id").agg((pl.col("expected_tds_paise") / pl.col("gross_paise")).median().alias("r"))
 
     tenant = invoices["tenant_id"][0]
+    rb = rng_for(f"sales-fit:{tenant}:{as_of}", "bootstrap")  # deterministic given inputs
+    wk = counts[_block_indices(rb, n_weeks, BOOT_BLOCK_WEEKS, N_BOOT)]
+    boot_mean, boot_var = wk.mean(axis=1), wk.var(axis=1, ddof=1)
+    p_mo = purch.filter(pl.col("value_date").is_between(h0, as_of - timedelta(days=L))).group_by(
+        (pl.col("value_date") + pl.duration(days=L)).dt.truncate("1mo").alias("mo")).agg(pl.col("amount_paise").sum().abs().alias("p"))
+    s_mo = inv.filter(pl.col("issue_date") >= h0 + timedelta(days=L)).group_by(
+        pl.col("issue_date").dt.truncate("1mo").alias("mo")).agg(pl.col("gross_paise").sum().alias("s"))
+    mo = s_mo.join(p_mo, on="mo", how="left").fill_null(0).sort("mo")  # group_by order is not stable
+    pick = rb.integers(0, mo.height, (N_BOOT, mo.height))
+    boot_ratio = mo["p"].to_numpy()[pick].sum(axis=1) / np.maximum(mo["s"].to_numpy()[pick].sum(axis=1), 1)
+
     return SalesModel(
         tenant_id=tenant, as_of=as_of, mean_per_week=m, dispersion=float(k), n_weeks=n_weeks,
         buyer_ids=buyer_ids, mix=mix, pools=pools, purchase_ratio=ratio, purchase_lag_days=L,
         tds_ratio=dict(zip(tds["buyer_id"], tds["r"])),
+        boot_mean=boot_mean, boot_var=boot_var, boot_ratio=boot_ratio,
     )
+
+
+def _block_indices(rng: np.random.Generator, n: int, block: int, reps: int) -> np.ndarray:
+    """(reps, n) moving-block bootstrap indices: ceil(n / block) blocks of consecutive weeks, trimmed to n."""
+    block = max(1, min(block, n))
+    n_blocks = -(-n // block)
+    starts = rng.integers(0, n - block + 1, (reps, n_blocks))
+    return (starts[:, :, None] + np.arange(block)[None, None, :]).reshape(reps, -1)[:, :n]
 

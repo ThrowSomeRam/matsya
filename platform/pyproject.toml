@@ -13,6 +13,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 s3 = ["boto3>=1.34"]  # MinIO / S3 object storage (store/objects.py); DuckDB reads it through httpfs
+api = ["fastapi>=0.110", "uvicorn>=0.29", "httpx>=0.27"]  # owner-view API (api/app.py); httpx for its tests
 
 [project.scripts]
 matsya-pipeline = "matsya_platform.pipeline.__main__:main"

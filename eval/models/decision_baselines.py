@@ -57,7 +57,7 @@ def one_world(args) -> dict:
     dinp = decision_inputs(obs, inp, "small", overdraft_limit_paise=OVERDRAFT_LIMIT, suppliers=suppliers,
                            entity_type="company", eps=EPS, day=DAY)
     t = time.perf_counter()
-    res = decide(inp, dinp, run, n_sub=N_SUB, n_verify=N_VER, constants_overrides=overrides)
+    res = decide(inp, dinp, run, n_sub=N_SUB, n_verify=N_VER, constants_overrides=overrides, method="chance")
     elapsed = time.perf_counter() - t
     b = {r["baseline"]: r for r in res.baselines.iter_rows(named=True)}
     clamped = {"do_nothing": 0, "plan": sum(max(a.cost(k), 0) for a, k in res.chosen)}

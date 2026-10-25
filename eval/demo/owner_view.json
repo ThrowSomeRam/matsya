@@ -1,0 +1,7724 @@
+{
+ "headline": {
+  "balance_today": {
+   "paise": 286000000,
+   "text": "Rs 28.6 lakh"
+  },
+  "balance_date": "2026-03-31",
+  "risk": [
+   {
+    "day": 30,
+    "date": "2026-04-30",
+    "chance": {
+     "value": 0.1959,
+     "text": "20%"
+    }
+   },
+   {
+    "day": 60,
+    "date": "2026-05-30",
+    "chance": {
+     "value": 0.291,
+     "text": "29%"
+    }
+   },
+   {
+    "day": 90,
+    "date": "2026-06-29",
+    "chance": {
+     "value": 0.337,
+     "text": "34%"
+    }
+   }
+  ],
+  "runway_day": null,
+  "runway_date": null,
+  "runway_text": "beyond 90 days",
+  "drivers_sentence": "Most of the risk is Rs 10.5 lakh from Anand Vijay Castings Pvt Ltd, which is likely not coming; then Rs 9.3 lakh from Nav Ganesh Foods Pvt Ltd, which is likely not coming; and Om Krishna Garments Pvt Ltd paying slowly."
+ },
+ "fan": {
+  "days": [
+   {
+    "day": 1,
+    "date": "2026-04-01",
+    "median_paise": 202430406,
+    "lo50_paise": 180334110,
+    "hi50_paise": 228856859,
+    "lo90_paise": 153209890,
+    "hi90_paise": 273320677,
+    "calibrated": true
+   },
+   {
+    "day": 2,
+    "date": "2026-04-02",
+    "median_paise": 211010680,
+    "lo50_paise": 183362125,
+    "hi50_paise": 242442630,
+    "lo90_paise": 144105137,
+    "hi90_paise": 295264732,
+    "calibrated": true
+   },
+   {
+    "day": 3,
+    "date": "2026-04-03",
+    "median_paise": 220832639,
+    "lo50_paise": 186596677,
+    "hi50_paise": 257357186,
+    "lo90_paise": 138894761,
+    "hi90_paise": 316827210,
+    "calibrated": true
+   },
+   {
+    "day": 4,
+    "date": "2026-04-04",
+    "median_paise": 229739587,
+    "lo50_paise": 191860755,
+    "hi50_paise": 271362158,
+    "lo90_paise": 136327123,
+    "hi90_paise": 337086828,
+    "calibrated": true
+   },
+   {
+    "day": 5,
+    "date": "2026-04-05",
+    "median_paise": 215882081,
+    "lo50_paise": 174033773,
+    "hi50_paise": 260661590,
+    "lo90_paise": 114179468,
+    "hi90_paise": 329646796,
+    "calibrated": true
+   },
+   {
+    "day": 6,
+    "date": "2026-04-06",
+    "median_paise": 221737787,
+    "lo50_paise": 176614740,
+    "hi50_paise": 269005674,
+    "lo90_paise": 111463946,
+    "hi90_paise": 343801665,
+    "calibrated": true
+   },
+   {
+    "day": 7,
+    "date": "2026-04-07",
+    "median_paise": 231346458,
+    "lo50_paise": 183144533,
+    "hi50_paise": 281797708,
+    "lo90_paise": 113071657,
+    "hi90_paise": 359288158,
+    "calibrated": true
+   },
+   {
+    "day": 8,
+    "date": "2026-04-08",
+    "median_paise": 243723739,
+    "lo50_paise": 192250469,
+    "hi50_paise": 297368346,
+    "lo90_paise": 115767467,
+    "hi90_paise": 379754570,
+    "calibrated": true
+   },
+   {
+    "day": 9,
+    "date": "2026-04-09",
+    "median_paise": 249914080,
+    "lo50_paise": 194174710,
+    "hi50_paise": 306033883,
+    "lo90_paise": 114606851,
+    "hi90_paise": 392637022,
+    "calibrated": true
+   },
+   {
+    "day": 10,
+    "date": "2026-04-10",
+    "median_paise": 231207561,
+    "lo50_paise": 172301422,
+    "hi50_paise": 289998952,
+    "lo90_paise": 87650532,
+    "hi90_paise": 378108830,
+    "calibrated": true
+   },
+   {
+    "day": 11,
+    "date": "2026-04-11",
+    "median_paise": 239553202,
+    "lo50_paise": 178977500,
+    "hi50_paise": 303578307,
+    "lo90_paise": 91334422,
+    "hi90_paise": 392801987,
+    "calibrated": true
+   },
+   {
+    "day": 12,
+    "date": "2026-04-12",
+    "median_paise": 245639145,
+    "lo50_paise": 183709394,
+    "hi50_paise": 311304332,
+    "lo90_paise": 91418988,
+    "hi90_paise": 401914598,
+    "calibrated": true
+   },
+   {
+    "day": 13,
+    "date": "2026-04-13",
+    "median_paise": 254313488,
+    "lo50_paise": 190500527,
+    "hi50_paise": 320506472,
+    "lo90_paise": 96688576,
+    "hi90_paise": 415752959,
+    "calibrated": true
+   },
+   {
+    "day": 14,
+    "date": "2026-04-14",
+    "median_paise": 266125741,
+    "lo50_paise": 199443567,
+    "hi50_paise": 335766708,
+    "lo90_paise": 103209731,
+    "hi90_paise": 432546688,
+    "calibrated": true
+   },
+   {
+    "day": 15,
+    "date": "2026-04-15",
+    "median_paise": 262152914,
+    "lo50_paise": 191791032,
+    "hi50_paise": 334219432,
+    "lo90_paise": 95481575,
+    "hi90_paise": 433550528,
+    "calibrated": true
+   },
+   {
+    "day": 16,
+    "date": "2026-04-16",
+    "median_paise": 270050767,
+    "lo50_paise": 197448515,
+    "hi50_paise": 344105732,
+    "lo90_paise": 96764812,
+    "hi90_paise": 450118173,
+    "calibrated": true
+   },
+   {
+    "day": 17,
+    "date": "2026-04-17",
+    "median_paise": 285432524,
+    "lo50_paise": 211949924,
+    "hi50_paise": 360861163,
+    "lo90_paise": 105219903,
+    "hi90_paise": 471338440,
+    "calibrated": true
+   },
+   {
+    "day": 18,
+    "date": "2026-04-18",
+    "median_paise": 298508020,
+    "lo50_paise": 222604430,
+    "hi50_paise": 376446553,
+    "lo90_paise": 111742281,
+    "hi90_paise": 489567137,
+    "calibrated": true
+   },
+   {
+    "day": 19,
+    "date": "2026-04-19",
+    "median_paise": 309845482,
+    "lo50_paise": 231921501,
+    "hi50_paise": 387672364,
+    "lo90_paise": 119255986,
+    "hi90_paise": 502293600,
+    "calibrated": true
+   },
+   {
+    "day": 20,
+    "date": "2026-04-20",
+    "median_paise": 250495186,
+    "lo50_paise": 168531864,
+    "hi50_paise": 328639641,
+    "lo90_paise": 55867860,
+    "hi90_paise": 447206087,
+    "calibrated": true
+   },
+   {
+    "day": 21,
+    "date": "2026-04-21",
+    "median_paise": 262922780,
+    "lo50_paise": 181687799,
+    "hi50_paise": 345276927,
+    "lo90_paise": 65477743,
+    "hi90_paise": 466532461,
+    "calibrated": true
+   },
+   {
+    "day": 22,
+    "date": "2026-04-22",
+    "median_paise": 275471866,
+    "lo50_paise": 192715975,
+    "hi50_paise": 361643194,
+    "lo90_paise": 73716640,
+    "hi90_paise": 482258909,
+    "calibrated": true
+   },
+   {
+    "day": 23,
+    "date": "2026-04-23",
+    "median_paise": 287376630,
+    "lo50_paise": 199918260,
+    "hi50_paise": 373598702,
+    "lo90_paise": 80231332,
+    "hi90_paise": 499100222,
+    "calibrated": true
+   },
+   {
+    "day": 24,
+    "date": "2026-04-24",
+    "median_paise": 302482896,
+    "lo50_paise": 213876974,
+    "hi50_paise": 390191249,
+    "lo90_paise": 89833164,
+    "hi90_paise": 517180028,
+    "calibrated": true
+   },
+   {
+    "day": 25,
+    "date": "2026-04-25",
+    "median_paise": 314660924,
+    "lo50_paise": 225176582,
+    "hi50_paise": 404959429,
+    "lo90_paise": 99284519,
+    "hi90_paise": 533202609,
+    "calibrated": true
+   },
+   {
+    "day": 26,
+    "date": "2026-04-26",
+    "median_paise": 324601103,
+    "lo50_paise": 232651212,
+    "hi50_paise": 416570188,
+    "lo90_paise": 106963722,
+    "hi90_paise": 545612628,
+    "calibrated": true
+   },
+   {
+    "day": 27,
+    "date": "2026-04-27",
+    "median_paise": 335261367,
+    "lo50_paise": 245093962,
+    "hi50_paise": 428790826,
+    "lo90_paise": 112888312,
+    "hi90_paise": 561215033,
+    "calibrated": true
+   },
+   {
+    "day": 28,
+    "date": "2026-04-28",
+    "median_paise": 351610236,
+    "lo50_paise": 257404791,
+    "hi50_paise": 445305452,
+    "lo90_paise": 127692842,
+    "hi90_paise": 582909160,
+    "calibrated": true
+   },
+   {
+    "day": 29,
+    "date": "2026-04-29",
+    "median_paise": 365418133,
+    "lo50_paise": 270267027,
+    "hi50_paise": 462525903,
+    "lo90_paise": 134790731,
+    "hi90_paise": 600300479,
+    "calibrated": true
+   },
+   {
+    "day": 30,
+    "date": "2026-04-30",
+    "median_paise": 374640010,
+    "lo50_paise": 277163175,
+    "hi50_paise": 471606988,
+    "lo90_paise": 140375068,
+    "hi90_paise": 613240630,
+    "calibrated": true
+   },
+   {
+    "day": 31,
+    "date": "2026-05-01",
+    "median_paise": 270115209,
+    "lo50_paise": 172867368,
+    "hi50_paise": 369421486,
+    "lo90_paise": 31498237,
+    "hi90_paise": 510449989,
+    "calibrated": false
+   },
+   {
+    "day": 32,
+    "date": "2026-05-02",
+    "median_paise": 282111385,
+    "lo50_paise": 182207160,
+    "hi50_paise": 383140336,
+    "lo90_paise": 37094760,
+    "hi90_paise": 529088632,
+    "calibrated": false
+   },
+   {
+    "day": 33,
+    "date": "2026-05-03",
+    "median_paise": 288848994,
+    "lo50_paise": 186480259,
+    "hi50_paise": 390034089,
+    "lo90_paise": 41018981,
+    "hi90_paise": 538139185,
+    "calibrated": false
+   },
+   {
+    "day": 34,
+    "date": "2026-05-04",
+    "median_paise": 302223913,
+    "lo50_paise": 197439845,
+    "hi50_paise": 403553624,
+    "lo90_paise": 52142252,
+    "hi90_paise": 552663458,
+    "calibrated": false
+   },
+   {
+    "day": 35,
+    "date": "2026-05-05",
+    "median_paise": 297789442,
+    "lo50_paise": 193355059,
+    "hi50_paise": 400989594,
+    "lo90_paise": 41729993,
+    "hi90_paise": 546569569,
+    "calibrated": false
+   },
+   {
+    "day": 36,
+    "date": "2026-05-06",
+    "median_paise": 314604084,
+    "lo50_paise": 209127000,
+    "hi50_paise": 418969570,
+    "lo90_paise": 55131773,
+    "hi90_paise": 567684603,
+    "calibrated": false
+   },
+   {
+    "day": 37,
+    "date": "2026-05-07",
+    "median_paise": 323405890,
+    "lo50_paise": 217397309,
+    "hi50_paise": 427922164,
+    "lo90_paise": 61325207,
+    "hi90_paise": 577589080,
+    "calibrated": false
+   },
+   {
+    "day": 38,
+    "date": "2026-05-08",
+    "median_paise": 337566556,
+    "lo50_paise": 227874846,
+    "hi50_paise": 441032756,
+    "lo90_paise": 70848641,
+    "hi90_paise": 590478768,
+    "calibrated": false
+   },
+   {
+    "day": 39,
+    "date": "2026-05-09",
+    "median_paise": 348024851,
+    "lo50_paise": 237905779,
+    "hi50_paise": 453435745,
+    "lo90_paise": 79455879,
+    "hi90_paise": 602031610,
+    "calibrated": false
+   },
+   {
+    "day": 40,
+    "date": "2026-05-10",
+    "median_paise": 326398537,
+    "lo50_paise": 216871651,
+    "hi50_paise": 432782561,
+    "lo90_paise": 56812025,
+    "hi90_paise": 583410690,
+    "calibrated": false
+   },
+   {
+    "day": 41,
+    "date": "2026-05-11",
+    "median_paise": 334822805,
+    "lo50_paise": 227118534,
+    "hi50_paise": 444121955,
+    "lo90_paise": 65347025,
+    "hi90_paise": 594318978,
+    "calibrated": false
+   },
+   {
+    "day": 42,
+    "date": "2026-05-12",
+    "median_paise": 346287595,
+    "lo50_paise": 237979479,
+    "hi50_paise": 457215692,
+    "lo90_paise": 77321058,
+    "hi90_paise": 609008317,
+    "calibrated": false
+   },
+   {
+    "day": 43,
+    "date": "2026-05-13",
+    "median_paise": 363628981,
+    "lo50_paise": 253183922,
+    "hi50_paise": 472739923,
+    "lo90_paise": 88626289,
+    "hi90_paise": 626187173,
+    "calibrated": false
+   },
+   {
+    "day": 44,
+    "date": "2026-05-14",
+    "median_paise": 368707508,
+    "lo50_paise": 261124028,
+    "hi50_paise": 481216416,
+    "lo90_paise": 95098539,
+    "hi90_paise": 634583354,
+    "calibrated": false
+   },
+   {
+    "day": 45,
+    "date": "2026-05-15",
+    "median_paise": 362284850,
+    "lo50_paise": 254848750,
+    "hi50_paise": 477083650,
+    "lo90_paise": 87529668,
+    "hi90_paise": 634749906,
+    "calibrated": false
+   },
+   {
+    "day": 46,
+    "date": "2026-05-16",
+    "median_paise": 373938458,
+    "lo50_paise": 264404397,
+    "hi50_paise": 488278350,
+    "lo90_paise": 93236272,
+    "hi90_paise": 646182983,
+    "calibrated": false
+   },
+   {
+    "day": 47,
+    "date": "2026-05-17",
+    "median_paise": 382074793,
+    "lo50_paise": 272259131,
+    "hi50_paise": 500589567,
+    "lo90_paise": 104847085,
+    "hi90_paise": 658544101,
+    "calibrated": false
+   },
+   {
+    "day": 48,
+    "date": "2026-05-18",
+    "median_paise": 394104311,
+    "lo50_paise": 283560320,
+    "hi50_paise": 507859511,
+    "lo90_paise": 114800732,
+    "hi90_paise": 670400902,
+    "calibrated": false
+   },
+   {
+    "day": 49,
+    "date": "2026-05-19",
+    "median_paise": 405848309,
+    "lo50_paise": 295111316,
+    "hi50_paise": 521817846,
+    "lo90_paise": 126883042,
+    "hi90_paise": 683804593,
+    "calibrated": false
+   },
+   {
+    "day": 50,
+    "date": "2026-05-20",
+    "median_paise": 367670030,
+    "lo50_paise": 254573931,
+    "hi50_paise": 477495692,
+    "lo90_paise": 85445372,
+    "hi90_paise": 634996265,
+    "calibrated": false
+   },
+   {
+    "day": 51,
+    "date": "2026-05-21",
+    "median_paise": 374799870,
+    "lo50_paise": 260759169,
+    "hi50_paise": 486560137,
+    "lo90_paise": 93071819,
+    "hi90_paise": 644699749,
+    "calibrated": false
+   },
+   {
+    "day": 52,
+    "date": "2026-05-22",
+    "median_paise": 387277586,
+    "lo50_paise": 273175560,
+    "hi50_paise": 501008897,
+    "lo90_paise": 102130357,
+    "hi90_paise": 657915819,
+    "calibrated": false
+   },
+   {
+    "day": 53,
+    "date": "2026-05-23",
+    "median_paise": 396631329,
+    "lo50_paise": 281628479,
+    "hi50_paise": 510465205,
+    "lo90_paise": 113164517,
+    "hi90_paise": 669150049,
+    "calibrated": false
+   },
+   {
+    "day": 54,
+    "date": "2026-05-24",
+    "median_paise": 406541813,
+    "lo50_paise": 289550731,
+    "hi50_paise": 522189299,
+    "lo90_paise": 117650673,
+    "hi90_paise": 681372862,
+    "calibrated": false
+   },
+   {
+    "day": 55,
+    "date": "2026-05-25",
+    "median_paise": 418312445,
+    "lo50_paise": 299440406,
+    "hi50_paise": 531871625,
+    "lo90_paise": 126826259,
+    "hi90_paise": 696869196,
+    "calibrated": false
+   },
+   {
+    "day": 56,
+    "date": "2026-05-26",
+    "median_paise": 429462188,
+    "lo50_paise": 309705320,
+    "hi50_paise": 543325944,
+    "lo90_paise": 139447367,
+    "hi90_paise": 706267783,
+    "calibrated": false
+   },
+   {
+    "day": 57,
+    "date": "2026-05-27",
+    "median_paise": 444172460,
+    "lo50_paise": 326031354,
+    "hi50_paise": 556681085,
+    "lo90_paise": 153891932,
+    "hi90_paise": 727536482,
+    "calibrated": false
+   },
+   {
+    "day": 58,
+    "date": "2026-05-28",
+    "median_paise": 450640804,
+    "lo50_paise": 332783344,
+    "hi50_paise": 567044482,
+    "lo90_paise": 156458709,
+    "hi90_paise": 739630299,
+    "calibrated": false
+   },
+   {
+    "day": 59,
+    "date": "2026-05-29",
+    "median_paise": 463911737,
+    "lo50_paise": 346340393,
+    "hi50_paise": 580055855,
+    "lo90_paise": 168124831,
+    "hi90_paise": 753042997,
+    "calibrated": false
+   },
+   {
+    "day": 60,
+    "date": "2026-05-30",
+    "median_paise": 473748003,
+    "lo50_paise": 355432831,
+    "hi50_paise": 590575349,
+    "lo90_paise": 177900946,
+    "hi90_paise": 760896149,
+    "calibrated": false
+   },
+   {
+    "day": 61,
+    "date": "2026-05-31",
+    "median_paise": 482763307,
+    "lo50_paise": 362735181,
+    "hi50_paise": 599751684,
+    "lo90_paise": 186734393,
+    "hi90_paise": 770872709,
+    "calibrated": false
+   },
+   {
+    "day": 62,
+    "date": "2026-06-01",
+    "median_paise": 371579249,
+    "lo50_paise": 252814163,
+    "hi50_paise": 487937847,
+    "lo90_paise": 75627209,
+    "hi90_paise": 662143153,
+    "calibrated": false
+   },
+   {
+    "day": 63,
+    "date": "2026-06-02",
+    "median_paise": 383050808,
+    "lo50_paise": 262783565,
+    "hi50_paise": 500143800,
+    "lo90_paise": 85209806,
+    "hi90_paise": 672874614,
+    "calibrated": false
+   },
+   {
+    "day": 64,
+    "date": "2026-06-03",
+    "median_paise": 394700258,
+    "lo50_paise": 274447601,
+    "hi50_paise": 513672487,
+    "lo90_paise": 97670430,
+    "hi90_paise": 683503510,
+    "calibrated": false
+   },
+   {
+    "day": 65,
+    "date": "2026-06-04",
+    "median_paise": 401462303,
+    "lo50_paise": 278631438,
+    "hi50_paise": 520705983,
+    "lo90_paise": 101814954,
+    "hi90_paise": 691090211,
+    "calibrated": false
+   },
+   {
+    "day": 66,
+    "date": "2026-06-05",
+    "median_paise": 392987578,
+    "lo50_paise": 269577542,
+    "hi50_paise": 514499862,
+    "lo90_paise": 94860546,
+    "hi90_paise": 683809982,
+    "calibrated": false
+   },
+   {
+    "day": 67,
+    "date": "2026-06-06",
+    "median_paise": 402836889,
+    "lo50_paise": 278417928,
+    "hi50_paise": 522206237,
+    "lo90_paise": 103691336,
+    "hi90_paise": 695510732,
+    "calibrated": false
+   },
+   {
+    "day": 68,
+    "date": "2026-06-07",
+    "median_paise": 410815256,
+    "lo50_paise": 286914712,
+    "hi50_paise": 530028437,
+    "lo90_paise": 109720946,
+    "hi90_paise": 705708482,
+    "calibrated": false
+   },
+   {
+    "day": 69,
+    "date": "2026-06-08",
+    "median_paise": 420357519,
+    "lo50_paise": 296243266,
+    "hi50_paise": 540308322,
+    "lo90_paise": 118983281,
+    "hi90_paise": 715208207,
+    "calibrated": false
+   },
+   {
+    "day": 70,
+    "date": "2026-06-09",
+    "median_paise": 430067875,
+    "lo50_paise": 306546280,
+    "hi50_paise": 551506867,
+    "lo90_paise": 129074265,
+    "hi90_paise": 725684216,
+    "calibrated": false
+   },
+   {
+    "day": 71,
+    "date": "2026-06-10",
+    "median_paise": 412729695,
+    "lo50_paise": 290933059,
+    "hi50_paise": 535634854,
+    "lo90_paise": 112177966,
+    "hi90_paise": 712477248,
+    "calibrated": false
+   },
+   {
+    "day": 72,
+    "date": "2026-06-11",
+    "median_paise": 419763074,
+    "lo50_paise": 295285759,
+    "hi50_paise": 541304047,
+    "lo90_paise": 117488865,
+    "hi90_paise": 719986454,
+    "calibrated": false
+   },
+   {
+    "day": 73,
+    "date": "2026-06-12",
+    "median_paise": 432029964,
+    "lo50_paise": 305677341,
+    "hi50_paise": 551157587,
+    "lo90_paise": 128311141,
+    "hi90_paise": 731421745,
+    "calibrated": false
+   },
+   {
+    "day": 74,
+    "date": "2026-06-13",
+    "median_paise": 440089470,
+    "lo50_paise": 314131776,
+    "hi50_paise": 563235153,
+    "lo90_paise": 134094675,
+    "hi90_paise": 741699299,
+    "calibrated": false
+   },
+   {
+    "day": 75,
+    "date": "2026-06-14",
+    "median_paise": 449833930,
+    "lo50_paise": 322193473,
+    "hi50_paise": 572894497,
+    "lo90_paise": 143163980,
+    "hi90_paise": 751520668,
+    "calibrated": false
+   },
+   {
+    "day": 76,
+    "date": "2026-06-15",
+    "median_paise": 439692996,
+    "lo50_paise": 315323280,
+    "hi50_paise": 565160785,
+    "lo90_paise": 132384722,
+    "hi90_paise": 743873406,
+    "calibrated": false
+   },
+   {
+    "day": 77,
+    "date": "2026-06-16",
+    "median_paise": 451537312,
+    "lo50_paise": 325355911,
+    "hi50_paise": 573504321,
+    "lo90_paise": 139465287,
+    "hi90_paise": 761687731,
+    "calibrated": false
+   },
+   {
+    "day": 78,
+    "date": "2026-06-17",
+    "median_paise": 466114873,
+    "lo50_paise": 339510255,
+    "hi50_paise": 591986486,
+    "lo90_paise": 149639933,
+    "hi90_paise": 773586583,
+    "calibrated": false
+   },
+   {
+    "day": 79,
+    "date": "2026-06-18",
+    "median_paise": 473666421,
+    "lo50_paise": 346080528,
+    "hi50_paise": 599858137,
+    "lo90_paise": 155747894,
+    "hi90_paise": 781395353,
+    "calibrated": false
+   },
+   {
+    "day": 80,
+    "date": "2026-06-19",
+    "median_paise": 485345540,
+    "lo50_paise": 356101629,
+    "hi50_paise": 610724479,
+    "lo90_paise": 164474884,
+    "hi90_paise": 796120023,
+    "calibrated": false
+   },
+   {
+    "day": 81,
+    "date": "2026-06-20",
+    "median_paise": 435338486,
+    "lo50_paise": 307375038,
+    "hi50_paise": 563033862,
+    "lo90_paise": 114588902,
+    "hi90_paise": 745122831,
+    "calibrated": false
+   },
+   {
+    "day": 82,
+    "date": "2026-06-21",
+    "median_paise": 442989999,
+    "lo50_paise": 315604519,
+    "hi50_paise": 570978200,
+    "lo90_paise": 122230585,
+    "hi90_paise": 754669198,
+    "calibrated": false
+   },
+   {
+    "day": 83,
+    "date": "2026-06-22",
+    "median_paise": 451959785,
+    "lo50_paise": 324070875,
+    "hi50_paise": 578833213,
+    "lo90_paise": 129085815,
+    "hi90_paise": 763397835,
+    "calibrated": false
+   },
+   {
+    "day": 84,
+    "date": "2026-06-23",
+    "median_paise": 462683461,
+    "lo50_paise": 333567408,
+    "hi50_paise": 590590423,
+    "lo90_paise": 140515818,
+    "hi90_paise": 775170085,
+    "calibrated": false
+   },
+   {
+    "day": 85,
+    "date": "2026-06-24",
+    "median_paise": 474511573,
+    "lo50_paise": 345515310,
+    "hi50_paise": 603063335,
+    "lo90_paise": 152053930,
+    "hi90_paise": 790611865,
+    "calibrated": false
+   },
+   {
+    "day": 86,
+    "date": "2026-06-25",
+    "median_paise": 477927290,
+    "lo50_paise": 349862745,
+    "hi50_paise": 609573397,
+    "lo90_paise": 158349704,
+    "hi90_paise": 797369111,
+    "calibrated": false
+   },
+   {
+    "day": 87,
+    "date": "2026-06-26",
+    "median_paise": 488193562,
+    "lo50_paise": 361296061,
+    "hi50_paise": 620785168,
+    "lo90_paise": 168955128,
+    "hi90_paise": 807675351,
+    "calibrated": false
+   },
+   {
+    "day": 88,
+    "date": "2026-06-27",
+    "median_paise": 497685334,
+    "lo50_paise": 368616301,
+    "hi50_paise": 629789046,
+    "lo90_paise": 176183957,
+    "hi90_paise": 818761833,
+    "calibrated": false
+   },
+   {
+    "day": 89,
+    "date": "2026-06-28",
+    "median_paise": 507642487,
+    "lo50_paise": 377436913,
+    "hi50_paise": 638484368,
+    "lo90_paise": 187450518,
+    "hi90_paise": 832242709,
+    "calibrated": false
+   },
+   {
+    "day": 90,
+    "date": "2026-06-29",
+    "median_paise": 514426382,
+    "lo50_paise": 384163416,
+    "hi50_paise": 646984496,
+    "lo90_paise": 192345050,
+    "hi90_paise": 841182005,
+    "calibrated": false
+   }
+  ],
+  "threshold": {
+   "paise": 100000000,
+   "text": "Rs 10 lakh"
+  },
+  "calibrated_through_day": 30,
+  "note": "Days 1 to 30 are calibrated: their range is checked against what actually happens and adjusted as your history builds up. Later days are the model's own range."
+ },
+ "risk_by_day": [
+  {
+   "day": 1,
+   "date": "2026-04-01",
+   "before": 0.0012,
+   "after": 0.0
+  },
+  {
+   "day": 2,
+   "date": "2026-04-02",
+   "before": 0.0052,
+   "after": 0.0
+  },
+  {
+   "day": 3,
+   "date": "2026-04-03",
+   "before": 0.0116,
+   "after": 0.0
+  },
+  {
+   "day": 4,
+   "date": "2026-04-04",
+   "before": 0.0185,
+   "after": 0.0
+  },
+  {
+   "day": 5,
+   "date": "2026-04-05",
+   "before": 0.0362,
+   "after": 0.0
+  },
+  {
+   "day": 6,
+   "date": "2026-04-06",
+   "before": 0.0472,
+   "after": 0.0
+  },
+  {
+   "day": 7,
+   "date": "2026-04-07",
+   "before": 0.0567,
+   "after": 0.0
+  },
+  {
+   "day": 8,
+   "date": "2026-04-08",
+   "before": 0.0628,
+   "after": 0.0
+  },
+  {
+   "day": 9,
+   "date": "2026-04-09",
+   "before": 0.0698,
+   "after": 0.0
+  },
+  {
+   "day": 10,
+   "date": "2026-04-10",
+   "before": 0.0926,
+   "after": 0.0
+  },
+  {
+   "day": 11,
+   "date": "2026-04-11",
+   "before": 0.1034,
+   "after": 0.0
+  },
+  {
+   "day": 12,
+   "date": "2026-04-12",
+   "before": 0.1104,
+   "after": 0.0
+  },
+  {
+   "day": 13,
+   "date": "2026-04-13",
+   "before": 0.1154,
+   "after": 0.0
+  },
+  {
+   "day": 14,
+   "date": "2026-04-14",
+   "before": 0.1184,
+   "after": 0.0
+  },
+  {
+   "day": 15,
+   "date": "2026-04-15",
+   "before": 0.1263,
+   "after": 0.0
+  },
+  {
+   "day": 16,
+   "date": "2026-04-16",
+   "before": 0.1315,
+   "after": 0.0
+  },
+  {
+   "day": 17,
+   "date": "2026-04-17",
+   "before": 0.1347,
+   "after": 0.0
+  },
+  {
+   "day": 18,
+   "date": "2026-04-18",
+   "before": 0.1378,
+   "after": 0.0
+  },
+  {
+   "day": 19,
+   "date": "2026-04-19",
+   "before": 0.1392,
+   "after": 0.0
+  },
+  {
+   "day": 20,
+   "date": "2026-04-20",
+   "before": 0.1725,
+   "after": 0.0
+  },
+  {
+   "day": 21,
+   "date": "2026-04-21",
+   "before": 0.1798,
+   "after": 0.0
+  },
+  {
+   "day": 22,
+   "date": "2026-04-22",
+   "before": 0.1842,
+   "after": 0.0
+  },
+  {
+   "day": 23,
+   "date": "2026-04-23",
+   "before": 0.187,
+   "after": 0.0
+  },
+  {
+   "day": 24,
+   "date": "2026-04-24",
+   "before": 0.1895,
+   "after": 0.0
+  },
+  {
+   "day": 25,
+   "date": "2026-04-25",
+   "before": 0.1919,
+   "after": 0.0
+  },
+  {
+   "day": 26,
+   "date": "2026-04-26",
+   "before": 0.193,
+   "after": 0.0
+  },
+  {
+   "day": 27,
+   "date": "2026-04-27",
+   "before": 0.1937,
+   "after": 0.0
+  },
+  {
+   "day": 28,
+   "date": "2026-04-28",
+   "before": 0.1941,
+   "after": 0.0
+  },
+  {
+   "day": 29,
+   "date": "2026-04-29",
+   "before": 0.195,
+   "after": 0.0
+  },
+  {
+   "day": 30,
+   "date": "2026-04-30",
+   "before": 0.1959,
+   "after": 0.0
+  },
+  {
+   "day": 31,
+   "date": "2026-05-01",
+   "before": 0.2412,
+   "after": 0.0
+  },
+  {
+   "day": 32,
+   "date": "2026-05-02",
+   "before": 0.2471,
+   "after": 0.0
+  },
+  {
+   "day": 33,
+   "date": "2026-05-03",
+   "before": 0.251,
+   "after": 0.0
+  },
+  {
+   "day": 34,
+   "date": "2026-05-04",
+   "before": 0.2534,
+   "after": 0.0
+  },
+  {
+   "day": 35,
+   "date": "2026-05-05",
+   "before": 0.2584,
+   "after": 0.0
+  },
+  {
+   "day": 36,
+   "date": "2026-05-06",
+   "before": 0.2605,
+   "after": 0.0
+  },
+  {
+   "day": 37,
+   "date": "2026-05-07",
+   "before": 0.2625,
+   "after": 0.0
+  },
+  {
+   "day": 38,
+   "date": "2026-05-08",
+   "before": 0.2635,
+   "after": 0.0
+  },
+  {
+   "day": 39,
+   "date": "2026-05-09",
+   "before": 0.2647,
+   "after": 0.0
+  },
+  {
+   "day": 40,
+   "date": "2026-05-10",
+   "before": 0.2699,
+   "after": 0.0
+  },
+  {
+   "day": 41,
+   "date": "2026-05-11",
+   "before": 0.2711,
+   "after": 0.0
+  },
+  {
+   "day": 42,
+   "date": "2026-05-12",
+   "before": 0.2723,
+   "after": 0.0
+  },
+  {
+   "day": 43,
+   "date": "2026-05-13",
+   "before": 0.2736,
+   "after": 0.0
+  },
+  {
+   "day": 44,
+   "date": "2026-05-14",
+   "before": 0.2748,
+   "after": 0.0
+  },
+  {
+   "day": 45,
+   "date": "2026-05-15",
+   "before": 0.2768,
+   "after": 0.0
+  },
+  {
+   "day": 46,
+   "date": "2026-05-16",
+   "before": 0.2781,
+   "after": 0.0
+  },
+  {
+   "day": 47,
+   "date": "2026-05-17",
+   "before": 0.279,
+   "after": 0.0
+  },
+  {
+   "day": 48,
+   "date": "2026-05-18",
+   "before": 0.2795,
+   "after": 0.0
+  },
+  {
+   "day": 49,
+   "date": "2026-05-19",
+   "before": 0.2799,
+   "after": 0.0
+  },
+  {
+   "day": 50,
+   "date": "2026-05-20",
+   "before": 0.2844,
+   "after": 0.0001
+  },
+  {
+   "day": 51,
+   "date": "2026-05-21",
+   "before": 0.2859,
+   "after": 0.0001
+  },
+  {
+   "day": 52,
+   "date": "2026-05-22",
+   "before": 0.2867,
+   "after": 0.0001
+  },
+  {
+   "day": 53,
+   "date": "2026-05-23",
+   "before": 0.2877,
+   "after": 0.0001
+  },
+  {
+   "day": 54,
+   "date": "2026-05-24",
+   "before": 0.2885,
+   "after": 0.0001
+  },
+  {
+   "day": 55,
+   "date": "2026-05-25",
+   "before": 0.289,
+   "after": 0.0002
+  },
+  {
+   "day": 56,
+   "date": "2026-05-26",
+   "before": 0.2894,
+   "after": 0.0002
+  },
+  {
+   "day": 57,
+   "date": "2026-05-27",
+   "before": 0.2898,
+   "after": 0.0002
+  },
+  {
+   "day": 58,
+   "date": "2026-05-28",
+   "before": 0.2903,
+   "after": 0.0002
+  },
+  {
+   "day": 59,
+   "date": "2026-05-29",
+   "before": 0.2906,
+   "after": 0.0002
+  },
+  {
+   "day": 60,
+   "date": "2026-05-30",
+   "before": 0.291,
+   "after": 0.0002
+  },
+  {
+   "day": 61,
+   "date": "2026-05-31",
+   "before": 0.2912,
+   "after": 0.0002
+  },
+  {
+   "day": 62,
+   "date": "2026-06-01",
+   "before": 0.3049,
+   "after": 0.0005
+  },
+  {
+   "day": 63,
+   "date": "2026-06-02",
+   "before": 0.3067,
+   "after": 0.0006
+  },
+  {
+   "day": 64,
+   "date": "2026-06-03",
+   "before": 0.3083,
+   "after": 0.0006
+  },
+  {
+   "day": 65,
+   "date": "2026-06-04",
+   "before": 0.3104,
+   "after": 0.0007
+  },
+  {
+   "day": 66,
+   "date": "2026-06-05",
+   "before": 0.3132,
+   "after": 0.0008
+  },
+  {
+   "day": 67,
+   "date": "2026-06-06",
+   "before": 0.3147,
+   "after": 0.0008
+  },
+  {
+   "day": 68,
+   "date": "2026-06-07",
+   "before": 0.3161,
+   "after": 0.0008
+  },
+  {
+   "day": 69,
+   "date": "2026-06-08",
+   "before": 0.3165,
+   "after": 0.0008
+  },
+  {
+   "day": 70,
+   "date": "2026-06-09",
+   "before": 0.3172,
+   "after": 0.0008
+  },
+  {
+   "day": 71,
+   "date": "2026-06-10",
+   "before": 0.32,
+   "after": 0.0009
+  },
+  {
+   "day": 72,
+   "date": "2026-06-11",
+   "before": 0.3214,
+   "after": 0.0009
+  },
+  {
+   "day": 73,
+   "date": "2026-06-12",
+   "before": 0.3218,
+   "after": 0.0009
+  },
+  {
+   "day": 74,
+   "date": "2026-06-13",
+   "before": 0.3227,
+   "after": 0.0009
+  },
+  {
+   "day": 75,
+   "date": "2026-06-14",
+   "before": 0.3231,
+   "after": 0.0009
+  },
+  {
+   "day": 76,
+   "date": "2026-06-15",
+   "before": 0.3255,
+   "after": 0.0009
+  },
+  {
+   "day": 77,
+   "date": "2026-06-16",
+   "before": 0.3257,
+   "after": 0.0009
+  },
+  {
+   "day": 78,
+   "date": "2026-06-17",
+   "before": 0.3268,
+   "after": 0.0009
+  },
+  {
+   "day": 79,
+   "date": "2026-06-18",
+   "before": 0.3278,
+   "after": 0.0009
+  },
+  {
+   "day": 80,
+   "date": "2026-06-19",
+   "before": 0.328,
+   "after": 0.0009
+  },
+  {
+   "day": 81,
+   "date": "2026-06-20",
+   "before": 0.3325,
+   "after": 0.0009
+  },
+  {
+   "day": 82,
+   "date": "2026-06-21",
+   "before": 0.3336,
+   "after": 0.001
+  },
+  {
+   "day": 83,
+   "date": "2026-06-22",
+   "before": 0.3339,
+   "after": 0.001
+  },
+  {
+   "day": 84,
+   "date": "2026-06-23",
+   "before": 0.3345,
+   "after": 0.001
+  },
+  {
+   "day": 85,
+   "date": "2026-06-24",
+   "before": 0.335,
+   "after": 0.001
+  },
+  {
+   "day": 86,
+   "date": "2026-06-25",
+   "before": 0.3353,
+   "after": 0.001
+  },
+  {
+   "day": 87,
+   "date": "2026-06-26",
+   "before": 0.3356,
+   "after": 0.001
+  },
+  {
+   "day": 88,
+   "date": "2026-06-27",
+   "before": 0.3362,
+   "after": 0.001
+  },
+  {
+   "day": 89,
+   "date": "2026-06-28",
+   "before": 0.3365,
+   "after": 0.001
+  },
+  {
+   "day": 90,
+   "date": "2026-06-29",
+   "before": 0.337,
+   "after": 0.001
+  }
+ ],
+ "drivers": [
+  {
+   "rank": 1,
+   "kind": "invoice",
+   "driver_id": "ce200ff41264c149932ddacc60daeeb5",
+   "buyer": "Anand Vijay Castings Pvt Ltd",
+   "label": "Rs 10.5 lakh from Anand Vijay Castings Pvt Ltd",
+   "amount": {
+    "paise": 105329471,
+    "text": "Rs 10.5 lakh"
+   },
+   "contribution": {
+    "value": 0.23760000000000003,
+    "text": "24%"
+   },
+   "contribution_es": {
+    "paise": 20785145,
+    "text": "Rs 2.1 lakh"
+   },
+   "days_overdue": 320,
+   "days_to_due": null,
+   "buyer_usual_days_late": 10,
+   "chance_never_paid": {
+    "value": 0.99998920531079,
+    "text": "100%"
+   },
+   "reason": "320 days overdue and likely not coming (100% chance it is never paid); this buyer usually pays 10 days after the due date"
+  },
+  {
+   "rank": 2,
+   "kind": "invoice",
+   "driver_id": "9f8d3368df8e043a514c27248c94784e",
+   "buyer": "Nav Ganesh Foods Pvt Ltd",
+   "label": "Rs 9.3 lakh from Nav Ganesh Foods Pvt Ltd",
+   "amount": {
+    "paise": 92570206,
+    "text": "Rs 9.3 lakh"
+   },
+   "contribution": {
+    "value": 0.20620000000000002,
+    "text": "21%"
+   },
+   "contribution_es": {
+    "paise": 18275526,
+    "text": "Rs 1.8 lakh"
+   },
+   "days_overdue": 300,
+   "days_to_due": null,
+   "buyer_usual_days_late": 33,
+   "chance_never_paid": {
+    "value": 0.5039077692340309,
+    "text": "50%"
+   },
+   "reason": "300 days overdue and likely not coming (50% chance it is never paid); this buyer usually pays 33 days after the due date"
+  },
+  {
+   "rank": 3,
+   "kind": "buyer",
+   "driver_id": "d1fa72363ad699ad1c482b1af89ffcc7",
+   "buyer": "Om Krishna Garments Pvt Ltd",
+   "label": "Om Krishna Garments Pvt Ltd, all bills (Rs 45.5 lakh open)",
+   "amount": {
+    "paise": 455305807,
+    "text": "Rs 45.5 lakh"
+   },
+   "contribution": {
+    "value": 0.15860000000000002,
+    "text": "16%"
+   },
+   "contribution_es": {
+    "paise": 16387561,
+    "text": "Rs 1.6 lakh"
+   },
+   "days_overdue": null,
+   "days_to_due": null,
+   "buyer_usual_days_late": 10,
+   "chance_never_paid": null,
+   "reason": "pays more slowly than similar buyers; it usually pays 10 days after the due date"
+  },
+  {
+   "rank": 4,
+   "kind": "buyer",
+   "driver_id": "2f0a6aded60ebd0ebb54f6377c4d2edc",
+   "buyer": "Nav Ganesh Foods Pvt Ltd",
+   "label": "Nav Ganesh Foods Pvt Ltd, all bills (Rs 24.9 lakh open)",
+   "amount": {
+    "paise": 248815052,
+    "text": "Rs 24.9 lakh"
+   },
+   "contribution": {
+    "value": 0.134,
+    "text": "13%"
+   },
+   "contribution_es": {
+    "paise": 14235337,
+    "text": "Rs 1.4 lakh"
+   },
+   "days_overdue": null,
+   "days_to_due": null,
+   "buyer_usual_days_late": 33,
+   "chance_never_paid": null,
+   "reason": "pays more slowly than similar buyers; it usually pays 33 days after the due date"
+  },
+  {
+   "rank": 5,
+   "kind": "invoice",
+   "driver_id": "0403bfb64858796c8632a31bc661264c",
+   "buyer": "Om Krishna Garments Pvt Ltd",
+   "label": "Rs 5.5 lakh from Om Krishna Garments Pvt Ltd",
+   "amount": {
+    "paise": 55450053,
+    "text": "Rs 5.5 lakh"
+   },
+   "contribution": {
+    "value": 0.11220000000000002,
+    "text": "11%"
+   },
+   "contribution_es": {
+    "paise": 9731401,
+    "text": "Rs 97,314"
+   },
+   "days_overdue": 17,
+   "days_to_due": null,
+   "buyer_usual_days_late": 10,
+   "chance_never_paid": {
+    "value": 0.173465614224626,
+    "text": "17%"
+   },
+   "reason": "17 days overdue; this buyer usually pays 10 days after the due date"
+  },
+  {
+   "rank": 6,
+   "kind": "invoice",
+   "driver_id": "57bd5cf5cd2e73a912e0f0acfc25f783",
+   "buyer": "Om Krishna Garments Pvt Ltd",
+   "label": "Rs 3.3 lakh from Om Krishna Garments Pvt Ltd",
+   "amount": {
+    "paise": 32774108,
+    "text": "Rs 3.3 lakh"
+   },
+   "contribution": {
+    "value": 0.10310000000000002,
+    "text": "10%"
+   },
+   "contribution_es": {
+    "paise": 9220224,
+    "text": "Rs 92,202"
+   },
+   "days_overdue": 261,
+   "days_to_due": null,
+   "buyer_usual_days_late": 10,
+   "chance_never_paid": {
+    "value": 0.9902809101325206,
+    "text": "99%"
+   },
+   "reason": "261 days overdue and likely not coming (99% chance it is never paid); this buyer usually pays 10 days after the due date"
+  },
+  {
+   "rank": 7,
+   "kind": "buyer",
+   "driver_id": "79e4733276381687e1862a05291493fc",
+   "buyer": "Jai Durga Forgings Pvt Ltd",
+   "label": "Jai Durga Forgings Pvt Ltd, all bills (Rs 25.5 lakh open)",
+   "amount": {
+    "paise": 254711354,
+    "text": "Rs 25.5 lakh"
+   },
+   "contribution": {
+    "value": 0.09370000000000003,
+    "text": "9%"
+   },
+   "contribution_es": {
+    "paise": 10067354,
+    "text": "Rs 1 lakh"
+   },
+   "days_overdue": null,
+   "days_to_due": null,
+   "buyer_usual_days_late": 19,
+   "chance_never_paid": null,
+   "reason": "pays more slowly than similar buyers; it usually pays 19 days after the due date"
+  },
+  {
+   "rank": 8,
+   "kind": "invoice",
+   "driver_id": "d4eaeb7ada207cb1b9e6e76c3b70505e",
+   "buyer": "Shree Shakti Weavers Pvt Ltd",
+   "label": "Rs 2.7 lakh from Shree Shakti Weavers Pvt Ltd",
+   "amount": {
+    "paise": 27329976,
+    "text": "Rs 2.7 lakh"
+   },
+   "contribution": {
+    "value": 0.08760000000000001,
+    "text": "9%"
+   },
+   "contribution_es": {
+    "paise": 7936325,
+    "text": "Rs 79,363"
+   },
+   "days_overdue": 270,
+   "days_to_due": null,
+   "buyer_usual_days_late": 9,
+   "chance_never_paid": {
+    "value": 0.9999955239283161,
+    "text": "100%"
+   },
+   "reason": "270 days overdue and likely not coming (100% chance it is never paid); this buyer usually pays 9 days after the due date"
+  },
+  {
+   "rank": 9,
+   "kind": "invoice",
+   "driver_id": "7b7823ee4281516b7e2901a11c1d4d6a",
+   "buyer": "Om Krishna Garments Pvt Ltd",
+   "label": "Rs 2.5 lakh from Om Krishna Garments Pvt Ltd",
+   "amount": {
+    "paise": 24818130,
+    "text": "Rs 2.5 lakh"
+   },
+   "contribution": {
+    "value": 0.08100000000000002,
+    "text": "8%"
+   },
+   "contribution_es": {
+    "paise": 7297571,
+    "text": "Rs 72,976"
+   },
+   "days_overdue": 322,
+   "days_to_due": null,
+   "buyer_usual_days_late": 10,
+   "chance_never_paid": {
+    "value": 0.9980305544370031,
+    "text": "100%"
+   },
+   "reason": "322 days overdue and likely not coming (100% chance it is never paid); this buyer usually pays 10 days after the due date"
+  },
+  {
+   "rank": 10,
+   "kind": "invoice",
+   "driver_id": "5f710137ac09c57942fbee25a1f418c4",
+   "buyer": "Jai Durga Forgings Pvt Ltd",
+   "label": "Rs 2.3 lakh from Jai Durga Forgings Pvt Ltd",
+   "amount": {
+    "paise": 22612041,
+    "text": "Rs 2.3 lakh"
+   },
+   "contribution": {
+    "value": 0.07170000000000004,
+    "text": "7%"
+   },
+   "contribution_es": {
+    "paise": 6480915,
+    "text": "Rs 64,809"
+   },
+   "days_overdue": 185,
+   "days_to_due": null,
+   "buyer_usual_days_late": 19,
+   "chance_never_paid": {
+    "value": 0.8986255127498736,
+    "text": "90%"
+   },
+   "reason": "185 days overdue and likely not coming (90% chance it is never paid); this buyer usually pays 19 days after the due date"
+  }
+ ],
+ "plan": {
+  "method": "cvar",
+  "actions": [
+   {
+    "rank": 1,
+    "kind": "supplier_stretch",
+    "target_id": "S1:+30d",
+    "description": "Ask supplier S1 to wait 30 more days for its payments",
+    "cost": {
+     "paise": 11017362,
+     "text": "Rs 1.1 lakh"
+    },
+    "risk_after": {
+     "value": 0.0239,
+     "text": "2%"
+    },
+    "amount": null,
+    "days": 30,
+    "on_date": null
+   },
+   {
+    "rank": 2,
+    "kind": "supplier_stretch",
+    "target_id": "S2:+30d",
+    "description": "Ask supplier S2 to wait 30 more days for its payments",
+    "cost": {
+     "paise": 200000,
+     "text": "Rs 2,000"
+    },
+    "risk_after": {
+     "value": 0.0023,
+     "text": "under 1%"
+    },
+    "amount": null,
+    "days": 30,
+    "on_date": null
+   },
+   {
+    "rank": 3,
+    "kind": "treds_discount",
+    "target_id": "ceda0ddd8f0b3921b9f2520a915f5546",
+    "description": "Get early cash for the Rs 2.1 lakh bill to Jai Durga Forgings Nigam Ltd through TReDS",
+    "cost": {
+     "paise": 125218,
+     "text": "Rs 1,252"
+    },
+    "risk_after": {
+     "value": 0.0022,
+     "text": "under 1%"
+    },
+    "amount": {
+     "paise": 21340326,
+     "text": "Rs 2.1 lakh"
+    },
+    "days": null,
+    "on_date": null
+   },
+   {
+    "rank": 4,
+    "kind": "chase",
+    "target_id": "a506f6e2d1a119e5a295c9cd74027edd",
+    "description": "Call Bhagya Shakti Garments Ltd about their open bills, this week and next",
+    "cost": {
+     "paise": 50000,
+     "text": "Rs 500"
+    },
+    "risk_after": {
+     "value": 0.0022,
+     "text": "under 1%"
+    },
+    "amount": null,
+    "days": null,
+    "on_date": null
+   },
+   {
+    "rank": 5,
+    "kind": "overdraft",
+    "target_id": "day45:20000000",
+    "description": "Draw Rs 2 lakh from your overdraft on 15 May 2026",
+    "cost": {
+     "paise": 277260,
+     "text": "Rs 2,773"
+    },
+    "risk_after": {
+     "value": 0.001,
+     "text": "under 1%"
+    },
+    "amount": {
+     "paise": 20000000,
+     "text": "Rs 2 lakh"
+    },
+    "days": null,
+    "on_date": "2026-05-15"
+   },
+   {
+    "rank": 6,
+    "kind": "treds_discount",
+    "target_id": "b73f5691f54b76b7cabb7b512c184164",
+    "description": "Get early cash for the Rs 1.5 lakh bill to Jai Durga Forgings Nigam Ltd through TReDS",
+    "cost": {
+     "paise": 3472,
+     "text": "Rs 35"
+    },
+    "risk_after": {
+     "value": 0.001,
+     "text": "under 1%"
+    },
+    "amount": {
+     "paise": 15382612,
+     "text": "Rs 1.5 lakh"
+    },
+    "days": null,
+    "on_date": null
+   }
+  ],
+  "n_steps": 6,
+  "total_cost": {
+   "paise": 11673312,
+   "text": "Rs 1.2 lakh"
+  },
+  "risk_before": {
+   "value": 0.337,
+   "text": "34%"
+  },
+  "risk_after": {
+   "value": 0.001,
+   "text": "under 1%"
+  },
+  "target": {
+   "value": 0.05,
+   "text": "5%"
+  },
+  "target_met": true,
+  "summary": "6 steps costing Rs 1.2 lakh take the chance of running short by day 90 from 34% to under 1% (your target: 5%).",
+  "caveat": null
+ },
+ "what_ifs": [
+  {
+   "preset": "delayed_customer_payments",
+   "name": "Buyers pay slower",
+   "description": "Buyers pay more slowly: their chance of paying in any week drops to 50% of normal.",
+   "share": {
+    "value": 0.5,
+    "text": "50%"
+   },
+   "amount": null,
+   "days": null,
+   "days_from": null,
+   "on_date": null,
+   "risk_90": {
+    "value": 0.9637,
+    "text": "96%"
+   },
+   "change_90": 0.6267,
+   "change_text": "The chance of running short within 90 days goes from 34% to 96%.",
+   "runway_lost_days": 71,
+   "runway_text": "At least 71 days of runway lost.",
+   "breaking_point": "You break if your buyers pay 13% slower.",
+   "breaking_magnitude": 0.8671875,
+   "breaking_share": {
+    "value": 0.1328125,
+    "text": "13%"
+   },
+   "breaking_amount": null,
+   "breaking_days": null,
+   "fan": [
+    {
+     "day": 1,
+     "date": "2026-04-01",
+     "median_paise": 201576878,
+     "lo50_paise": 179359328,
+     "hi50_paise": 227307079,
+     "lo90_paise": 152342215,
+     "hi90_paise": 272015527,
+     "calibrated": true
+    },
+    {
+     "day": 2,
+     "date": "2026-04-02",
+     "median_paise": 208096865,
+     "lo50_paise": 180214994,
+     "hi50_paise": 238703768,
+     "lo90_paise": 142290167,
+     "hi90_paise": 291078101,
+     "calibrated": true
+    },
+    {
+     "day": 3,
+     "date": "2026-04-03",
+     "median_paise": 213561550,
+     "lo50_paise": 180162477,
+     "hi50_paise": 248904356,
+     "lo90_paise": 132873647,
+     "hi90_paise": 306594978,
+     "calibrated": true
+    },
+    {
+     "day": 4,
+     "date": "2026-04-04",
+     "median_paise": 217569901,
+     "lo50_paise": 181216565,
+     "hi50_paise": 256787644,
+     "lo90_paise": 126981970,
+     "hi90_paise": 320229160,
+     "calibrated": true
+    },
+    {
+     "day": 5,
+     "date": "2026-04-05",
+     "median_paise": 196385144,
+     "lo50_paise": 156934618,
+     "hi50_paise": 238698777,
+     "lo90_paise": 100481749,
+     "hi90_paise": 304525752,
+     "calibrated": true
+    },
+    {
+     "day": 6,
+     "date": "2026-04-06",
+     "median_paise": 194977148,
+     "lo50_paise": 152492907,
+     "hi50_paise": 238755083,
+     "lo90_paise": 91092406,
+     "hi90_paise": 309970005,
+     "calibrated": true
+    },
+    {
+     "day": 7,
+     "date": "2026-04-07",
+     "median_paise": 193950931,
+     "lo50_paise": 148758980,
+     "hi50_paise": 241124830,
+     "lo90_paise": 82893639,
+     "hi90_paise": 314145564,
+     "calibrated": true
+    },
+    {
+     "day": 8,
+     "date": "2026-04-08",
+     "median_paise": 194063765,
+     "lo50_paise": 146841942,
+     "hi50_paise": 244164145,
+     "lo90_paise": 76305755,
+     "hi90_paise": 319939253,
+     "calibrated": true
+    },
+    {
+     "day": 9,
+     "date": "2026-04-09",
+     "median_paise": 191401704,
+     "lo50_paise": 140698520,
+     "hi50_paise": 244404622,
+     "lo90_paise": 67646412,
+     "hi90_paise": 323010403,
+     "calibrated": true
+    },
+    {
+     "day": 10,
+     "date": "2026-04-10",
+     "median_paise": 162757409,
+     "lo50_paise": 109404832,
+     "hi50_paise": 216790298,
+     "lo90_paise": 30223832,
+     "hi90_paise": 297805269,
+     "calibrated": true
+    },
+    {
+     "day": 11,
+     "date": "2026-04-11",
+     "median_paise": 162861178,
+     "lo50_paise": 106985512,
+     "hi50_paise": 217976115,
+     "lo90_paise": 24464859,
+     "hi90_paise": 301149210,
+     "calibrated": true
+    },
+    {
+     "day": 12,
+     "date": "2026-04-12",
+     "median_paise": 159925952,
+     "lo50_paise": 104194065,
+     "hi50_paise": 217734562,
+     "lo90_paise": 18633813,
+     "hi90_paise": 303591063,
+     "calibrated": true
+    },
+    {
+     "day": 13,
+     "date": "2026-04-13",
+     "median_paise": 159732958,
+     "lo50_paise": 101690837,
+     "hi50_paise": 218362607,
+     "lo90_paise": 14957218,
+     "hi90_paise": 308210423,
+     "calibrated": true
+    },
+    {
+     "day": 14,
+     "date": "2026-04-14",
+     "median_paise": 161967644,
+     "lo50_paise": 100525833,
+     "hi50_paise": 222899193,
+     "lo90_paise": 10457728,
+     "hi90_paise": 314214854,
+     "calibrated": true
+    },
+    {
+     "day": 15,
+     "date": "2026-04-15",
+     "median_paise": 146401981,
+     "lo50_paise": 81867775,
+     "hi50_paise": 209800598,
+     "lo90_paise": -10802056,
+     "hi90_paise": 303822929,
+     "calibrated": true
+    },
+    {
+     "day": 16,
+     "date": "2026-04-16",
+     "median_paise": 145039932,
+     "lo50_paise": 79141966,
+     "hi50_paise": 210971381,
+     "lo90_paise": -17691892,
+     "hi90_paise": 306310446,
+     "calibrated": true
+    },
+    {
+     "day": 17,
+     "date": "2026-04-17",
+     "median_paise": 149452292,
+     "lo50_paise": 82462769,
+     "hi50_paise": 216501837,
+     "lo90_paise": -20200674,
+     "hi90_paise": 315368583,
+     "calibrated": true
+    },
+    {
+     "day": 18,
+     "date": "2026-04-18",
+     "median_paise": 152387163,
+     "lo50_paise": 81323935,
+     "hi50_paise": 222225602,
+     "lo90_paise": -23364050,
+     "hi90_paise": 324006064,
+     "calibrated": true
+    },
+    {
+     "day": 19,
+     "date": "2026-04-19",
+     "median_paise": 153994244,
+     "lo50_paise": 80462155,
+     "hi50_paise": 224966374,
+     "lo90_paise": -26028895,
+     "hi90_paise": 329028025,
+     "calibrated": true
+    },
+    {
+     "day": 20,
+     "date": "2026-04-20",
+     "median_paise": 85007402,
+     "lo50_paise": 10469183,
+     "hi50_paise": 156699161,
+     "lo90_paise": -100186466,
+     "hi90_paise": 262334002,
+     "calibrated": true
+    },
+    {
+     "day": 21,
+     "date": "2026-04-21",
+     "median_paise": 90458104,
+     "lo50_paise": 12546010,
+     "hi50_paise": 162602502,
+     "lo90_paise": -96456464,
+     "hi90_paise": 269550492,
+     "calibrated": true
+    },
+    {
+     "day": 22,
+     "date": "2026-04-22",
+     "median_paise": 93061417,
+     "lo50_paise": 13315681,
+     "hi50_paise": 169925724,
+     "lo90_paise": -95749060,
+     "hi90_paise": 279735373,
+     "calibrated": true
+    },
+    {
+     "day": 23,
+     "date": "2026-04-23",
+     "median_paise": 95737101,
+     "lo50_paise": 13457558,
+     "hi50_paise": 173257477,
+     "lo90_paise": -101393099,
+     "hi90_paise": 284841548,
+     "calibrated": true
+    },
+    {
+     "day": 24,
+     "date": "2026-04-24",
+     "median_paise": 101153088,
+     "lo50_paise": 16689048,
+     "hi50_paise": 179246955,
+     "lo90_paise": -100437795,
+     "hi90_paise": 295997817,
+     "calibrated": true
+    },
+    {
+     "day": 25,
+     "date": "2026-04-25",
+     "median_paise": 105127263,
+     "lo50_paise": 20191040,
+     "hi50_paise": 186173777,
+     "lo90_paise": -101881170,
+     "hi90_paise": 302121912,
+     "calibrated": true
+    },
+    {
+     "day": 26,
+     "date": "2026-04-26",
+     "median_paise": 106099855,
+     "lo50_paise": 21156696,
+     "hi50_paise": 189431719,
+     "lo90_paise": -102461127,
+     "hi90_paise": 307046267,
+     "calibrated": true
+    },
+    {
+     "day": 27,
+     "date": "2026-04-27",
+     "median_paise": 109003581,
+     "lo50_paise": 23116956,
+     "hi50_paise": 194078431,
+     "lo90_paise": -101295910,
+     "hi90_paise": 315393621,
+     "calibrated": true
+    },
+    {
+     "day": 28,
+     "date": "2026-04-28",
+     "median_paise": 116915228,
+     "lo50_paise": 26630067,
+     "hi50_paise": 200507463,
+     "lo90_paise": -100172747,
+     "hi90_paise": 325308475,
+     "calibrated": true
+    },
+    {
+     "day": 29,
+     "date": "2026-04-29",
+     "median_paise": 122695433,
+     "lo50_paise": 32488151,
+     "hi50_paise": 208752337,
+     "lo90_paise": -99344125,
+     "hi90_paise": 334511732,
+     "calibrated": true
+    },
+    {
+     "day": 30,
+     "date": "2026-04-30",
+     "median_paise": 123534788,
+     "lo50_paise": 31744230,
+     "hi50_paise": 212600275,
+     "lo90_paise": -102048667,
+     "hi90_paise": 339442042,
+     "calibrated": true
+    },
+    {
+     "day": 31,
+     "date": "2026-05-01",
+     "median_paise": 10340808,
+     "lo50_paise": -83101141,
+     "hi50_paise": 100202125,
+     "lo90_paise": -221547789,
+     "hi90_paise": 229803201,
+     "calibrated": false
+    },
+    {
+     "day": 32,
+     "date": "2026-05-02",
+     "median_paise": 16263357,
+     "lo50_paise": -80720431,
+     "hi50_paise": 106212811,
+     "lo90_paise": -220730780,
+     "hi90_paise": 241452223,
+     "calibrated": false
+    },
+    {
+     "day": 33,
+     "date": "2026-05-03",
+     "median_paise": 16512743,
+     "lo50_paise": -82187922,
+     "hi50_paise": 107369801,
+     "lo90_paise": -222391559,
+     "hi90_paise": 244424317,
+     "calibrated": false
+    },
+    {
+     "day": 34,
+     "date": "2026-05-04",
+     "median_paise": 21752723,
+     "lo50_paise": -77088586,
+     "hi50_paise": 114610743,
+     "lo90_paise": -221763791,
+     "hi90_paise": 253512923,
+     "calibrated": false
+    },
+    {
+     "day": 35,
+     "date": "2026-05-05",
+     "median_paise": 8819260,
+     "lo50_paise": -92476484,
+     "hi50_paise": 104294177,
+     "lo90_paise": -236402656,
+     "hi90_paise": 243405978,
+     "calibrated": false
+    },
+    {
+     "day": 36,
+     "date": "2026-05-06",
+     "median_paise": 17393889,
+     "lo50_paise": -84838262,
+     "hi50_paise": 112171415,
+     "lo90_paise": -228303699,
+     "hi90_paise": 254484315,
+     "calibrated": false
+    },
+    {
+     "day": 37,
+     "date": "2026-05-07",
+     "median_paise": 20345326,
+     "lo50_paise": -83859823,
+     "hi50_paise": 116303167,
+     "lo90_paise": -231895369,
+     "hi90_paise": 257743555,
+     "calibrated": false
+    },
+    {
+     "day": 38,
+     "date": "2026-05-08",
+     "median_paise": 27206034,
+     "lo50_paise": -79089453,
+     "hi50_paise": 123540213,
+     "lo90_paise": -229770948,
+     "hi90_paise": 265242066,
+     "calibrated": false
+    },
+    {
+     "day": 39,
+     "date": "2026-05-09",
+     "median_paise": 31132520,
+     "lo50_paise": -73987921,
+     "hi50_paise": 128973509,
+     "lo90_paise": -223060582,
+     "hi90_paise": 273861281,
+     "calibrated": false
+    },
+    {
+     "day": 40,
+     "date": "2026-05-10",
+     "median_paise": 3904050,
+     "lo50_paise": -101935197,
+     "hi50_paise": 104652960,
+     "lo90_paise": -253578324,
+     "hi90_paise": 245993933,
+     "calibrated": false
+    },
+    {
+     "day": 41,
+     "date": "2026-05-11",
+     "median_paise": 7666437,
+     "lo50_paise": -96465506,
+     "hi50_paise": 109180631,
+     "lo90_paise": -252544470,
+     "hi90_paise": 254390792,
+     "calibrated": false
+    },
+    {
+     "day": 42,
+     "date": "2026-05-12",
+     "median_paise": 13904682,
+     "lo50_paise": -91402228,
+     "hi50_paise": 114890354,
+     "lo90_paise": -248383852,
+     "hi90_paise": 261451434,
+     "calibrated": false
+    },
+    {
+     "day": 43,
+     "date": "2026-05-13",
+     "median_paise": 22613377,
+     "lo50_paise": -84405851,
+     "hi50_paise": 125845623,
+     "lo90_paise": -241068978,
+     "hi90_paise": 274295835,
+     "calibrated": false
+    },
+    {
+     "day": 44,
+     "date": "2026-05-14",
+     "median_paise": 23989861,
+     "lo50_paise": -83233053,
+     "hi50_paise": 128637899,
+     "lo90_paise": -242623407,
+     "hi90_paise": 277143171,
+     "calibrated": false
+    },
+    {
+     "day": 45,
+     "date": "2026-05-15",
+     "median_paise": 12284223,
+     "lo50_paise": -94818921,
+     "hi50_paise": 117353450,
+     "lo90_paise": -260001000,
+     "hi90_paise": 270045623,
+     "calibrated": false
+    },
+    {
+     "day": 46,
+     "date": "2026-05-16",
+     "median_paise": 17076071,
+     "lo50_paise": -90776502,
+     "hi50_paise": 123319831,
+     "lo90_paise": -254877218,
+     "hi90_paise": 276469881,
+     "calibrated": false
+    },
+    {
+     "day": 47,
+     "date": "2026-05-17",
+     "median_paise": 21129188,
+     "lo50_paise": -87641705,
+     "hi50_paise": 129731890,
+     "lo90_paise": -251594984,
+     "hi90_paise": 284753980,
+     "calibrated": false
+    },
+    {
+     "day": 48,
+     "date": "2026-05-18",
+     "median_paise": 26779409,
+     "lo50_paise": -82966819,
+     "hi50_paise": 135984664,
+     "lo90_paise": -250224222,
+     "hi90_paise": 289738503,
+     "calibrated": false
+    },
+    {
+     "day": 49,
+     "date": "2026-05-19",
+     "median_paise": 34394983,
+     "lo50_paise": -76721635,
+     "hi50_paise": 144718076,
+     "lo90_paise": -245332649,
+     "hi90_paise": 299448853,
+     "calibrated": false
+    },
+    {
+     "day": 50,
+     "date": "2026-05-20",
+     "median_paise": -12427603,
+     "lo50_paise": -123492480,
+     "hi50_paise": 99282417,
+     "lo90_paise": -294417559,
+     "hi90_paise": 252753183,
+     "calibrated": false
+    },
+    {
+     "day": 51,
+     "date": "2026-05-21",
+     "median_paise": -10224643,
+     "lo50_paise": -121638329,
+     "hi50_paise": 102392700,
+     "lo90_paise": -294515421,
+     "hi90_paise": 259211049,
+     "calibrated": false
+    },
+    {
+     "day": 52,
+     "date": "2026-05-22",
+     "median_paise": -2398831,
+     "lo50_paise": -114966947,
+     "hi50_paise": 111233399,
+     "lo90_paise": -289060456,
+     "hi90_paise": 267602413,
+     "calibrated": false
+    },
+    {
+     "day": 53,
+     "date": "2026-05-23",
+     "median_paise": 3578177,
+     "lo50_paise": -108505724,
+     "hi50_paise": 118961212,
+     "lo90_paise": -285008670,
+     "hi90_paise": 276007418,
+     "calibrated": false
+    },
+    {
+     "day": 54,
+     "date": "2026-05-24",
+     "median_paise": 8389505,
+     "lo50_paise": -104411310,
+     "hi50_paise": 124553537,
+     "lo90_paise": -281027502,
+     "hi90_paise": 281728219,
+     "calibrated": false
+    },
+    {
+     "day": 55,
+     "date": "2026-05-25",
+     "median_paise": 15977849,
+     "lo50_paise": -100581774,
+     "hi50_paise": 131041110,
+     "lo90_paise": -272644887,
+     "hi90_paise": 290224592,
+     "calibrated": false
+    },
+    {
+     "day": 56,
+     "date": "2026-05-26",
+     "median_paise": 23889810,
+     "lo50_paise": -91561746,
+     "hi50_paise": 139530875,
+     "lo90_paise": -267370172,
+     "hi90_paise": 298114136,
+     "calibrated": false
+    },
+    {
+     "day": 57,
+     "date": "2026-05-27",
+     "median_paise": 34083750,
+     "lo50_paise": -82389003,
+     "hi50_paise": 149820795,
+     "lo90_paise": -257957540,
+     "hi90_paise": 314283356,
+     "calibrated": false
+    },
+    {
+     "day": 58,
+     "date": "2026-05-28",
+     "median_paise": 38165070,
+     "lo50_paise": -79600664,
+     "hi50_paise": 153271300,
+     "lo90_paise": -255638798,
+     "hi90_paise": 321133849,
+     "calibrated": false
+    },
+    {
+     "day": 59,
+     "date": "2026-05-29",
+     "median_paise": 47056394,
+     "lo50_paise": -72465348,
+     "hi50_paise": 163456699,
+     "lo90_paise": -247702294,
+     "hi90_paise": 330130324,
+     "calibrated": false
+    },
+    {
+     "day": 60,
+     "date": "2026-05-30",
+     "median_paise": 55284083,
+     "lo50_paise": -65910040,
+     "hi50_paise": 172401904,
+     "lo90_paise": -243198096,
+     "hi90_paise": 340411046,
+     "calibrated": false
+    },
+    {
+     "day": 61,
+     "date": "2026-05-31",
+     "median_paise": 60825224,
+     "lo50_paise": -62434533,
+     "hi50_paise": 177653972,
+     "lo90_paise": -242573197,
+     "hi90_paise": 345413109,
+     "calibrated": false
+    },
+    {
+     "day": 62,
+     "date": "2026-06-01",
+     "median_paise": -52815426,
+     "lo50_paise": -178105915,
+     "hi50_paise": 64481243,
+     "lo90_paise": -357708903,
+     "hi90_paise": 234448773,
+     "calibrated": false
+    },
+    {
+     "day": 63,
+     "date": "2026-06-02",
+     "median_paise": -43914700,
+     "lo50_paise": -169210113,
+     "hi50_paise": 74028546,
+     "lo90_paise": -351915074,
+     "hi90_paise": 240049179,
+     "calibrated": false
+    },
+    {
+     "day": 64,
+     "date": "2026-06-03",
+     "median_paise": -37706697,
+     "lo50_paise": -160180695,
+     "hi50_paise": 81275763,
+     "lo90_paise": -344361533,
+     "hi90_paise": 247167735,
+     "calibrated": false
+    },
+    {
+     "day": 65,
+     "date": "2026-06-04",
+     "median_paise": -34068414,
+     "lo50_paise": -157886554,
+     "hi50_paise": 85065095,
+     "lo90_paise": -339967006,
+     "hi90_paise": 258050972,
+     "calibrated": false
+    },
+    {
+     "day": 66,
+     "date": "2026-06-05",
+     "median_paise": -46279297,
+     "lo50_paise": -168431499,
+     "hi50_paise": 74361419,
+     "lo90_paise": -352510703,
+     "hi90_paise": 245599412,
+     "calibrated": false
+    },
+    {
+     "day": 67,
+     "date": "2026-06-06",
+     "median_paise": -39239303,
+     "lo50_paise": -163030058,
+     "hi50_paise": 82287600,
+     "lo90_paise": -350025506,
+     "hi90_paise": 253578841,
+     "calibrated": false
+    },
+    {
+     "day": 68,
+     "date": "2026-06-07",
+     "median_paise": -33613511,
+     "lo50_paise": -157868518,
+     "hi50_paise": 87916076,
+     "lo90_paise": -343898966,
+     "hi90_paise": 259625183,
+     "calibrated": false
+    },
+    {
+     "day": 69,
+     "date": "2026-06-08",
+     "median_paise": -26837823,
+     "lo50_paise": -153223817,
+     "hi50_paise": 92331572,
+     "lo90_paise": -338627058,
+     "hi90_paise": 267547442,
+     "calibrated": false
+    },
+    {
+     "day": 70,
+     "date": "2026-06-09",
+     "median_paise": -18638155,
+     "lo50_paise": -143613841,
+     "hi50_paise": 101465223,
+     "lo90_paise": -331246280,
+     "hi90_paise": 273071581,
+     "calibrated": false
+    },
+    {
+     "day": 71,
+     "date": "2026-06-10",
+     "median_paise": -39051223,
+     "lo50_paise": -164470743,
+     "hi50_paise": 80806296,
+     "lo90_paise": -356439058,
+     "hi90_paise": 256070995,
+     "calibrated": false
+    },
+    {
+     "day": 72,
+     "date": "2026-06-11",
+     "median_paise": -35321104,
+     "lo50_paise": -162240926,
+     "hi50_paise": 85387099,
+     "lo90_paise": -352139962,
+     "hi90_paise": 258250427,
+     "calibrated": false
+    },
+    {
+     "day": 73,
+     "date": "2026-06-12",
+     "median_paise": -28848013,
+     "lo50_paise": -154728973,
+     "hi50_paise": 94297075,
+     "lo90_paise": -345389522,
+     "hi90_paise": 270139462,
+     "calibrated": false
+    },
+    {
+     "day": 74,
+     "date": "2026-06-13",
+     "median_paise": -21860388,
+     "lo50_paise": -147545803,
+     "hi50_paise": 102806852,
+     "lo90_paise": -339842967,
+     "hi90_paise": 277840783,
+     "calibrated": false
+    },
+    {
+     "day": 75,
+     "date": "2026-06-14",
+     "median_paise": -16594737,
+     "lo50_paise": -140864255,
+     "hi50_paise": 110183627,
+     "lo90_paise": -337557034,
+     "hi90_paise": 285969440,
+     "calibrated": false
+    },
+    {
+     "day": 76,
+     "date": "2026-06-15",
+     "median_paise": -27079293,
+     "lo50_paise": -153012857,
+     "hi50_paise": 97498667,
+     "lo90_paise": -346056162,
+     "hi90_paise": 272773458,
+     "calibrated": false
+    },
+    {
+     "day": 77,
+     "date": "2026-06-16",
+     "median_paise": -18825915,
+     "lo50_paise": -144637571,
+     "hi50_paise": 108338011,
+     "lo90_paise": -336359994,
+     "hi90_paise": 285994838,
+     "calibrated": false
+    },
+    {
+     "day": 78,
+     "date": "2026-06-17",
+     "median_paise": -6974866,
+     "lo50_paise": -133882069,
+     "hi50_paise": 117901429,
+     "lo90_paise": -327662014,
+     "hi90_paise": 297546099,
+     "calibrated": false
+    },
+    {
+     "day": 79,
+     "date": "2026-06-18",
+     "median_paise": -1863794,
+     "lo50_paise": -131751966,
+     "hi50_paise": 124842355,
+     "lo90_paise": -325419608,
+     "hi90_paise": 304747447,
+     "calibrated": false
+    },
+    {
+     "day": 80,
+     "date": "2026-06-19",
+     "median_paise": 7223080,
+     "lo50_paise": -123185419,
+     "hi50_paise": 132726971,
+     "lo90_paise": -318930912,
+     "hi90_paise": 313931004,
+     "calibrated": false
+    },
+    {
+     "day": 81,
+     "date": "2026-06-20",
+     "median_paise": -42707947,
+     "lo50_paise": -177295139,
+     "hi50_paise": 85828849,
+     "lo90_paise": -380986787,
+     "hi90_paise": 268218272,
+     "calibrated": false
+    },
+    {
+     "day": 82,
+     "date": "2026-06-21",
+     "median_paise": -38604540,
+     "lo50_paise": -171879310,
+     "hi50_paise": 91589482,
+     "lo90_paise": -372563141,
+     "hi90_paise": 274832856,
+     "calibrated": false
+    },
+    {
+     "day": 83,
+     "date": "2026-06-22",
+     "median_paise": -34876966,
+     "lo50_paise": -166024545,
+     "hi50_paise": 97683493,
+     "lo90_paise": -368472657,
+     "hi90_paise": 281564319,
+     "calibrated": false
+    },
+    {
+     "day": 84,
+     "date": "2026-06-23",
+     "median_paise": -24746056,
+     "lo50_paise": -156811254,
+     "hi50_paise": 106716273,
+     "lo90_paise": -359433603,
+     "hi90_paise": 289424387,
+     "calibrated": false
+    },
+    {
+     "day": 85,
+     "date": "2026-06-24",
+     "median_paise": -14955644,
+     "lo50_paise": -146549624,
+     "hi50_paise": 116966783,
+     "lo90_paise": -351632888,
+     "hi90_paise": 300325848,
+     "calibrated": false
+    },
+    {
+     "day": 86,
+     "date": "2026-06-25",
+     "median_paise": -12900867,
+     "lo50_paise": -144987798,
+     "hi50_paise": 120564976,
+     "lo90_paise": -348621730,
+     "hi90_paise": 304949842,
+     "calibrated": false
+    },
+    {
+     "day": 87,
+     "date": "2026-06-26",
+     "median_paise": -4660037,
+     "lo50_paise": -135679815,
+     "hi50_paise": 131752543,
+     "lo90_paise": -338779265,
+     "hi90_paise": 315042331,
+     "calibrated": false
+    },
+    {
+     "day": 88,
+     "date": "2026-06-27",
+     "median_paise": 2963491,
+     "lo50_paise": -129728153,
+     "hi50_paise": 136523891,
+     "lo90_paise": -332887136,
+     "hi90_paise": 326954535,
+     "calibrated": false
+    },
+    {
+     "day": 89,
+     "date": "2026-06-28",
+     "median_paise": 9158258,
+     "lo50_paise": -122453786,
+     "hi50_paise": 143145220,
+     "lo90_paise": -325349255,
+     "hi90_paise": 333553261,
+     "calibrated": false
+    },
+    {
+     "day": 90,
+     "date": "2026-06-29",
+     "median_paise": 17175973,
+     "lo50_paise": -117914118,
+     "hi50_paise": 150754770,
+     "lo90_paise": -321722795,
+     "hi90_paise": 341502523,
+     "calibrated": false
+    }
+   ],
+   "risk_by_day": [
+    0.0012,
+    0.006,
+    0.014,
+    0.0241,
+    0.0523,
+    0.0725,
+    0.0954,
+    0.1142,
+    0.1379,
+    0.2288,
+    0.2613,
+    0.2865,
+    0.307,
+    0.3265,
+    0.3729,
+    0.3942,
+    0.4098,
+    0.425,
+    0.435,
+    0.5915,
+    0.6118,
+    0.6248,
+    0.6365,
+    0.6453,
+    0.6537,
+    0.6603,
+    0.666,
+    0.6704,
+    0.6749,
+    0.6799,
+    0.804,
+    0.8138,
+    0.8227,
+    0.8293,
+    0.8426,
+    0.8483,
+    0.8521,
+    0.8555,
+    0.8582,
+    0.8701,
+    0.8733,
+    0.8766,
+    0.8785,
+    0.8808,
+    0.885,
+    0.8869,
+    0.8883,
+    0.8899,
+    0.8916,
+    0.9017,
+    0.9048,
+    0.9069,
+    0.9081,
+    0.9089,
+    0.9094,
+    0.9105,
+    0.9111,
+    0.9125,
+    0.9132,
+    0.9139,
+    0.9142,
+    0.9369,
+    0.9388,
+    0.94,
+    0.942,
+    0.9449,
+    0.9466,
+    0.9477,
+    0.9483,
+    0.949,
+    0.9522,
+    0.9532,
+    0.9538,
+    0.9547,
+    0.9555,
+    0.9564,
+    0.9567,
+    0.9572,
+    0.9576,
+    0.9579,
+    0.9601,
+    0.9609,
+    0.9616,
+    0.9621,
+    0.9624,
+    0.9627,
+    0.9631,
+    0.9635,
+    0.9637,
+    0.9637
+   ]
+  },
+  {
+   "preset": "unexpected_expense",
+   "name": "An unexpected bill",
+   "description": "A one-off bill of Rs 2 lakh on 14 Apr 2026.",
+   "share": null,
+   "amount": {
+    "paise": 20000000,
+    "text": "Rs 2 lakh"
+   },
+   "days": null,
+   "days_from": null,
+   "on_date": "2026-04-14",
+   "risk_90": {
+    "value": 0.3903,
+    "text": "39%"
+   },
+   "change_90": 0.05329999999999996,
+   "change_text": "The chance of running short within 90 days goes from 34% to 39%.",
+   "runway_lost_days": 0,
+   "runway_text": "No runway lost within 90 days.",
+   "breaking_point": "You break if that one-off bill is Rs 5.9 lakh or more.",
+   "breaking_magnitude": -58565370.0,
+   "breaking_share": null,
+   "breaking_amount": {
+    "paise": 58565370,
+    "text": "Rs 5.9 lakh"
+   },
+   "breaking_days": null,
+   "fan": [
+    {
+     "day": 1,
+     "date": "2026-04-01",
+     "median_paise": 202430406,
+     "lo50_paise": 180334110,
+     "hi50_paise": 228856859,
+     "lo90_paise": 153209890,
+     "hi90_paise": 273320677,
+     "calibrated": true
+    },
+    {
+     "day": 2,
+     "date": "2026-04-02",
+     "median_paise": 211010680,
+     "lo50_paise": 183362125,
+     "hi50_paise": 242442630,
+     "lo90_paise": 144105137,
+     "hi90_paise": 295264732,
+     "calibrated": true
+    },
+    {
+     "day": 3,
+     "date": "2026-04-03",
+     "median_paise": 220832639,
+     "lo50_paise": 186596677,
+     "hi50_paise": 257357186,
+     "lo90_paise": 138894761,
+     "hi90_paise": 316827210,
+     "calibrated": true
+    },
+    {
+     "day": 4,
+     "date": "2026-04-04",
+     "median_paise": 229739587,
+     "lo50_paise": 191860755,
+     "hi50_paise": 271362158,
+     "lo90_paise": 136327123,
+     "hi90_paise": 337086828,
+     "calibrated": true
+    },
+    {
+     "day": 5,
+     "date": "2026-04-05",
+     "median_paise": 215882081,
+     "lo50_paise": 174033773,
+     "hi50_paise": 260661590,
+     "lo90_paise": 114179468,
+     "hi90_paise": 329646796,
+     "calibrated": true
+    },
+    {
+     "day": 6,
+     "date": "2026-04-06",
+     "median_paise": 221737787,
+     "lo50_paise": 176614740,
+     "hi50_paise": 269005674,
+     "lo90_paise": 111463946,
+     "hi90_paise": 343801665,
+     "calibrated": true
+    },
+    {
+     "day": 7,
+     "date": "2026-04-07",
+     "median_paise": 231346458,
+     "lo50_paise": 183144533,
+     "hi50_paise": 281797708,
+     "lo90_paise": 113071657,
+     "hi90_paise": 359288158,
+     "calibrated": true
+    },
+    {
+     "day": 8,
+     "date": "2026-04-08",
+     "median_paise": 243723739,
+     "lo50_paise": 192250469,
+     "hi50_paise": 297368346,
+     "lo90_paise": 115767467,
+     "hi90_paise": 379754570,
+     "calibrated": true
+    },
+    {
+     "day": 9,
+     "date": "2026-04-09",
+     "median_paise": 249914080,
+     "lo50_paise": 194174710,
+     "hi50_paise": 306033883,
+     "lo90_paise": 114606851,
+     "hi90_paise": 392637022,
+     "calibrated": true
+    },
+    {
+     "day": 10,
+     "date": "2026-04-10",
+     "median_paise": 231207561,
+     "lo50_paise": 172301422,
+     "hi50_paise": 289998952,
+     "lo90_paise": 87650532,
+     "hi90_paise": 378108830,
+     "calibrated": true
+    },
+    {
+     "day": 11,
+     "date": "2026-04-11",
+     "median_paise": 239553202,
+     "lo50_paise": 178977500,
+     "hi50_paise": 303578307,
+     "lo90_paise": 91334422,
+     "hi90_paise": 392801987,
+     "calibrated": true
+    },
+    {
+     "day": 12,
+     "date": "2026-04-12",
+     "median_paise": 245639145,
+     "lo50_paise": 183709394,
+     "hi50_paise": 311304332,
+     "lo90_paise": 91418988,
+     "hi90_paise": 401914598,
+     "calibrated": true
+    },
+    {
+     "day": 13,
+     "date": "2026-04-13",
+     "median_paise": 254313488,
+     "lo50_paise": 190500527,
+     "hi50_paise": 320506472,
+     "lo90_paise": 96688576,
+     "hi90_paise": 415752959,
+     "calibrated": true
+    },
+    {
+     "day": 14,
+     "date": "2026-04-14",
+     "median_paise": 246125741,
+     "lo50_paise": 179443567,
+     "hi50_paise": 315766708,
+     "lo90_paise": 83209731,
+     "hi90_paise": 412546688,
+     "calibrated": true
+    },
+    {
+     "day": 15,
+     "date": "2026-04-15",
+     "median_paise": 242152914,
+     "lo50_paise": 171791032,
+     "hi50_paise": 314219432,
+     "lo90_paise": 75481575,
+     "hi90_paise": 413550528,
+     "calibrated": true
+    },
+    {
+     "day": 16,
+     "date": "2026-04-16",
+     "median_paise": 250050767,
+     "lo50_paise": 177448515,
+     "hi50_paise": 324105732,
+     "lo90_paise": 76764812,
+     "hi90_paise": 430118173,
+     "calibrated": true
+    },
+    {
+     "day": 17,
+     "date": "2026-04-17",
+     "median_paise": 265432524,
+     "lo50_paise": 191949924,
+     "hi50_paise": 340861163,
+     "lo90_paise": 85219903,
+     "hi90_paise": 451338440,
+     "calibrated": true
+    },
+    {
+     "day": 18,
+     "date": "2026-04-18",
+     "median_paise": 278508020,
+     "lo50_paise": 202604430,
+     "hi50_paise": 356446553,
+     "lo90_paise": 91742281,
+     "hi90_paise": 469567137,
+     "calibrated": true
+    },
+    {
+     "day": 19,
+     "date": "2026-04-19",
+     "median_paise": 289845482,
+     "lo50_paise": 211921501,
+     "hi50_paise": 367672364,
+     "lo90_paise": 99255986,
+     "hi90_paise": 482293600,
+     "calibrated": true
+    },
+    {
+     "day": 20,
+     "date": "2026-04-20",
+     "median_paise": 230495186,
+     "lo50_paise": 148531864,
+     "hi50_paise": 308639641,
+     "lo90_paise": 35867860,
+     "hi90_paise": 427206087,
+     "calibrated": true
+    },
+    {
+     "day": 21,
+     "date": "2026-04-21",
+     "median_paise": 242922780,
+     "lo50_paise": 161687799,
+     "hi50_paise": 325276927,
+     "lo90_paise": 45477743,
+     "hi90_paise": 446532461,
+     "calibrated": true
+    },
+    {
+     "day": 22,
+     "date": "2026-04-22",
+     "median_paise": 255471866,
+     "lo50_paise": 172715975,
+     "hi50_paise": 341643194,
+     "lo90_paise": 53716640,
+     "hi90_paise": 462258909,
+     "calibrated": true
+    },
+    {
+     "day": 23,
+     "date": "2026-04-23",
+     "median_paise": 267376630,
+     "lo50_paise": 179918260,
+     "hi50_paise": 353598702,
+     "lo90_paise": 60231332,
+     "hi90_paise": 479100222,
+     "calibrated": true
+    },
+    {
+     "day": 24,
+     "date": "2026-04-24",
+     "median_paise": 282482896,
+     "lo50_paise": 193876974,
+     "hi50_paise": 370191249,
+     "lo90_paise": 69833164,
+     "hi90_paise": 497180028,
+     "calibrated": true
+    },
+    {
+     "day": 25,
+     "date": "2026-04-25",
+     "median_paise": 294660924,
+     "lo50_paise": 205176582,
+     "hi50_paise": 384959429,
+     "lo90_paise": 79284519,
+     "hi90_paise": 513202609,
+     "calibrated": true
+    },
+    {
+     "day": 26,
+     "date": "2026-04-26",
+     "median_paise": 304601103,
+     "lo50_paise": 212651212,
+     "hi50_paise": 396570188,
+     "lo90_paise": 86963722,
+     "hi90_paise": 525612628,
+     "calibrated": true
+    },
+    {
+     "day": 27,
+     "date": "2026-04-27",
+     "median_paise": 315261367,
+     "lo50_paise": 225093962,
+     "hi50_paise": 408790826,
+     "lo90_paise": 92888312,
+     "hi90_paise": 541215033,
+     "calibrated": true
+    },
+    {
+     "day": 28,
+     "date": "2026-04-28",
+     "median_paise": 331610236,
+     "lo50_paise": 237404791,
+     "hi50_paise": 425305452,
+     "lo90_paise": 107692842,
+     "hi90_paise": 562909160,
+     "calibrated": true
+    },
+    {
+     "day": 29,
+     "date": "2026-04-29",
+     "median_paise": 345418133,
+     "lo50_paise": 250267027,
+     "hi50_paise": 442525903,
+     "lo90_paise": 114790731,
+     "hi90_paise": 580300479,
+     "calibrated": true
+    },
+    {
+     "day": 30,
+     "date": "2026-04-30",
+     "median_paise": 354640010,
+     "lo50_paise": 257163175,
+     "hi50_paise": 451606988,
+     "lo90_paise": 120375068,
+     "hi90_paise": 593240630,
+     "calibrated": true
+    },
+    {
+     "day": 31,
+     "date": "2026-05-01",
+     "median_paise": 250115209,
+     "lo50_paise": 152867368,
+     "hi50_paise": 349421486,
+     "lo90_paise": 11498237,
+     "hi90_paise": 490449989,
+     "calibrated": false
+    },
+    {
+     "day": 32,
+     "date": "2026-05-02",
+     "median_paise": 262111385,
+     "lo50_paise": 162207160,
+     "hi50_paise": 363140336,
+     "lo90_paise": 17094760,
+     "hi90_paise": 509088632,
+     "calibrated": false
+    },
+    {
+     "day": 33,
+     "date": "2026-05-03",
+     "median_paise": 268848994,
+     "lo50_paise": 166480259,
+     "hi50_paise": 370034089,
+     "lo90_paise": 21018981,
+     "hi90_paise": 518139185,
+     "calibrated": false
+    },
+    {
+     "day": 34,
+     "date": "2026-05-04",
+     "median_paise": 282223913,
+     "lo50_paise": 177439845,
+     "hi50_paise": 383553624,
+     "lo90_paise": 32142252,
+     "hi90_paise": 532663458,
+     "calibrated": false
+    },
+    {
+     "day": 35,
+     "date": "2026-05-05",
+     "median_paise": 277789442,
+     "lo50_paise": 173355059,
+     "hi50_paise": 380989594,
+     "lo90_paise": 21729993,
+     "hi90_paise": 526569569,
+     "calibrated": false
+    },
+    {
+     "day": 36,
+     "date": "2026-05-06",
+     "median_paise": 294604084,
+     "lo50_paise": 189127000,
+     "hi50_paise": 398969570,
+     "lo90_paise": 35131773,
+     "hi90_paise": 547684603,
+     "calibrated": false
+    },
+    {
+     "day": 37,
+     "date": "2026-05-07",
+     "median_paise": 303405890,
+     "lo50_paise": 197397309,
+     "hi50_paise": 407922164,
+     "lo90_paise": 41325207,
+     "hi90_paise": 557589080,
+     "calibrated": false
+    },
+    {
+     "day": 38,
+     "date": "2026-05-08",
+     "median_paise": 317566556,
+     "lo50_paise": 207874846,
+     "hi50_paise": 421032756,
+     "lo90_paise": 50848641,
+     "hi90_paise": 570478768,
+     "calibrated": false
+    },
+    {
+     "day": 39,
+     "date": "2026-05-09",
+     "median_paise": 328024851,
+     "lo50_paise": 217905779,
+     "hi50_paise": 433435745,
+     "lo90_paise": 59455879,
+     "hi90_paise": 582031610,
+     "calibrated": false
+    },
+    {
+     "day": 40,
+     "date": "2026-05-10",
+     "median_paise": 306398537,
+     "lo50_paise": 196871651,
+     "hi50_paise": 412782561,
+     "lo90_paise": 36812025,
+     "hi90_paise": 563410690,
+     "calibrated": false
+    },
+    {
+     "day": 41,
+     "date": "2026-05-11",
+     "median_paise": 314822805,
+     "lo50_paise": 207118534,
+     "hi50_paise": 424121955,
+     "lo90_paise": 45347025,
+     "hi90_paise": 574318978,
+     "calibrated": false
+    },
+    {
+     "day": 42,
+     "date": "2026-05-12",
+     "median_paise": 326287595,
+     "lo50_paise": 217979479,
+     "hi50_paise": 437215692,
+     "lo90_paise": 57321058,
+     "hi90_paise": 589008317,
+     "calibrated": false
+    },
+    {
+     "day": 43,
+     "date": "2026-05-13",
+     "median_paise": 343628981,
+     "lo50_paise": 233183922,
+     "hi50_paise": 452739923,
+     "lo90_paise": 68626289,
+     "hi90_paise": 606187173,
+     "calibrated": false
+    },
+    {
+     "day": 44,
+     "date": "2026-05-14",
+     "median_paise": 348707508,
+     "lo50_paise": 241124028,
+     "hi50_paise": 461216416,
+     "lo90_paise": 75098539,
+     "hi90_paise": 614583354,
+     "calibrated": false
+    },
+    {
+     "day": 45,
+     "date": "2026-05-15",
+     "median_paise": 342284850,
+     "lo50_paise": 234848750,
+     "hi50_paise": 457083650,
+     "lo90_paise": 67529668,
+     "hi90_paise": 614749906,
+     "calibrated": false
+    },
+    {
+     "day": 46,
+     "date": "2026-05-16",
+     "median_paise": 353938458,
+     "lo50_paise": 244404397,
+     "hi50_paise": 468278350,
+     "lo90_paise": 73236272,
+     "hi90_paise": 626182983,
+     "calibrated": false
+    },
+    {
+     "day": 47,
+     "date": "2026-05-17",
+     "median_paise": 362074793,
+     "lo50_paise": 252259131,
+     "hi50_paise": 480589567,
+     "lo90_paise": 84847085,
+     "hi90_paise": 638544101,
+     "calibrated": false
+    },
+    {
+     "day": 48,
+     "date": "2026-05-18",
+     "median_paise": 374104311,
+     "lo50_paise": 263560320,
+     "hi50_paise": 487859511,
+     "lo90_paise": 94800732,
+     "hi90_paise": 650400902,
+     "calibrated": false
+    },
+    {
+     "day": 49,
+     "date": "2026-05-19",
+     "median_paise": 385848309,
+     "lo50_paise": 275111316,
+     "hi50_paise": 501817846,
+     "lo90_paise": 106883042,
+     "hi90_paise": 663804593,
+     "calibrated": false
+    },
+    {
+     "day": 50,
+     "date": "2026-05-20",
+     "median_paise": 347670030,
+     "lo50_paise": 234573931,
+     "hi50_paise": 457495692,
+     "lo90_paise": 65445372,
+     "hi90_paise": 614996265,
+     "calibrated": false
+    },
+    {
+     "day": 51,
+     "date": "2026-05-21",
+     "median_paise": 354799870,
+     "lo50_paise": 240759169,
+     "hi50_paise": 466560137,
+     "lo90_paise": 73071819,
+     "hi90_paise": 624699749,
+     "calibrated": false
+    },
+    {
+     "day": 52,
+     "date": "2026-05-22",
+     "median_paise": 367277586,
+     "lo50_paise": 253175560,
+     "hi50_paise": 481008897,
+     "lo90_paise": 82130357,
+     "hi90_paise": 637915819,
+     "calibrated": false
+    },
+    {
+     "day": 53,
+     "date": "2026-05-23",
+     "median_paise": 376631329,
+     "lo50_paise": 261628479,
+     "hi50_paise": 490465205,
+     "lo90_paise": 93164517,
+     "hi90_paise": 649150049,
+     "calibrated": false
+    },
+    {
+     "day": 54,
+     "date": "2026-05-24",
+     "median_paise": 386541813,
+     "lo50_paise": 269550731,
+     "hi50_paise": 502189299,
+     "lo90_paise": 97650673,
+     "hi90_paise": 661372862,
+     "calibrated": false
+    },
+    {
+     "day": 55,
+     "date": "2026-05-25",
+     "median_paise": 398312445,
+     "lo50_paise": 279440406,
+     "hi50_paise": 511871625,
+     "lo90_paise": 106826259,
+     "hi90_paise": 676869196,
+     "calibrated": false
+    },
+    {
+     "day": 56,
+     "date": "2026-05-26",
+     "median_paise": 409462188,
+     "lo50_paise": 289705320,
+     "hi50_paise": 523325944,
+     "lo90_paise": 119447367,
+     "hi90_paise": 686267783,
+     "calibrated": false
+    },
+    {
+     "day": 57,
+     "date": "2026-05-27",
+     "median_paise": 424172460,
+     "lo50_paise": 306031354,
+     "hi50_paise": 536681085,
+     "lo90_paise": 133891932,
+     "hi90_paise": 707536482,
+     "calibrated": false
+    },
+    {
+     "day": 58,
+     "date": "2026-05-28",
+     "median_paise": 430640804,
+     "lo50_paise": 312783344,
+     "hi50_paise": 547044482,
+     "lo90_paise": 136458709,
+     "hi90_paise": 719630299,
+     "calibrated": false
+    },
+    {
+     "day": 59,
+     "date": "2026-05-29",
+     "median_paise": 443911737,
+     "lo50_paise": 326340393,
+     "hi50_paise": 560055855,
+     "lo90_paise": 148124831,
+     "hi90_paise": 733042997,
+     "calibrated": false
+    },
+    {
+     "day": 60,
+     "date": "2026-05-30",
+     "median_paise": 453748003,
+     "lo50_paise": 335432831,
+     "hi50_paise": 570575349,
+     "lo90_paise": 157900946,
+     "hi90_paise": 740896149,
+     "calibrated": false
+    },
+    {
+     "day": 61,
+     "date": "2026-05-31",
+     "median_paise": 462763307,
+     "lo50_paise": 342735181,
+     "hi50_paise": 579751684,
+     "lo90_paise": 166734393,
+     "hi90_paise": 750872709,
+     "calibrated": false
+    },
+    {
+     "day": 62,
+     "date": "2026-06-01",
+     "median_paise": 351579249,
+     "lo50_paise": 232814163,
+     "hi50_paise": 467937847,
+     "lo90_paise": 55627209,
+     "hi90_paise": 642143153,
+     "calibrated": false
+    },
+    {
+     "day": 63,
+     "date": "2026-06-02",
+     "median_paise": 363050808,
+     "lo50_paise": 242783565,
+     "hi50_paise": 480143800,
+     "lo90_paise": 65209806,
+     "hi90_paise": 652874614,
+     "calibrated": false
+    },
+    {
+     "day": 64,
+     "date": "2026-06-03",
+     "median_paise": 374700258,
+     "lo50_paise": 254447601,
+     "hi50_paise": 493672487,
+     "lo90_paise": 77670430,
+     "hi90_paise": 663503510,
+     "calibrated": false
+    },
+    {
+     "day": 65,
+     "date": "2026-06-04",
+     "median_paise": 381462303,
+     "lo50_paise": 258631438,
+     "hi50_paise": 500705983,
+     "lo90_paise": 81814954,
+     "hi90_paise": 671090211,
+     "calibrated": false
+    },
+    {
+     "day": 66,
+     "date": "2026-06-05",
+     "median_paise": 372987578,
+     "lo50_paise": 249577542,
+     "hi50_paise": 494499862,
+     "lo90_paise": 74860546,
+     "hi90_paise": 663809982,
+     "calibrated": false
+    },
+    {
+     "day": 67,
+     "date": "2026-06-06",
+     "median_paise": 382836889,
+     "lo50_paise": 258417928,
+     "hi50_paise": 502206237,
+     "lo90_paise": 83691336,
+     "hi90_paise": 675510732,
+     "calibrated": false
+    },
+    {
+     "day": 68,
+     "date": "2026-06-07",
+     "median_paise": 390815256,
+     "lo50_paise": 266914712,
+     "hi50_paise": 510028437,
+     "lo90_paise": 89720946,
+     "hi90_paise": 685708482,
+     "calibrated": false
+    },
+    {
+     "day": 69,
+     "date": "2026-06-08",
+     "median_paise": 400357519,
+     "lo50_paise": 276243266,
+     "hi50_paise": 520308322,
+     "lo90_paise": 98983281,
+     "hi90_paise": 695208207,
+     "calibrated": false
+    },
+    {
+     "day": 70,
+     "date": "2026-06-09",
+     "median_paise": 410067875,
+     "lo50_paise": 286546280,
+     "hi50_paise": 531506867,
+     "lo90_paise": 109074265,
+     "hi90_paise": 705684216,
+     "calibrated": false
+    },
+    {
+     "day": 71,
+     "date": "2026-06-10",
+     "median_paise": 392729695,
+     "lo50_paise": 270933059,
+     "hi50_paise": 515634854,
+     "lo90_paise": 92177966,
+     "hi90_paise": 692477248,
+     "calibrated": false
+    },
+    {
+     "day": 72,
+     "date": "2026-06-11",
+     "median_paise": 399763074,
+     "lo50_paise": 275285759,
+     "hi50_paise": 521304047,
+     "lo90_paise": 97488865,
+     "hi90_paise": 699986454,
+     "calibrated": false
+    },
+    {
+     "day": 73,
+     "date": "2026-06-12",
+     "median_paise": 412029964,
+     "lo50_paise": 285677341,
+     "hi50_paise": 531157587,
+     "lo90_paise": 108311141,
+     "hi90_paise": 711421745,
+     "calibrated": false
+    },
+    {
+     "day": 74,
+     "date": "2026-06-13",
+     "median_paise": 420089470,
+     "lo50_paise": 294131776,
+     "hi50_paise": 543235153,
+     "lo90_paise": 114094675,
+     "hi90_paise": 721699299,
+     "calibrated": false
+    },
+    {
+     "day": 75,
+     "date": "2026-06-14",
+     "median_paise": 429833930,
+     "lo50_paise": 302193473,
+     "hi50_paise": 552894497,
+     "lo90_paise": 123163980,
+     "hi90_paise": 731520668,
+     "calibrated": false
+    },
+    {
+     "day": 76,
+     "date": "2026-06-15",
+     "median_paise": 419692996,
+     "lo50_paise": 295323280,
+     "hi50_paise": 545160785,
+     "lo90_paise": 112384722,
+     "hi90_paise": 723873406,
+     "calibrated": false
+    },
+    {
+     "day": 77,
+     "date": "2026-06-16",
+     "median_paise": 431537312,
+     "lo50_paise": 305355911,
+     "hi50_paise": 553504321,
+     "lo90_paise": 119465287,
+     "hi90_paise": 741687731,
+     "calibrated": false
+    },
+    {
+     "day": 78,
+     "date": "2026-06-17",
+     "median_paise": 446114873,
+     "lo50_paise": 319510255,
+     "hi50_paise": 571986486,
+     "lo90_paise": 129639933,
+     "hi90_paise": 753586583,
+     "calibrated": false
+    },
+    {
+     "day": 79,
+     "date": "2026-06-18",
+     "median_paise": 453666421,
+     "lo50_paise": 326080528,
+     "hi50_paise": 579858137,
+     "lo90_paise": 135747894,
+     "hi90_paise": 761395353,
+     "calibrated": false
+    },
+    {
+     "day": 80,
+     "date": "2026-06-19",
+     "median_paise": 465345540,
+     "lo50_paise": 336101629,
+     "hi50_paise": 590724479,
+     "lo90_paise": 144474884,
+     "hi90_paise": 776120023,
+     "calibrated": false
+    },
+    {
+     "day": 81,
+     "date": "2026-06-20",
+     "median_paise": 415338486,
+     "lo50_paise": 287375038,
+     "hi50_paise": 543033862,
+     "lo90_paise": 94588902,
+     "hi90_paise": 725122831,
+     "calibrated": false
+    },
+    {
+     "day": 82,
+     "date": "2026-06-21",
+     "median_paise": 422989999,
+     "lo50_paise": 295604519,
+     "hi50_paise": 550978200,
+     "lo90_paise": 102230585,
+     "hi90_paise": 734669198,
+     "calibrated": false
+    },
+    {
+     "day": 83,
+     "date": "2026-06-22",
+     "median_paise": 431959785,
+     "lo50_paise": 304070875,
+     "hi50_paise": 558833213,
+     "lo90_paise": 109085815,
+     "hi90_paise": 743397835,
+     "calibrated": false
+    },
+    {
+     "day": 84,
+     "date": "2026-06-23",
+     "median_paise": 442683461,
+     "lo50_paise": 313567408,
+     "hi50_paise": 570590423,
+     "lo90_paise": 120515818,
+     "hi90_paise": 755170085,
+     "calibrated": false
+    },
+    {
+     "day": 85,
+     "date": "2026-06-24",
+     "median_paise": 454511573,
+     "lo50_paise": 325515310,
+     "hi50_paise": 583063335,
+     "lo90_paise": 132053930,
+     "hi90_paise": 770611865,
+     "calibrated": false
+    },
+    {
+     "day": 86,
+     "date": "2026-06-25",
+     "median_paise": 457927290,
+     "lo50_paise": 329862745,
+     "hi50_paise": 589573397,
+     "lo90_paise": 138349704,
+     "hi90_paise": 777369111,
+     "calibrated": false
+    },
+    {
+     "day": 87,
+     "date": "2026-06-26",
+     "median_paise": 468193562,
+     "lo50_paise": 341296061,
+     "hi50_paise": 600785168,
+     "lo90_paise": 148955128,
+     "hi90_paise": 787675351,
+     "calibrated": false
+    },
+    {
+     "day": 88,
+     "date": "2026-06-27",
+     "median_paise": 477685334,
+     "lo50_paise": 348616301,
+     "hi50_paise": 609789046,
+     "lo90_paise": 156183957,
+     "hi90_paise": 798761833,
+     "calibrated": false
+    },
+    {
+     "day": 89,
+     "date": "2026-06-28",
+     "median_paise": 487642487,
+     "lo50_paise": 357436913,
+     "hi50_paise": 618484368,
+     "lo90_paise": 167450518,
+     "hi90_paise": 812242709,
+     "calibrated": false
+    },
+    {
+     "day": 90,
+     "date": "2026-06-29",
+     "median_paise": 494426382,
+     "lo50_paise": 364163416,
+     "hi50_paise": 626984496,
+     "lo90_paise": 172345050,
+     "hi90_paise": 821182005,
+     "calibrated": false
+    }
+   ],
+   "risk_by_day": [
+    0.0012,
+    0.0052,
+    0.0116,
+    0.0185,
+    0.0362,
+    0.0472,
+    0.0567,
+    0.0628,
+    0.0698,
+    0.0926,
+    0.1034,
+    0.1104,
+    0.1154,
+    0.1275,
+    0.1434,
+    0.152,
+    0.1575,
+    0.1609,
+    0.1631,
+    0.2075,
+    0.2148,
+    0.219,
+    0.2226,
+    0.2268,
+    0.2286,
+    0.2301,
+    0.2311,
+    0.2321,
+    0.2328,
+    0.2338,
+    0.2846,
+    0.291,
+    0.2949,
+    0.2977,
+    0.3044,
+    0.3064,
+    0.3083,
+    0.3103,
+    0.3121,
+    0.3184,
+    0.3195,
+    0.3209,
+    0.3219,
+    0.3237,
+    0.3265,
+    0.3282,
+    0.3288,
+    0.3291,
+    0.3296,
+    0.3335,
+    0.335,
+    0.3366,
+    0.3378,
+    0.3382,
+    0.3383,
+    0.3388,
+    0.3392,
+    0.3398,
+    0.34,
+    0.3404,
+    0.3406,
+    0.3559,
+    0.359,
+    0.361,
+    0.3624,
+    0.3656,
+    0.3672,
+    0.3677,
+    0.369,
+    0.3697,
+    0.3725,
+    0.3734,
+    0.375,
+    0.3755,
+    0.3763,
+    0.378,
+    0.3786,
+    0.38,
+    0.3805,
+    0.3809,
+    0.3854,
+    0.3865,
+    0.3875,
+    0.3883,
+    0.3891,
+    0.3892,
+    0.3895,
+    0.3898,
+    0.39,
+    0.3903
+   ]
+  },
+  {
+   "preset": "reduced_sales",
+   "name": "Orders fall",
+   "description": "Orders fall by 30%. Supplies already ordered are still paid for.",
+   "share": {
+    "value": 0.30000000000000004,
+    "text": "30%"
+   },
+   "amount": null,
+   "days": null,
+   "days_from": null,
+   "on_date": null,
+   "risk_90": {
+    "value": 0.3002,
+    "text": "30%"
+   },
+   "change_90": -0.0368,
+   "change_text": "The chance of running short within 90 days goes from 34% to 30%.",
+   "runway_lost_days": 0,
+   "runway_text": "No runway lost within 90 days.",
+   "breaking_point": "This alone does not make running short by day 90 more likely than not.",
+   "breaking_magnitude": null,
+   "breaking_share": null,
+   "breaking_amount": null,
+   "breaking_days": null,
+   "fan": [
+    {
+     "day": 1,
+     "date": "2026-04-01",
+     "median_paise": 202490151,
+     "lo50_paise": 180333698,
+     "hi50_paise": 228831770,
+     "lo90_paise": 153209890,
+     "hi90_paise": 273382509,
+     "calibrated": true
+    },
+    {
+     "day": 2,
+     "date": "2026-04-02",
+     "median_paise": 211040690,
+     "lo50_paise": 183323670,
+     "hi50_paise": 242318504,
+     "lo90_paise": 144082246,
+     "hi90_paise": 295462841,
+     "calibrated": true
+    },
+    {
+     "day": 3,
+     "date": "2026-04-03",
+     "median_paise": 220630848,
+     "lo50_paise": 186415273,
+     "hi50_paise": 257357186,
+     "lo90_paise": 138866475,
+     "hi90_paise": 316235226,
+     "calibrated": true
+    },
+    {
+     "day": 4,
+     "date": "2026-04-04",
+     "median_paise": 229191184,
+     "lo50_paise": 191613546,
+     "hi50_paise": 270988725,
+     "lo90_paise": 136441190,
+     "hi90_paise": 337061149,
+     "calibrated": true
+    },
+    {
+     "day": 5,
+     "date": "2026-04-05",
+     "median_paise": 215145546,
+     "lo50_paise": 173715874,
+     "hi50_paise": 259914646,
+     "lo90_paise": 113584534,
+     "hi90_paise": 328881655,
+     "calibrated": true
+    },
+    {
+     "day": 6,
+     "date": "2026-04-06",
+     "median_paise": 221114417,
+     "lo50_paise": 176068952,
+     "hi50_paise": 268033344,
+     "lo90_paise": 111769449,
+     "hi90_paise": 342715124,
+     "calibrated": true
+    },
+    {
+     "day": 7,
+     "date": "2026-04-07",
+     "median_paise": 230100925,
+     "lo50_paise": 182157796,
+     "hi50_paise": 280230711,
+     "lo90_paise": 112487593,
+     "hi90_paise": 358070166,
+     "calibrated": true
+    },
+    {
+     "day": 8,
+     "date": "2026-04-08",
+     "median_paise": 242835113,
+     "lo50_paise": 190919726,
+     "hi50_paise": 295743453,
+     "lo90_paise": 114094938,
+     "hi90_paise": 379021839,
+     "calibrated": true
+    },
+    {
+     "day": 9,
+     "date": "2026-04-09",
+     "median_paise": 248271191,
+     "lo50_paise": 192832943,
+     "hi50_paise": 304593118,
+     "lo90_paise": 113635547,
+     "hi90_paise": 390034768,
+     "calibrated": true
+    },
+    {
+     "day": 10,
+     "date": "2026-04-10",
+     "median_paise": 229873157,
+     "lo50_paise": 170694331,
+     "hi50_paise": 288264064,
+     "lo90_paise": 87087417,
+     "hi90_paise": 377499188,
+     "calibrated": true
+    },
+    {
+     "day": 11,
+     "date": "2026-04-11",
+     "median_paise": 237717441,
+     "lo50_paise": 176677593,
+     "hi50_paise": 300069510,
+     "lo90_paise": 90115378,
+     "hi90_paise": 389207181,
+     "calibrated": true
+    },
+    {
+     "day": 12,
+     "date": "2026-04-12",
+     "median_paise": 243181713,
+     "lo50_paise": 180630307,
+     "hi50_paise": 308505050,
+     "lo90_paise": 91418988,
+     "hi90_paise": 398679521,
+     "calibrated": true
+    },
+    {
+     "day": 13,
+     "date": "2026-04-13",
+     "median_paise": 252193891,
+     "lo50_paise": 186476682,
+     "hi50_paise": 317006773,
+     "lo90_paise": 95237207,
+     "hi90_paise": 410883055,
+     "calibrated": true
+    },
+    {
+     "day": 14,
+     "date": "2026-04-14",
+     "median_paise": 262735126,
+     "lo50_paise": 195275423,
+     "hi50_paise": 331400162,
+     "lo90_paise": 101309332,
+     "hi90_paise": 425814264,
+     "calibrated": true
+    },
+    {
+     "day": 15,
+     "date": "2026-04-15",
+     "median_paise": 257682816,
+     "lo50_paise": 188516051,
+     "hi50_paise": 328548094,
+     "lo90_paise": 90875255,
+     "hi90_paise": 426918960,
+     "calibrated": true
+    },
+    {
+     "day": 16,
+     "date": "2026-04-16",
+     "median_paise": 265074425,
+     "lo50_paise": 193068457,
+     "hi50_paise": 338506355,
+     "lo90_paise": 92759495,
+     "hi90_paise": 441624047,
+     "calibrated": true
+    },
+    {
+     "day": 17,
+     "date": "2026-04-17",
+     "median_paise": 279177336,
+     "lo50_paise": 206578046,
+     "hi50_paise": 353894512,
+     "lo90_paise": 100757222,
+     "hi90_paise": 462519879,
+     "calibrated": true
+    },
+    {
+     "day": 18,
+     "date": "2026-04-18",
+     "median_paise": 292139093,
+     "lo50_paise": 216294852,
+     "hi50_paise": 367874112,
+     "lo90_paise": 106351280,
+     "hi90_paise": 478987146,
+     "calibrated": true
+    },
+    {
+     "day": 19,
+     "date": "2026-04-19",
+     "median_paise": 301574638,
+     "lo50_paise": 224618740,
+     "hi50_paise": 380017253,
+     "lo90_paise": 112891723,
+     "hi90_paise": 492540108,
+     "calibrated": true
+    },
+    {
+     "day": 20,
+     "date": "2026-04-20",
+     "median_paise": 240084691,
+     "lo50_paise": 160540177,
+     "hi50_paise": 318169932,
+     "lo90_paise": 46103359,
+     "hi90_paise": 434223394,
+     "calibrated": true
+    },
+    {
+     "day": 21,
+     "date": "2026-04-21",
+     "median_paise": 252606456,
+     "lo50_paise": 171699522,
+     "hi50_paise": 332893460,
+     "lo90_paise": 53882292,
+     "hi90_paise": 449340531,
+     "calibrated": true
+    },
+    {
+     "day": 22,
+     "date": "2026-04-22",
+     "median_paise": 265177765,
+     "lo50_paise": 181526183,
+     "hi50_paise": 348540115,
+     "lo90_paise": 62114868,
+     "hi90_paise": 465330548,
+     "calibrated": true
+    },
+    {
+     "day": 23,
+     "date": "2026-04-23",
+     "median_paise": 274183206,
+     "lo50_paise": 189163835,
+     "hi50_paise": 359253473,
+     "lo90_paise": 67073187,
+     "hi90_paise": 478302075,
+     "calibrated": true
+    },
+    {
+     "day": 24,
+     "date": "2026-04-24",
+     "median_paise": 287192963,
+     "lo50_paise": 200133663,
+     "hi50_paise": 373392950,
+     "lo90_paise": 75552489,
+     "hi90_paise": 493741582,
+     "calibrated": true
+    },
+    {
+     "day": 25,
+     "date": "2026-04-25",
+     "median_paise": 303090041,
+     "lo50_paise": 214100400,
+     "hi50_paise": 390669548,
+     "lo90_paise": 85960385,
+     "hi90_paise": 515682721,
+     "calibrated": true
+    },
+    {
+     "day": 26,
+     "date": "2026-04-26",
+     "median_paise": 313931346,
+     "lo50_paise": 223152596,
+     "hi50_paise": 402454972,
+     "lo90_paise": 95631569,
+     "hi90_paise": 527941924,
+     "calibrated": true
+    },
+    {
+     "day": 27,
+     "date": "2026-04-27",
+     "median_paise": 326774489,
+     "lo50_paise": 235235731,
+     "hi50_paise": 416084129,
+     "lo90_paise": 106892662,
+     "hi90_paise": 546514247,
+     "calibrated": true
+    },
+    {
+     "day": 28,
+     "date": "2026-04-28",
+     "median_paise": 342714519,
+     "lo50_paise": 250431718,
+     "hi50_paise": 432623486,
+     "lo90_paise": 124027004,
+     "hi90_paise": 564253051,
+     "calibrated": true
+    },
+    {
+     "day": 29,
+     "date": "2026-04-29",
+     "median_paise": 358581616,
+     "lo50_paise": 264809137,
+     "hi50_paise": 450523276,
+     "lo90_paise": 134800419,
+     "hi90_paise": 581511881,
+     "calibrated": true
+    },
+    {
+     "day": 30,
+     "date": "2026-04-30",
+     "median_paise": 369154927,
+     "lo50_paise": 273816842,
+     "hi50_paise": 460608941,
+     "lo90_paise": 140304445,
+     "hi90_paise": 593335236,
+     "calibrated": true
+    },
+    {
+     "day": 31,
+     "date": "2026-05-01",
+     "median_paise": 264943471,
+     "lo50_paise": 169557258,
+     "hi50_paise": 357319497,
+     "lo90_paise": 32737445,
+     "hi90_paise": 493183259,
+     "calibrated": false
+    },
+    {
+     "day": 32,
+     "date": "2026-05-02",
+     "median_paise": 278437244,
+     "lo50_paise": 180498555,
+     "hi50_paise": 371733355,
+     "lo90_paise": 42061069,
+     "hi90_paise": 506404242,
+     "calibrated": false
+    },
+    {
+     "day": 33,
+     "date": "2026-05-03",
+     "median_paise": 286696129,
+     "lo50_paise": 188580823,
+     "hi50_paise": 381063050,
+     "lo90_paise": 49458197,
+     "hi90_paise": 518630913,
+     "calibrated": false
+    },
+    {
+     "day": 34,
+     "date": "2026-05-04",
+     "median_paise": 299212221,
+     "lo50_paise": 201510360,
+     "hi50_paise": 395906944,
+     "lo90_paise": 61764820,
+     "hi90_paise": 532277145,
+     "calibrated": false
+    },
+    {
+     "day": 35,
+     "date": "2026-05-05",
+     "median_paise": 293957145,
+     "lo50_paise": 195932301,
+     "hi50_paise": 392244182,
+     "lo90_paise": 55219806,
+     "hi90_paise": 532760614,
+     "calibrated": false
+    },
+    {
+     "day": 36,
+     "date": "2026-05-06",
+     "median_paise": 312040044,
+     "lo50_paise": 213732850,
+     "hi50_paise": 411706329,
+     "lo90_paise": 63416574,
+     "hi90_paise": 547958778,
+     "calibrated": false
+    },
+    {
+     "day": 37,
+     "date": "2026-05-07",
+     "median_paise": 321507129,
+     "lo50_paise": 222196341,
+     "hi50_paise": 420793147,
+     "lo90_paise": 71608398,
+     "hi90_paise": 559051192,
+     "calibrated": false
+    },
+    {
+     "day": 38,
+     "date": "2026-05-08",
+     "median_paise": 335387481,
+     "lo50_paise": 234481914,
+     "hi50_paise": 434425766,
+     "lo90_paise": 85359783,
+     "hi90_paise": 571938710,
+     "calibrated": false
+    },
+    {
+     "day": 39,
+     "date": "2026-05-09",
+     "median_paise": 344961101,
+     "lo50_paise": 245379153,
+     "hi50_paise": 445347457,
+     "lo90_paise": 95411992,
+     "hi90_paise": 583338363,
+     "calibrated": false
+    },
+    {
+     "day": 40,
+     "date": "2026-05-10",
+     "median_paise": 324167944,
+     "lo50_paise": 223840664,
+     "hi50_paise": 425633946,
+     "lo90_paise": 72456443,
+     "hi90_paise": 566745194,
+     "calibrated": false
+    },
+    {
+     "day": 41,
+     "date": "2026-05-11",
+     "median_paise": 336239594,
+     "lo50_paise": 234386657,
+     "hi50_paise": 436794852,
+     "lo90_paise": 82678693,
+     "hi90_paise": 579693557,
+     "calibrated": false
+    },
+    {
+     "day": 42,
+     "date": "2026-05-12",
+     "median_paise": 347760681,
+     "lo50_paise": 246423045,
+     "hi50_paise": 449794735,
+     "lo90_paise": 94237144,
+     "hi90_paise": 589559133,
+     "calibrated": false
+    },
+    {
+     "day": 43,
+     "date": "2026-05-13",
+     "median_paise": 362562848,
+     "lo50_paise": 262082860,
+     "hi50_paise": 464863465,
+     "lo90_paise": 109194915,
+     "hi90_paise": 609112150,
+     "calibrated": false
+    },
+    {
+     "day": 44,
+     "date": "2026-05-14",
+     "median_paise": 370644815,
+     "lo50_paise": 269911907,
+     "hi50_paise": 474222614,
+     "lo90_paise": 114227533,
+     "hi90_paise": 618212173,
+     "calibrated": false
+    },
+    {
+     "day": 45,
+     "date": "2026-05-15",
+     "median_paise": 364528529,
+     "lo50_paise": 261929560,
+     "hi50_paise": 466708078,
+     "lo90_paise": 106417484,
+     "hi90_paise": 611366657,
+     "calibrated": false
+    },
+    {
+     "day": 46,
+     "date": "2026-05-16",
+     "median_paise": 375162945,
+     "lo50_paise": 271930288,
+     "hi50_paise": 477061759,
+     "lo90_paise": 116080079,
+     "hi90_paise": 621272658,
+     "calibrated": false
+    },
+    {
+     "day": 47,
+     "date": "2026-05-17",
+     "median_paise": 383955093,
+     "lo50_paise": 281960458,
+     "hi50_paise": 487559139,
+     "lo90_paise": 125425311,
+     "hi90_paise": 637261250,
+     "calibrated": false
+    },
+    {
+     "day": 48,
+     "date": "2026-05-18",
+     "median_paise": 392861939,
+     "lo50_paise": 291569417,
+     "hi50_paise": 498382686,
+     "lo90_paise": 136280758,
+     "hi90_paise": 645126145,
+     "calibrated": false
+    },
+    {
+     "day": 49,
+     "date": "2026-05-19",
+     "median_paise": 404214927,
+     "lo50_paise": 302444702,
+     "hi50_paise": 508872084,
+     "lo90_paise": 147186850,
+     "hi90_paise": 659410435,
+     "calibrated": false
+    },
+    {
+     "day": 50,
+     "date": "2026-05-20",
+     "median_paise": 392389443,
+     "lo50_paise": 290941638,
+     "hi50_paise": 493350285,
+     "lo90_paise": 131429841,
+     "hi90_paise": 637637199,
+     "calibrated": false
+    },
+    {
+     "day": 51,
+     "date": "2026-05-21",
+     "median_paise": 400523484,
+     "lo50_paise": 296591996,
+     "hi50_paise": 500458663,
+     "lo90_paise": 141648772,
+     "hi90_paise": 643228956,
+     "calibrated": false
+    },
+    {
+     "day": 52,
+     "date": "2026-05-22",
+     "median_paise": 412342066,
+     "lo50_paise": 307610533,
+     "hi50_paise": 512626886,
+     "lo90_paise": 150754198,
+     "hi90_paise": 654826562,
+     "calibrated": false
+    },
+    {
+     "day": 53,
+     "date": "2026-05-23",
+     "median_paise": 421154243,
+     "lo50_paise": 314674288,
+     "hi50_paise": 522644845,
+     "lo90_paise": 160031808,
+     "hi90_paise": 666526012,
+     "calibrated": false
+    },
+    {
+     "day": 54,
+     "date": "2026-05-24",
+     "median_paise": 429424736,
+     "lo50_paise": 323949972,
+     "hi50_paise": 532726344,
+     "lo90_paise": 168474884,
+     "hi90_paise": 678200300,
+     "calibrated": false
+    },
+    {
+     "day": 55,
+     "date": "2026-05-25",
+     "median_paise": 437672686,
+     "lo50_paise": 332657899,
+     "hi50_paise": 541747865,
+     "lo90_paise": 177408851,
+     "hi90_paise": 686957981,
+     "calibrated": false
+    },
+    {
+     "day": 56,
+     "date": "2026-05-26",
+     "median_paise": 447339255,
+     "lo50_paise": 342251540,
+     "hi50_paise": 550564421,
+     "lo90_paise": 186973834,
+     "hi90_paise": 697636450,
+     "calibrated": false
+    },
+    {
+     "day": 57,
+     "date": "2026-05-27",
+     "median_paise": 459871825,
+     "lo50_paise": 354384402,
+     "hi50_paise": 565017966,
+     "lo90_paise": 199707943,
+     "hi90_paise": 713538517,
+     "calibrated": false
+    },
+    {
+     "day": 58,
+     "date": "2026-05-28",
+     "median_paise": 467705130,
+     "lo50_paise": 360179152,
+     "hi50_paise": 572610104,
+     "lo90_paise": 206117464,
+     "hi90_paise": 720569658,
+     "calibrated": false
+    },
+    {
+     "day": 59,
+     "date": "2026-05-29",
+     "median_paise": 478435294,
+     "lo50_paise": 372142648,
+     "hi50_paise": 585072848,
+     "lo90_paise": 213864113,
+     "hi90_paise": 731080492,
+     "calibrated": false
+    },
+    {
+     "day": 60,
+     "date": "2026-05-30",
+     "median_paise": 486780957,
+     "lo50_paise": 380030701,
+     "hi50_paise": 593571402,
+     "lo90_paise": 224273727,
+     "hi90_paise": 739003619,
+     "calibrated": false
+    },
+    {
+     "day": 61,
+     "date": "2026-05-31",
+     "median_paise": 495448365,
+     "lo50_paise": 386570225,
+     "hi50_paise": 601496454,
+     "lo90_paise": 234071798,
+     "hi90_paise": 750919520,
+     "calibrated": false
+    },
+    {
+     "day": 62,
+     "date": "2026-06-01",
+     "median_paise": 383860421,
+     "lo50_paise": 274123803,
+     "hi50_paise": 489181791,
+     "lo90_paise": 121889250,
+     "hi90_paise": 638598713,
+     "calibrated": false
+    },
+    {
+     "day": 63,
+     "date": "2026-06-02",
+     "median_paise": 392239154,
+     "lo50_paise": 285005804,
+     "hi50_paise": 498103785,
+     "lo90_paise": 131277134,
+     "hi90_paise": 647376712,
+     "calibrated": false
+    },
+    {
+     "day": 64,
+     "date": "2026-06-03",
+     "median_paise": 400574705,
+     "lo50_paise": 294103990,
+     "hi50_paise": 507263143,
+     "lo90_paise": 139346629,
+     "hi90_paise": 660059268,
+     "calibrated": false
+    },
+    {
+     "day": 65,
+     "date": "2026-06-04",
+     "median_paise": 405019336,
+     "lo50_paise": 297742114,
+     "hi50_paise": 514071250,
+     "lo90_paise": 142199153,
+     "hi90_paise": 666638401,
+     "calibrated": false
+    },
+    {
+     "day": 66,
+     "date": "2026-06-05",
+     "median_paise": 393485841,
+     "lo50_paise": 288303610,
+     "hi50_paise": 504345262,
+     "lo90_paise": 130572406,
+     "hi90_paise": 656442379,
+     "calibrated": false
+    },
+    {
+     "day": 67,
+     "date": "2026-06-06",
+     "median_paise": 403405994,
+     "lo50_paise": 295874599,
+     "hi50_paise": 511707658,
+     "lo90_paise": 137687077,
+     "hi90_paise": 662814312,
+     "calibrated": false
+    },
+    {
+     "day": 68,
+     "date": "2026-06-07",
+     "median_paise": 410760868,
+     "lo50_paise": 302911025,
+     "hi50_paise": 520433299,
+     "lo90_paise": 145027279,
+     "hi90_paise": 674387759,
+     "calibrated": false
+    },
+    {
+     "day": 69,
+     "date": "2026-06-08",
+     "median_paise": 417881741,
+     "lo50_paise": 310354010,
+     "hi50_paise": 528405558,
+     "lo90_paise": 155290956,
+     "hi90_paise": 680798281,
+     "calibrated": false
+    },
+    {
+     "day": 70,
+     "date": "2026-06-09",
+     "median_paise": 427291729,
+     "lo50_paise": 318655421,
+     "hi50_paise": 537904828,
+     "lo90_paise": 165071964,
+     "hi90_paise": 691020554,
+     "calibrated": false
+    },
+    {
+     "day": 71,
+     "date": "2026-06-10",
+     "median_paise": 408538342,
+     "lo50_paise": 297899409,
+     "hi50_paise": 518408060,
+     "lo90_paise": 145824463,
+     "hi90_paise": 671323967,
+     "calibrated": false
+    },
+    {
+     "day": 72,
+     "date": "2026-06-11",
+     "median_paise": 412987009,
+     "lo50_paise": 302672148,
+     "hi50_paise": 523098670,
+     "lo90_paise": 149684617,
+     "hi90_paise": 682915577,
+     "calibrated": false
+    },
+    {
+     "day": 73,
+     "date": "2026-06-12",
+     "median_paise": 422355650,
+     "lo50_paise": 311613727,
+     "hi50_paise": 532272298,
+     "lo90_paise": 157968952,
+     "hi90_paise": 692840422,
+     "calibrated": false
+    },
+    {
+     "day": 74,
+     "date": "2026-06-13",
+     "median_paise": 429719685,
+     "lo50_paise": 319315738,
+     "hi50_paise": 539943055,
+     "lo90_paise": 164418998,
+     "hi90_paise": 699725947,
+     "calibrated": false
+    },
+    {
+     "day": 75,
+     "date": "2026-06-14",
+     "median_paise": 437402904,
+     "lo50_paise": 327440437,
+     "hi50_paise": 547775509,
+     "lo90_paise": 169862832,
+     "hi90_paise": 707913792,
+     "calibrated": false
+    },
+    {
+     "day": 76,
+     "date": "2026-06-15",
+     "median_paise": 426323261,
+     "lo50_paise": 317677169,
+     "hi50_paise": 536001933,
+     "lo90_paise": 157055941,
+     "hi90_paise": 696059417,
+     "calibrated": false
+    },
+    {
+     "day": 77,
+     "date": "2026-06-16",
+     "median_paise": 435882779,
+     "lo50_paise": 325340720,
+     "hi50_paise": 544016198,
+     "lo90_paise": 166173918,
+     "hi90_paise": 705731496,
+     "calibrated": false
+    },
+    {
+     "day": 78,
+     "date": "2026-06-17",
+     "median_paise": 446570758,
+     "lo50_paise": 335582196,
+     "hi50_paise": 555623354,
+     "lo90_paise": 173288382,
+     "hi90_paise": 717661324,
+     "calibrated": false
+    },
+    {
+     "day": 79,
+     "date": "2026-06-18",
+     "median_paise": 453067645,
+     "lo50_paise": 341570740,
+     "hi50_paise": 562624112,
+     "lo90_paise": 177835372,
+     "hi90_paise": 724895122,
+     "calibrated": false
+    },
+    {
+     "day": 80,
+     "date": "2026-06-19",
+     "median_paise": 460735797,
+     "lo50_paise": 352560685,
+     "hi50_paise": 571186686,
+     "lo90_paise": 184699916,
+     "hi90_paise": 734877078,
+     "calibrated": false
+    },
+    {
+     "day": 81,
+     "date": "2026-06-20",
+     "median_paise": 427888828,
+     "lo50_paise": 317990970,
+     "hi50_paise": 537660146,
+     "lo90_paise": 150469242,
+     "hi90_paise": 698094209,
+     "calibrated": false
+    },
+    {
+     "day": 82,
+     "date": "2026-06-21",
+     "median_paise": 434662414,
+     "lo50_paise": 325475995,
+     "hi50_paise": 545269394,
+     "lo90_paise": 158591724,
+     "hi90_paise": 706934385,
+     "calibrated": false
+    },
+    {
+     "day": 83,
+     "date": "2026-06-22",
+     "median_paise": 441059585,
+     "lo50_paise": 331261131,
+     "hi50_paise": 552593094,
+     "lo90_paise": 165866438,
+     "hi90_paise": 711349521,
+     "calibrated": false
+    },
+    {
+     "day": 84,
+     "date": "2026-06-23",
+     "median_paise": 449113728,
+     "lo50_paise": 338539765,
+     "hi50_paise": 557919824,
+     "lo90_paise": 173214230,
+     "hi90_paise": 720533824,
+     "calibrated": false
+    },
+    {
+     "day": 85,
+     "date": "2026-06-24",
+     "median_paise": 459309243,
+     "lo50_paise": 349649864,
+     "hi50_paise": 568431671,
+     "lo90_paise": 182423559,
+     "hi90_paise": 731318907,
+     "calibrated": false
+    },
+    {
+     "day": 86,
+     "date": "2026-06-25",
+     "median_paise": 463081310,
+     "lo50_paise": 353102592,
+     "hi50_paise": 571968621,
+     "lo90_paise": 184433061,
+     "hi90_paise": 738368779,
+     "calibrated": false
+    },
+    {
+     "day": 87,
+     "date": "2026-06-26",
+     "median_paise": 470769703,
+     "lo50_paise": 359874341,
+     "hi50_paise": 581198957,
+     "lo90_paise": 192861949,
+     "hi90_paise": 750107973,
+     "calibrated": false
+    },
+    {
+     "day": 88,
+     "date": "2026-06-27",
+     "median_paise": 477894322,
+     "lo50_paise": 366394349,
+     "hi50_paise": 588035983,
+     "lo90_paise": 199382804,
+     "hi90_paise": 756785785,
+     "calibrated": false
+    },
+    {
+     "day": 89,
+     "date": "2026-06-28",
+     "median_paise": 484564307,
+     "lo50_paise": 373596743,
+     "hi50_paise": 597035249,
+     "lo90_paise": 206541158,
+     "hi90_paise": 764214164,
+     "calibrated": false
+    },
+    {
+     "day": 90,
+     "date": "2026-06-29",
+     "median_paise": 492212111,
+     "lo50_paise": 381068388,
+     "hi50_paise": 603621440,
+     "lo90_paise": 216127965,
+     "hi90_paise": 771710518,
+     "calibrated": false
+    }
+   ],
+   "risk_by_day": [
+    0.0012,
+    0.0052,
+    0.0116,
+    0.0188,
+    0.0367,
+    0.0475,
+    0.0568,
+    0.0631,
+    0.0703,
+    0.0946,
+    0.1064,
+    0.1131,
+    0.1187,
+    0.1216,
+    0.1316,
+    0.1369,
+    0.1412,
+    0.1437,
+    0.146,
+    0.1865,
+    0.1929,
+    0.1987,
+    0.2019,
+    0.2045,
+    0.2064,
+    0.2072,
+    0.2076,
+    0.2084,
+    0.2085,
+    0.2091,
+    0.2448,
+    0.248,
+    0.2516,
+    0.2536,
+    0.259,
+    0.2601,
+    0.2609,
+    0.2613,
+    0.262,
+    0.2651,
+    0.266,
+    0.2667,
+    0.2672,
+    0.2679,
+    0.2686,
+    0.2694,
+    0.2698,
+    0.27,
+    0.2702,
+    0.2706,
+    0.2711,
+    0.2714,
+    0.2715,
+    0.2717,
+    0.2718,
+    0.2721,
+    0.2721,
+    0.2722,
+    0.2723,
+    0.2724,
+    0.2725,
+    0.2797,
+    0.2804,
+    0.2816,
+    0.2825,
+    0.2841,
+    0.2848,
+    0.286,
+    0.2866,
+    0.2867,
+    0.2881,
+    0.2889,
+    0.2899,
+    0.2901,
+    0.2906,
+    0.2917,
+    0.2924,
+    0.2928,
+    0.2935,
+    0.2937,
+    0.2966,
+    0.2968,
+    0.2977,
+    0.2981,
+    0.2983,
+    0.2988,
+    0.2991,
+    0.2995,
+    0.2998,
+    0.3002
+   ]
+  },
+  {
+   "preset": "supplier_tightens_terms",
+   "name": "Suppliers want paying sooner",
+   "description": "Suppliers cut your credit from 30 to 15 days, so you pay them sooner.",
+   "share": null,
+   "amount": null,
+   "days": 15,
+   "days_from": 30,
+   "on_date": null,
+   "risk_90": {
+    "value": 0.9271,
+    "text": "93%"
+   },
+   "change_90": 0.5901000000000001,
+   "change_text": "The chance of running short within 90 days goes from 34% to 93%.",
+   "runway_lost_days": 90,
+   "runway_text": "At least 90 days of runway lost.",
+   "breaking_point": "You break if suppliers cut your credit to 26 days.",
+   "breaking_magnitude": 26.0,
+   "breaking_share": null,
+   "breaking_amount": null,
+   "breaking_days": 26,
+   "fan": [
+    {
+     "day": 1,
+     "date": "2026-04-01",
+     "median_paise": 41339569,
+     "lo50_paise": -11371004,
+     "hi50_paise": 90248107,
+     "lo90_paise": -96231255,
+     "hi90_paise": 156488008,
+     "calibrated": true
+    },
+    {
+     "day": 2,
+     "date": "2026-04-02",
+     "median_paise": 48377570,
+     "lo50_paise": -7583780,
+     "hi50_paise": 102178417,
+     "lo90_paise": -96725789,
+     "hi90_paise": 173779655,
+     "calibrated": true
+    },
+    {
+     "day": 3,
+     "date": "2026-04-03",
+     "median_paise": 57914740,
+     "lo50_paise": -2197638,
+     "hi50_paise": 115643024,
+     "lo90_paise": -95527938,
+     "hi90_paise": 193708909,
+     "calibrated": true
+    },
+    {
+     "day": 4,
+     "date": "2026-04-04",
+     "median_paise": 66709312,
+     "lo50_paise": 2118266,
+     "hi50_paise": 126924464,
+     "lo90_paise": -92676433,
+     "hi90_paise": 209634782,
+     "calibrated": true
+    },
+    {
+     "day": 5,
+     "date": "2026-04-05",
+     "median_paise": 51715422,
+     "lo50_paise": -14415515,
+     "hi50_paise": 114620669,
+     "lo90_paise": -115354051,
+     "hi90_paise": 202163194,
+     "calibrated": true
+    },
+    {
+     "day": 6,
+     "date": "2026-04-06",
+     "median_paise": 56883090,
+     "lo50_paise": -10248914,
+     "hi50_paise": 121870976,
+     "lo90_paise": -112950579,
+     "hi90_paise": 215515728,
+     "calibrated": true
+    },
+    {
+     "day": 7,
+     "date": "2026-04-07",
+     "median_paise": 65832816,
+     "lo50_paise": -2285525,
+     "hi50_paise": 134369318,
+     "lo90_paise": -109760922,
+     "hi90_paise": 231251562,
+     "calibrated": true
+    },
+    {
+     "day": 8,
+     "date": "2026-04-08",
+     "median_paise": 78434546,
+     "lo50_paise": 5892501,
+     "hi50_paise": 149988441,
+     "lo90_paise": -103647520,
+     "hi90_paise": 249865731,
+     "calibrated": true
+    },
+    {
+     "day": 9,
+     "date": "2026-04-09",
+     "median_paise": 84871711,
+     "lo50_paise": 9500841,
+     "hi50_paise": 156776506,
+     "lo90_paise": -104396427,
+     "hi90_paise": 262135155,
+     "calibrated": true
+    },
+    {
+     "day": 10,
+     "date": "2026-04-10",
+     "median_paise": 64268586,
+     "lo50_paise": -11336926,
+     "hi50_paise": 141754842,
+     "lo90_paise": -129739100,
+     "hi90_paise": 247654136,
+     "calibrated": true
+    },
+    {
+     "day": 11,
+     "date": "2026-04-11",
+     "median_paise": 73313878,
+     "lo50_paise": -3173996,
+     "hi50_paise": 150920556,
+     "lo90_paise": -123139469,
+     "hi90_paise": 260903429,
+     "calibrated": true
+    },
+    {
+     "day": 12,
+     "date": "2026-04-12",
+     "median_paise": 79880545,
+     "lo50_paise": 1317535,
+     "hi50_paise": 158740091,
+     "lo90_paise": -117065490,
+     "hi90_paise": 269623610,
+     "calibrated": true
+    },
+    {
+     "day": 13,
+     "date": "2026-04-13",
+     "median_paise": 90043448,
+     "lo50_paise": 8067219,
+     "hi50_paise": 169325989,
+     "lo90_paise": -113618523,
+     "hi90_paise": 283365885,
+     "calibrated": true
+    },
+    {
+     "day": 14,
+     "date": "2026-04-14",
+     "median_paise": 101586430,
+     "lo50_paise": 17082014,
+     "hi50_paise": 184020013,
+     "lo90_paise": -108710855,
+     "hi90_paise": 299303733,
+     "calibrated": true
+    },
+    {
+     "day": 15,
+     "date": "2026-04-15",
+     "median_paise": 97564397,
+     "lo50_paise": 10434294,
+     "hi50_paise": 183126561,
+     "lo90_paise": -114379050,
+     "hi90_paise": 299436190,
+     "calibrated": true
+    },
+    {
+     "day": 16,
+     "date": "2026-04-16",
+     "median_paise": 104865696,
+     "lo50_paise": 16864162,
+     "hi50_paise": 191894555,
+     "lo90_paise": -111934786,
+     "hi90_paise": 312346017,
+     "calibrated": true
+    },
+    {
+     "day": 17,
+     "date": "2026-04-17",
+     "median_paise": 120552155,
+     "lo50_paise": 30780813,
+     "hi50_paise": 211095852,
+     "lo90_paise": -101154241,
+     "hi90_paise": 333951084,
+     "calibrated": true
+    },
+    {
+     "day": 18,
+     "date": "2026-04-18",
+     "median_paise": 135169381,
+     "lo50_paise": 43771537,
+     "hi50_paise": 225789372,
+     "lo90_paise": -90570545,
+     "hi90_paise": 348565479,
+     "calibrated": true
+    },
+    {
+     "day": 19,
+     "date": "2026-04-19",
+     "median_paise": 145190106,
+     "lo50_paise": 52615753,
+     "hi50_paise": 237932270,
+     "lo90_paise": -84055295,
+     "hi90_paise": 362967069,
+     "calibrated": true
+    },
+    {
+     "day": 20,
+     "date": "2026-04-20",
+     "median_paise": 85068935,
+     "lo50_paise": -9272860,
+     "hi50_paise": 177554080,
+     "lo90_paise": -148557628,
+     "hi90_paise": 305950878,
+     "calibrated": true
+    },
+    {
+     "day": 21,
+     "date": "2026-04-21",
+     "median_paise": 99980567,
+     "lo50_paise": 3559954,
+     "hi50_paise": 194074640,
+     "lo90_paise": -139767234,
+     "hi90_paise": 327165845,
+     "calibrated": true
+    },
+    {
+     "day": 22,
+     "date": "2026-04-22",
+     "median_paise": 114430169,
+     "lo50_paise": 16303239,
+     "hi50_paise": 209201793,
+     "lo90_paise": -131282616,
+     "hi90_paise": 345887706,
+     "calibrated": true
+    },
+    {
+     "day": 23,
+     "date": "2026-04-23",
+     "median_paise": 124750113,
+     "lo50_paise": 22419677,
+     "hi50_paise": 221202047,
+     "lo90_paise": -126131084,
+     "hi90_paise": 360510869,
+     "calibrated": true
+    },
+    {
+     "day": 24,
+     "date": "2026-04-24",
+     "median_paise": 139377606,
+     "lo50_paise": 35800340,
+     "hi50_paise": 237997415,
+     "lo90_paise": -113241952,
+     "hi90_paise": 377873213,
+     "calibrated": true
+    },
+    {
+     "day": 25,
+     "date": "2026-04-25",
+     "median_paise": 152562876,
+     "lo50_paise": 46820904,
+     "hi50_paise": 253832934,
+     "lo90_paise": -102691759,
+     "hi90_paise": 392582278,
+     "calibrated": true
+    },
+    {
+     "day": 26,
+     "date": "2026-04-26",
+     "median_paise": 161293184,
+     "lo50_paise": 55821440,
+     "hi50_paise": 263608894,
+     "lo90_paise": -96123144,
+     "hi90_paise": 405104657,
+     "calibrated": true
+    },
+    {
+     "day": 27,
+     "date": "2026-04-27",
+     "median_paise": 172420691,
+     "lo50_paise": 67113332,
+     "hi50_paise": 275854320,
+     "lo90_paise": -88976556,
+     "hi90_paise": 422274428,
+     "calibrated": true
+    },
+    {
+     "day": 28,
+     "date": "2026-04-28",
+     "median_paise": 186785823,
+     "lo50_paise": 81367108,
+     "hi50_paise": 290811832,
+     "lo90_paise": -77359173,
+     "hi90_paise": 443550434,
+     "calibrated": true
+    },
+    {
+     "day": 29,
+     "date": "2026-04-29",
+     "median_paise": 200224480,
+     "lo50_paise": 94165746,
+     "hi50_paise": 307465791,
+     "lo90_paise": -64159447,
+     "hi90_paise": 464468952,
+     "calibrated": true
+    },
+    {
+     "day": 30,
+     "date": "2026-04-30",
+     "median_paise": 208436279,
+     "lo50_paise": 100101784,
+     "hi50_paise": 316108552,
+     "lo90_paise": -60841286,
+     "hi90_paise": 471722685,
+     "calibrated": true
+    },
+    {
+     "day": 31,
+     "date": "2026-05-01",
+     "median_paise": 102210886,
+     "lo50_paise": -6027666,
+     "hi50_paise": 213863945,
+     "lo90_paise": -171639030,
+     "hi90_paise": 368853346,
+     "calibrated": false
+    },
+    {
+     "day": 32,
+     "date": "2026-05-02",
+     "median_paise": 115147798,
+     "lo50_paise": 5503083,
+     "hi50_paise": 227063341,
+     "lo90_paise": -165856406,
+     "hi90_paise": 386994241,
+     "calibrated": false
+    },
+    {
+     "day": 33,
+     "date": "2026-05-03",
+     "median_paise": 122922187,
+     "lo50_paise": 10520347,
+     "hi50_paise": 234214179,
+     "lo90_paise": -159025134,
+     "hi90_paise": 397837487,
+     "calibrated": false
+    },
+    {
+     "day": 34,
+     "date": "2026-05-04",
+     "median_paise": 135252540,
+     "lo50_paise": 21958074,
+     "hi50_paise": 248482177,
+     "lo90_paise": -154517135,
+     "hi90_paise": 411373433,
+     "calibrated": false
+    },
+    {
+     "day": 35,
+     "date": "2026-05-05",
+     "median_paise": 130202780,
+     "lo50_paise": 17535158,
+     "hi50_paise": 246802932,
+     "lo90_paise": -159122015,
+     "hi90_paise": 405526178,
+     "calibrated": false
+    },
+    {
+     "day": 36,
+     "date": "2026-05-06",
+     "median_paise": 148590903,
+     "lo50_paise": 33623041,
+     "hi50_paise": 265083071,
+     "lo90_paise": -143193583,
+     "hi90_paise": 422943769,
+     "calibrated": false
+    },
+    {
+     "day": 37,
+     "date": "2026-05-07",
+     "median_paise": 156307252,
+     "lo50_paise": 39544605,
+     "hi50_paise": 273797958,
+     "lo90_paise": -136675725,
+     "hi90_paise": 432317206,
+     "calibrated": false
+    },
+    {
+     "day": 38,
+     "date": "2026-05-08",
+     "median_paise": 170893873,
+     "lo50_paise": 51597930,
+     "hi50_paise": 286522239,
+     "lo90_paise": -126213376,
+     "hi90_paise": 447240341,
+     "calibrated": false
+    },
+    {
+     "day": 39,
+     "date": "2026-05-09",
+     "median_paise": 181010838,
+     "lo50_paise": 61972840,
+     "hi50_paise": 297471996,
+     "lo90_paise": -115882640,
+     "hi90_paise": 457652636,
+     "calibrated": false
+    },
+    {
+     "day": 40,
+     "date": "2026-05-10",
+     "median_paise": 160628944,
+     "lo50_paise": 41929810,
+     "hi50_paise": 276672895,
+     "lo90_paise": -139691132,
+     "hi90_paise": 439074242,
+     "calibrated": false
+    },
+    {
+     "day": 41,
+     "date": "2026-05-11",
+     "median_paise": 170244271,
+     "lo50_paise": 49665379,
+     "hi50_paise": 289849549,
+     "lo90_paise": -131005630,
+     "hi90_paise": 451749730,
+     "calibrated": false
+    },
+    {
+     "day": 42,
+     "date": "2026-05-12",
+     "median_paise": 181926634,
+     "lo50_paise": 63159359,
+     "hi50_paise": 301640150,
+     "lo90_paise": -121997079,
+     "hi90_paise": 465088466,
+     "calibrated": false
+    },
+    {
+     "day": 43,
+     "date": "2026-05-13",
+     "median_paise": 196805516,
+     "lo50_paise": 76526025,
+     "hi50_paise": 318188832,
+     "lo90_paise": -107612750,
+     "hi90_paise": 483514034,
+     "calibrated": false
+    },
+    {
+     "day": 44,
+     "date": "2026-05-14",
+     "median_paise": 203893179,
+     "lo50_paise": 82908572,
+     "hi50_paise": 325871855,
+     "lo90_paise": -101395166,
+     "hi90_paise": 494033985,
+     "calibrated": false
+    },
+    {
+     "day": 45,
+     "date": "2026-05-15",
+     "median_paise": 199718901,
+     "lo50_paise": 76491110,
+     "hi50_paise": 320759888,
+     "lo90_paise": -111261556,
+     "hi90_paise": 490566972,
+     "calibrated": false
+    },
+    {
+     "day": 46,
+     "date": "2026-05-16",
+     "median_paise": 208977029,
+     "lo50_paise": 86308744,
+     "hi50_paise": 332992379,
+     "lo90_paise": -94990623,
+     "hi90_paise": 503587537,
+     "calibrated": false
+    },
+    {
+     "day": 47,
+     "date": "2026-05-17",
+     "median_paise": 219230585,
+     "lo50_paise": 95526166,
+     "hi50_paise": 343520535,
+     "lo90_paise": -91699585,
+     "hi90_paise": 514160944,
+     "calibrated": false
+    },
+    {
+     "day": 48,
+     "date": "2026-05-18",
+     "median_paise": 228044575,
+     "lo50_paise": 106046097,
+     "hi50_paise": 354509924,
+     "lo90_paise": -82379121,
+     "hi90_paise": 529100344,
+     "calibrated": false
+    },
+    {
+     "day": 49,
+     "date": "2026-05-19",
+     "median_paise": 241289754,
+     "lo50_paise": 117752477,
+     "hi50_paise": 366622702,
+     "lo90_paise": -70675826,
+     "hi90_paise": 543299661,
+     "calibrated": false
+    },
+    {
+     "day": 50,
+     "date": "2026-05-20",
+     "median_paise": 225046946,
+     "lo50_paise": 103532583,
+     "hi50_paise": 346060372,
+     "lo90_paise": -82016024,
+     "hi90_paise": 511348646,
+     "calibrated": false
+    },
+    {
+     "day": 51,
+     "date": "2026-05-21",
+     "median_paise": 233450824,
+     "lo50_paise": 109273780,
+     "hi50_paise": 351951389,
+     "lo90_paise": -75524914,
+     "hi90_paise": 522158238,
+     "calibrated": false
+    },
+    {
+     "day": 52,
+     "date": "2026-05-22",
+     "median_paise": 247355194,
+     "lo50_paise": 121941043,
+     "hi50_paise": 365851727,
+     "lo90_paise": -65473702,
+     "hi90_paise": 537115359,
+     "calibrated": false
+    },
+    {
+     "day": 53,
+     "date": "2026-05-23",
+     "median_paise": 257519094,
+     "lo50_paise": 132508928,
+     "hi50_paise": 376812375,
+     "lo90_paise": -56913454,
+     "hi90_paise": 548952558,
+     "calibrated": false
+    },
+    {
+     "day": 54,
+     "date": "2026-05-24",
+     "median_paise": 265624040,
+     "lo50_paise": 141620553,
+     "hi50_paise": 386145123,
+     "lo90_paise": -51934489,
+     "hi90_paise": 557388209,
+     "calibrated": false
+    },
+    {
+     "day": 55,
+     "date": "2026-05-25",
+     "median_paise": 276214309,
+     "lo50_paise": 152198136,
+     "hi50_paise": 396747530,
+     "lo90_paise": -38427460,
+     "hi90_paise": 571190580,
+     "calibrated": false
+    },
+    {
+     "day": 56,
+     "date": "2026-05-26",
+     "median_paise": 288501404,
+     "lo50_paise": 161293038,
+     "hi50_paise": 407160181,
+     "lo90_paise": -28078209,
+     "hi90_paise": 581582545,
+     "calibrated": false
+    },
+    {
+     "day": 57,
+     "date": "2026-05-27",
+     "median_paise": 303750850,
+     "lo50_paise": 176616847,
+     "hi50_paise": 422804464,
+     "lo90_paise": -13061797,
+     "hi90_paise": 600875108,
+     "calibrated": false
+    },
+    {
+     "day": 58,
+     "date": "2026-05-28",
+     "median_paise": 309188416,
+     "lo50_paise": 182589851,
+     "hi50_paise": 429835806,
+     "lo90_paise": -6519789,
+     "hi90_paise": 613919696,
+     "calibrated": false
+    },
+    {
+     "day": 59,
+     "date": "2026-05-29",
+     "median_paise": 324483056,
+     "lo50_paise": 193675399,
+     "hi50_paise": 443546117,
+     "lo90_paise": 2194378,
+     "hi90_paise": 625674114,
+     "calibrated": false
+    },
+    {
+     "day": 60,
+     "date": "2026-05-30",
+     "median_paise": 333893455,
+     "lo50_paise": 202441238,
+     "hi50_paise": 454835333,
+     "lo90_paise": 10745322,
+     "hi90_paise": 637923159,
+     "calibrated": false
+    },
+    {
+     "day": 61,
+     "date": "2026-05-31",
+     "median_paise": 342536935,
+     "lo50_paise": 212664587,
+     "hi50_paise": 464200506,
+     "lo90_paise": 20359249,
+     "hi90_paise": 650261477,
+     "calibrated": false
+    },
+    {
+     "day": 62,
+     "date": "2026-06-01",
+     "median_paise": 231712015,
+     "lo50_paise": 102034414,
+     "hi50_paise": 353150121,
+     "lo90_paise": -88130702,
+     "hi90_paise": 537302818,
+     "calibrated": false
+    },
+    {
+     "day": 63,
+     "date": "2026-06-02",
+     "median_paise": 242622033,
+     "lo50_paise": 111977005,
+     "hi50_paise": 366823094,
+     "lo90_paise": -81807328,
+     "hi90_paise": 549744896,
+     "calibrated": false
+    },
+    {
+     "day": 64,
+     "date": "2026-06-03",
+     "median_paise": 255322614,
+     "lo50_paise": 120961177,
+     "hi50_paise": 379031449,
+     "lo90_paise": -71108509,
+     "hi90_paise": 564364295,
+     "calibrated": false
+    },
+    {
+     "day": 65,
+     "date": "2026-06-04",
+     "median_paise": 261786121,
+     "lo50_paise": 128849333,
+     "hi50_paise": 387843486,
+     "lo90_paise": -64686291,
+     "hi90_paise": 572358719,
+     "calibrated": false
+    },
+    {
+     "day": 66,
+     "date": "2026-06-05",
+     "median_paise": 254120750,
+     "lo50_paise": 119522346,
+     "hi50_paise": 379933182,
+     "lo90_paise": -75001266,
+     "hi90_paise": 567163913,
+     "calibrated": false
+    },
+    {
+     "day": 67,
+     "date": "2026-06-06",
+     "median_paise": 263679642,
+     "lo50_paise": 127772729,
+     "hi50_paise": 389203569,
+     "lo90_paise": -68522163,
+     "hi90_paise": 574742300,
+     "calibrated": false
+    },
+    {
+     "day": 68,
+     "date": "2026-06-07",
+     "median_paise": 272491170,
+     "lo50_paise": 138534166,
+     "hi50_paise": 397957258,
+     "lo90_paise": -61262644,
+     "hi90_paise": 587043438,
+     "calibrated": false
+    },
+    {
+     "day": 69,
+     "date": "2026-06-08",
+     "median_paise": 281987878,
+     "lo50_paise": 145842120,
+     "hi50_paise": 406029278,
+     "lo90_paise": -51623268,
+     "hi90_paise": 596881077,
+     "calibrated": false
+    },
+    {
+     "day": 70,
+     "date": "2026-06-09",
+     "median_paise": 290817006,
+     "lo50_paise": 157454095,
+     "hi50_paise": 418450265,
+     "lo90_paise": -42665867,
+     "hi90_paise": 609369637,
+     "calibrated": false
+    },
+    {
+     "day": 71,
+     "date": "2026-06-10",
+     "median_paise": 273204185,
+     "lo50_paise": 140120682,
+     "hi50_paise": 402942443,
+     "lo90_paise": -55940740,
+     "hi90_paise": 591506342,
+     "calibrated": false
+    },
+    {
+     "day": 72,
+     "date": "2026-06-11",
+     "median_paise": 279337864,
+     "lo50_paise": 143466871,
+     "hi50_paise": 409484065,
+     "lo90_paise": -50873545,
+     "hi90_paise": 600440731,
+     "calibrated": false
+    },
+    {
+     "day": 73,
+     "date": "2026-06-12",
+     "median_paise": 290199137,
+     "lo50_paise": 155842040,
+     "hi50_paise": 419997657,
+     "lo90_paise": -40725424,
+     "hi90_paise": 613771982,
+     "calibrated": false
+    },
+    {
+     "day": 74,
+     "date": "2026-06-13",
+     "median_paise": 299888450,
+     "lo50_paise": 161976645,
+     "hi50_paise": 429616156,
+     "lo90_paise": -32279285,
+     "hi90_paise": 620420919,
+     "calibrated": false
+    },
+    {
+     "day": 75,
+     "date": "2026-06-14",
+     "median_paise": 309367975,
+     "lo50_paise": 171422365,
+     "hi50_paise": 439836985,
+     "lo90_paise": -24668690,
+     "hi90_paise": 629666028,
+     "calibrated": false
+    },
+    {
+     "day": 76,
+     "date": "2026-06-15",
+     "median_paise": 309721887,
+     "lo50_paise": 175356861,
+     "hi50_paise": 440665927,
+     "lo90_paise": -21238823,
+     "hi90_paise": 635224409,
+     "calibrated": false
+    },
+    {
+     "day": 77,
+     "date": "2026-06-16",
+     "median_paise": 332340874,
+     "lo50_paise": 196970274,
+     "hi50_paise": 462935217,
+     "lo90_paise": -1146178,
+     "hi90_paise": 658035589,
+     "calibrated": false
+    },
+    {
+     "day": 78,
+     "date": "2026-06-17",
+     "median_paise": 356906434,
+     "lo50_paise": 223166424,
+     "hi50_paise": 489622514,
+     "lo90_paise": 24513562,
+     "hi90_paise": 678917210,
+     "calibrated": false
+    },
+    {
+     "day": 79,
+     "date": "2026-06-18",
+     "median_paise": 375170363,
+     "lo50_paise": 240972664,
+     "hi50_paise": 508190951,
+     "lo90_paise": 41133870,
+     "hi90_paise": 696400668,
+     "calibrated": false
+    },
+    {
+     "day": 80,
+     "date": "2026-06-19",
+     "median_paise": 397810603,
+     "lo50_paise": 264548379,
+     "hi50_paise": 529455194,
+     "lo90_paise": 62529283,
+     "hi90_paise": 718928964,
+     "calibrated": false
+    },
+    {
+     "day": 81,
+     "date": "2026-06-20",
+     "median_paise": 360134528,
+     "lo50_paise": 229456041,
+     "hi50_paise": 490116491,
+     "lo90_paise": 31561305,
+     "hi90_paise": 676321768,
+     "calibrated": false
+    },
+    {
+     "day": 82,
+     "date": "2026-06-21",
+     "median_paise": 379455266,
+     "lo50_paise": 249086775,
+     "hi50_paise": 510538040,
+     "lo90_paise": 50589862,
+     "hi90_paise": 696734676,
+     "calibrated": false
+    },
+    {
+     "day": 83,
+     "date": "2026-06-22",
+     "median_paise": 398346241,
+     "lo50_paise": 270001260,
+     "hi50_paise": 529097989,
+     "lo90_paise": 70754571,
+     "hi90_paise": 716655971,
+     "calibrated": false
+    },
+    {
+     "day": 84,
+     "date": "2026-06-23",
+     "median_paise": 419587835,
+     "lo50_paise": 290663470,
+     "hi50_paise": 550389844,
+     "lo90_paise": 93498393,
+     "hi90_paise": 738515306,
+     "calibrated": false
+    },
+    {
+     "day": 85,
+     "date": "2026-06-24",
+     "median_paise": 443503254,
+     "lo50_paise": 314673629,
+     "hi50_paise": 574718048,
+     "lo90_paise": 121931812,
+     "hi90_paise": 762369822,
+     "calibrated": false
+    },
+    {
+     "day": 86,
+     "date": "2026-06-25",
+     "median_paise": 458318468,
+     "lo50_paise": 332562603,
+     "hi50_paise": 589927743,
+     "lo90_paise": 136570084,
+     "hi90_paise": 781435467,
+     "calibrated": false
+    },
+    {
+     "day": 87,
+     "date": "2026-06-26",
+     "median_paise": 479739038,
+     "lo50_paise": 353503728,
+     "hi50_paise": 613332077,
+     "lo90_paise": 160542437,
+     "hi90_paise": 801409905,
+     "calibrated": false
+    },
+    {
+     "day": 88,
+     "date": "2026-06-27",
+     "median_paise": 500659997,
+     "lo50_paise": 371769134,
+     "hi50_paise": 632030931,
+     "lo90_paise": 179661657,
+     "hi90_paise": 820652777,
+     "calibrated": false
+    },
+    {
+     "day": 89,
+     "date": "2026-06-28",
+     "median_paise": 520899743,
+     "lo50_paise": 392567812,
+     "hi50_paise": 652693517,
+     "lo90_paise": 203371806,
+     "hi90_paise": 844586359,
+     "calibrated": false
+    },
+    {
+     "day": 90,
+     "date": "2026-06-29",
+     "median_paise": 539967185,
+     "lo50_paise": 411465652,
+     "hi50_paise": 670113276,
+     "lo90_paise": 221567451,
+     "hi90_paise": 861899222,
+     "calibrated": false
+    }
+   ],
+   "risk_by_day": [
+    0.7935,
+    0.8131,
+    0.8249,
+    0.8314,
+    0.8481,
+    0.8551,
+    0.8589,
+    0.8612,
+    0.864,
+    0.8726,
+    0.8757,
+    0.8772,
+    0.8786,
+    0.8794,
+    0.881,
+    0.8826,
+    0.8832,
+    0.8839,
+    0.8842,
+    0.89,
+    0.8911,
+    0.8917,
+    0.8924,
+    0.8931,
+    0.8932,
+    0.8935,
+    0.8937,
+    0.8939,
+    0.894,
+    0.8943,
+    0.9044,
+    0.9055,
+    0.9066,
+    0.9073,
+    0.9082,
+    0.9086,
+    0.9094,
+    0.9102,
+    0.9104,
+    0.912,
+    0.9125,
+    0.9126,
+    0.9127,
+    0.9132,
+    0.9138,
+    0.9142,
+    0.9143,
+    0.9146,
+    0.9148,
+    0.9154,
+    0.9156,
+    0.916,
+    0.9161,
+    0.9164,
+    0.9166,
+    0.9168,
+    0.9169,
+    0.9169,
+    0.9172,
+    0.9172,
+    0.9174,
+    0.9215,
+    0.9217,
+    0.9224,
+    0.9224,
+    0.9233,
+    0.9238,
+    0.9241,
+    0.9244,
+    0.9246,
+    0.9254,
+    0.9256,
+    0.9259,
+    0.926,
+    0.9267,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271,
+    0.9271
+   ]
+  },
+  {
+   "preset": "revised_payment_schedule",
+   "name": "EMI moves earlier",
+   "description": "Your EMI payment moves 7 days earlier.",
+   "share": null,
+   "amount": null,
+   "days": 7,
+   "days_from": null,
+   "on_date": null,
+   "risk_90": {
+    "value": 0.3908,
+    "text": "39%"
+   },
+   "change_90": 0.05379999999999996,
+   "change_text": "The chance of running short within 90 days goes from 34% to 39%.",
+   "runway_lost_days": 0,
+   "runway_text": "No runway lost within 90 days.",
+   "breaking_point": "This alone does not make running short by day 90 more likely than not.",
+   "breaking_magnitude": null,
+   "breaking_share": null,
+   "breaking_amount": null,
+   "breaking_days": null,
+   "fan": [
+    {
+     "day": 1,
+     "date": "2026-04-01",
+     "median_paise": 202430406,
+     "lo50_paise": 180334110,
+     "hi50_paise": 228856859,
+     "lo90_paise": 153209890,
+     "hi90_paise": 273320677,
+     "calibrated": true
+    },
+    {
+     "day": 2,
+     "date": "2026-04-02",
+     "median_paise": 211010680,
+     "lo50_paise": 183362125,
+     "hi50_paise": 242442630,
+     "lo90_paise": 144105137,
+     "hi90_paise": 295264732,
+     "calibrated": true
+    },
+    {
+     "day": 3,
+     "date": "2026-04-03",
+     "median_paise": 190832639,
+     "lo50_paise": 156596677,
+     "hi50_paise": 227357186,
+     "lo90_paise": 108894761,
+     "hi90_paise": 286827210,
+     "calibrated": true
+    },
+    {
+     "day": 4,
+     "date": "2026-04-04",
+     "median_paise": 199739587,
+     "lo50_paise": 161860755,
+     "hi50_paise": 241362158,
+     "lo90_paise": 106327123,
+     "hi90_paise": 307086828,
+     "calibrated": true
+    },
+    {
+     "day": 5,
+     "date": "2026-04-05",
+     "median_paise": 185882081,
+     "lo50_paise": 144033773,
+     "hi50_paise": 230661590,
+     "lo90_paise": 84179468,
+     "hi90_paise": 299646796,
+     "calibrated": true
+    },
+    {
+     "day": 6,
+     "date": "2026-04-06",
+     "median_paise": 191737787,
+     "lo50_paise": 146614740,
+     "hi50_paise": 239005674,
+     "lo90_paise": 81463946,
+     "hi90_paise": 313801665,
+     "calibrated": true
+    },
+    {
+     "day": 7,
+     "date": "2026-04-07",
+     "median_paise": 201346458,
+     "lo50_paise": 153144533,
+     "hi50_paise": 251797708,
+     "lo90_paise": 83071657,
+     "hi90_paise": 329288158,
+     "calibrated": true
+    },
+    {
+     "day": 8,
+     "date": "2026-04-08",
+     "median_paise": 213723739,
+     "lo50_paise": 162250469,
+     "hi50_paise": 267368346,
+     "lo90_paise": 85767467,
+     "hi90_paise": 349754570,
+     "calibrated": true
+    },
+    {
+     "day": 9,
+     "date": "2026-04-09",
+     "median_paise": 219914080,
+     "lo50_paise": 164174710,
+     "hi50_paise": 276033883,
+     "lo90_paise": 84606851,
+     "hi90_paise": 362637022,
+     "calibrated": true
+    },
+    {
+     "day": 10,
+     "date": "2026-04-10",
+     "median_paise": 231207561,
+     "lo50_paise": 172301422,
+     "hi50_paise": 289998952,
+     "lo90_paise": 87650532,
+     "hi90_paise": 378108830,
+     "calibrated": true
+    },
+    {
+     "day": 11,
+     "date": "2026-04-11",
+     "median_paise": 239553202,
+     "lo50_paise": 178977500,
+     "hi50_paise": 303578307,
+     "lo90_paise": 91334422,
+     "hi90_paise": 392801987,
+     "calibrated": true
+    },
+    {
+     "day": 12,
+     "date": "2026-04-12",
+     "median_paise": 245639145,
+     "lo50_paise": 183709394,
+     "hi50_paise": 311304332,
+     "lo90_paise": 91418988,
+     "hi90_paise": 401914598,
+     "calibrated": true
+    },
+    {
+     "day": 13,
+     "date": "2026-04-13",
+     "median_paise": 254313488,
+     "lo50_paise": 190500527,
+     "hi50_paise": 320506472,
+     "lo90_paise": 96688576,
+     "hi90_paise": 415752959,
+     "calibrated": true
+    },
+    {
+     "day": 14,
+     "date": "2026-04-14",
+     "median_paise": 266125741,
+     "lo50_paise": 199443567,
+     "hi50_paise": 335766708,
+     "lo90_paise": 103209731,
+     "hi90_paise": 432546688,
+     "calibrated": true
+    },
+    {
+     "day": 15,
+     "date": "2026-04-15",
+     "median_paise": 262152914,
+     "lo50_paise": 191791032,
+     "hi50_paise": 334219432,
+     "lo90_paise": 95481575,
+     "hi90_paise": 433550528,
+     "calibrated": true
+    },
+    {
+     "day": 16,
+     "date": "2026-04-16",
+     "median_paise": 270050767,
+     "lo50_paise": 197448515,
+     "hi50_paise": 344105732,
+     "lo90_paise": 96764812,
+     "hi90_paise": 450118173,
+     "calibrated": true
+    },
+    {
+     "day": 17,
+     "date": "2026-04-17",
+     "median_paise": 285432524,
+     "lo50_paise": 211949924,
+     "hi50_paise": 360861163,
+     "lo90_paise": 105219903,
+     "hi90_paise": 471338440,
+     "calibrated": true
+    },
+    {
+     "day": 18,
+     "date": "2026-04-18",
+     "median_paise": 298508020,
+     "lo50_paise": 222604430,
+     "hi50_paise": 376446553,
+     "lo90_paise": 111742281,
+     "hi90_paise": 489567137,
+     "calibrated": true
+    },
+    {
+     "day": 19,
+     "date": "2026-04-19",
+     "median_paise": 309845482,
+     "lo50_paise": 231921501,
+     "hi50_paise": 387672364,
+     "lo90_paise": 119255986,
+     "hi90_paise": 502293600,
+     "calibrated": true
+    },
+    {
+     "day": 20,
+     "date": "2026-04-20",
+     "median_paise": 250495186,
+     "lo50_paise": 168531864,
+     "hi50_paise": 328639641,
+     "lo90_paise": 55867860,
+     "hi90_paise": 447206087,
+     "calibrated": true
+    },
+    {
+     "day": 21,
+     "date": "2026-04-21",
+     "median_paise": 262922780,
+     "lo50_paise": 181687799,
+     "hi50_paise": 345276927,
+     "lo90_paise": 65477743,
+     "hi90_paise": 466532461,
+     "calibrated": true
+    },
+    {
+     "day": 22,
+     "date": "2026-04-22",
+     "median_paise": 275471866,
+     "lo50_paise": 192715975,
+     "hi50_paise": 361643194,
+     "lo90_paise": 73716640,
+     "hi90_paise": 482258909,
+     "calibrated": true
+    },
+    {
+     "day": 23,
+     "date": "2026-04-23",
+     "median_paise": 287376630,
+     "lo50_paise": 199918260,
+     "hi50_paise": 373598702,
+     "lo90_paise": 80231332,
+     "hi90_paise": 499100222,
+     "calibrated": true
+    },
+    {
+     "day": 24,
+     "date": "2026-04-24",
+     "median_paise": 302482896,
+     "lo50_paise": 213876974,
+     "hi50_paise": 390191249,
+     "lo90_paise": 89833164,
+     "hi90_paise": 517180028,
+     "calibrated": true
+    },
+    {
+     "day": 25,
+     "date": "2026-04-25",
+     "median_paise": 314660924,
+     "lo50_paise": 225176582,
+     "hi50_paise": 404959429,
+     "lo90_paise": 99284519,
+     "hi90_paise": 533202609,
+     "calibrated": true
+    },
+    {
+     "day": 26,
+     "date": "2026-04-26",
+     "median_paise": 324601103,
+     "lo50_paise": 232651212,
+     "hi50_paise": 416570188,
+     "lo90_paise": 106963722,
+     "hi90_paise": 545612628,
+     "calibrated": true
+    },
+    {
+     "day": 27,
+     "date": "2026-04-27",
+     "median_paise": 335261367,
+     "lo50_paise": 245093962,
+     "hi50_paise": 428790826,
+     "lo90_paise": 112888312,
+     "hi90_paise": 561215033,
+     "calibrated": true
+    },
+    {
+     "day": 28,
+     "date": "2026-04-28",
+     "median_paise": 351610236,
+     "lo50_paise": 257404791,
+     "hi50_paise": 445305452,
+     "lo90_paise": 127692842,
+     "hi90_paise": 582909160,
+     "calibrated": true
+    },
+    {
+     "day": 29,
+     "date": "2026-04-29",
+     "median_paise": 365418133,
+     "lo50_paise": 270267027,
+     "hi50_paise": 462525903,
+     "lo90_paise": 134790731,
+     "hi90_paise": 600300479,
+     "calibrated": true
+    },
+    {
+     "day": 30,
+     "date": "2026-04-30",
+     "median_paise": 374640010,
+     "lo50_paise": 277163175,
+     "hi50_paise": 471606988,
+     "lo90_paise": 140375068,
+     "hi90_paise": 613240630,
+     "calibrated": true
+    },
+    {
+     "day": 31,
+     "date": "2026-05-01",
+     "median_paise": 270115209,
+     "lo50_paise": 172867368,
+     "hi50_paise": 369421486,
+     "lo90_paise": 31498237,
+     "hi90_paise": 510449989,
+     "calibrated": false
+    },
+    {
+     "day": 32,
+     "date": "2026-05-02",
+     "median_paise": 282111385,
+     "lo50_paise": 182207160,
+     "hi50_paise": 383140336,
+     "lo90_paise": 37094760,
+     "hi90_paise": 529088632,
+     "calibrated": false
+    },
+    {
+     "day": 33,
+     "date": "2026-05-03",
+     "median_paise": 258848994,
+     "lo50_paise": 156480259,
+     "hi50_paise": 360034089,
+     "lo90_paise": 11018981,
+     "hi90_paise": 508139185,
+     "calibrated": false
+    },
+    {
+     "day": 34,
+     "date": "2026-05-04",
+     "median_paise": 272223913,
+     "lo50_paise": 167439845,
+     "hi50_paise": 373553624,
+     "lo90_paise": 22142252,
+     "hi90_paise": 522663458,
+     "calibrated": false
+    },
+    {
+     "day": 35,
+     "date": "2026-05-05",
+     "median_paise": 267789442,
+     "lo50_paise": 163355059,
+     "hi50_paise": 370989594,
+     "lo90_paise": 11729993,
+     "hi90_paise": 516569569,
+     "calibrated": false
+    },
+    {
+     "day": 36,
+     "date": "2026-05-06",
+     "median_paise": 284604084,
+     "lo50_paise": 179127000,
+     "hi50_paise": 388969570,
+     "lo90_paise": 25131773,
+     "hi90_paise": 537684603,
+     "calibrated": false
+    },
+    {
+     "day": 37,
+     "date": "2026-05-07",
+     "median_paise": 293405890,
+     "lo50_paise": 187397309,
+     "hi50_paise": 397922164,
+     "lo90_paise": 31325207,
+     "hi90_paise": 547589080,
+     "calibrated": false
+    },
+    {
+     "day": 38,
+     "date": "2026-05-08",
+     "median_paise": 307566556,
+     "lo50_paise": 197874846,
+     "hi50_paise": 411032756,
+     "lo90_paise": 40848641,
+     "hi90_paise": 560478768,
+     "calibrated": false
+    },
+    {
+     "day": 39,
+     "date": "2026-05-09",
+     "median_paise": 318024851,
+     "lo50_paise": 207905779,
+     "hi50_paise": 423435745,
+     "lo90_paise": 49455879,
+     "hi90_paise": 572031610,
+     "calibrated": false
+    },
+    {
+     "day": 40,
+     "date": "2026-05-10",
+     "median_paise": 326398537,
+     "lo50_paise": 216871651,
+     "hi50_paise": 432782561,
+     "lo90_paise": 56812025,
+     "hi90_paise": 583410690,
+     "calibrated": false
+    },
+    {
+     "day": 41,
+     "date": "2026-05-11",
+     "median_paise": 334822805,
+     "lo50_paise": 227118534,
+     "hi50_paise": 444121955,
+     "lo90_paise": 65347025,
+     "hi90_paise": 594318978,
+     "calibrated": false
+    },
+    {
+     "day": 42,
+     "date": "2026-05-12",
+     "median_paise": 346287595,
+     "lo50_paise": 237979479,
+     "hi50_paise": 457215692,
+     "lo90_paise": 77321058,
+     "hi90_paise": 609008317,
+     "calibrated": false
+    },
+    {
+     "day": 43,
+     "date": "2026-05-13",
+     "median_paise": 363628981,
+     "lo50_paise": 253183922,
+     "hi50_paise": 472739923,
+     "lo90_paise": 88626289,
+     "hi90_paise": 626187173,
+     "calibrated": false
+    },
+    {
+     "day": 44,
+     "date": "2026-05-14",
+     "median_paise": 368707508,
+     "lo50_paise": 261124028,
+     "hi50_paise": 481216416,
+     "lo90_paise": 95098539,
+     "hi90_paise": 634583354,
+     "calibrated": false
+    },
+    {
+     "day": 45,
+     "date": "2026-05-15",
+     "median_paise": 362284850,
+     "lo50_paise": 254848750,
+     "hi50_paise": 477083650,
+     "lo90_paise": 87529668,
+     "hi90_paise": 634749906,
+     "calibrated": false
+    },
+    {
+     "day": 46,
+     "date": "2026-05-16",
+     "median_paise": 373938458,
+     "lo50_paise": 264404397,
+     "hi50_paise": 488278350,
+     "lo90_paise": 93236272,
+     "hi90_paise": 646182983,
+     "calibrated": false
+    },
+    {
+     "day": 47,
+     "date": "2026-05-17",
+     "median_paise": 382074793,
+     "lo50_paise": 272259131,
+     "hi50_paise": 500589567,
+     "lo90_paise": 104847085,
+     "hi90_paise": 658544101,
+     "calibrated": false
+    },
+    {
+     "day": 48,
+     "date": "2026-05-18",
+     "median_paise": 394104311,
+     "lo50_paise": 283560320,
+     "hi50_paise": 507859511,
+     "lo90_paise": 114800732,
+     "hi90_paise": 670400902,
+     "calibrated": false
+    },
+    {
+     "day": 49,
+     "date": "2026-05-19",
+     "median_paise": 405848309,
+     "lo50_paise": 295111316,
+     "hi50_paise": 521817846,
+     "lo90_paise": 126883042,
+     "hi90_paise": 683804593,
+     "calibrated": false
+    },
+    {
+     "day": 50,
+     "date": "2026-05-20",
+     "median_paise": 367670030,
+     "lo50_paise": 254573931,
+     "hi50_paise": 477495692,
+     "lo90_paise": 85445372,
+     "hi90_paise": 634996265,
+     "calibrated": false
+    },
+    {
+     "day": 51,
+     "date": "2026-05-21",
+     "median_paise": 374799870,
+     "lo50_paise": 260759169,
+     "hi50_paise": 486560137,
+     "lo90_paise": 93071819,
+     "hi90_paise": 644699749,
+     "calibrated": false
+    },
+    {
+     "day": 52,
+     "date": "2026-05-22",
+     "median_paise": 387277586,
+     "lo50_paise": 273175560,
+     "hi50_paise": 501008897,
+     "lo90_paise": 102130357,
+     "hi90_paise": 657915819,
+     "calibrated": false
+    },
+    {
+     "day": 53,
+     "date": "2026-05-23",
+     "median_paise": 396631329,
+     "lo50_paise": 281628479,
+     "hi50_paise": 510465205,
+     "lo90_paise": 113164517,
+     "hi90_paise": 669150049,
+     "calibrated": false
+    },
+    {
+     "day": 54,
+     "date": "2026-05-24",
+     "median_paise": 406541813,
+     "lo50_paise": 289550731,
+     "hi50_paise": 522189299,
+     "lo90_paise": 117650673,
+     "hi90_paise": 681372862,
+     "calibrated": false
+    },
+    {
+     "day": 55,
+     "date": "2026-05-25",
+     "median_paise": 418312445,
+     "lo50_paise": 299440406,
+     "hi50_paise": 531871625,
+     "lo90_paise": 126826259,
+     "hi90_paise": 696869196,
+     "calibrated": false
+    },
+    {
+     "day": 56,
+     "date": "2026-05-26",
+     "median_paise": 429462188,
+     "lo50_paise": 309705320,
+     "hi50_paise": 543325944,
+     "lo90_paise": 139447367,
+     "hi90_paise": 706267783,
+     "calibrated": false
+    },
+    {
+     "day": 57,
+     "date": "2026-05-27",
+     "median_paise": 444172460,
+     "lo50_paise": 326031354,
+     "hi50_paise": 556681085,
+     "lo90_paise": 153891932,
+     "hi90_paise": 727536482,
+     "calibrated": false
+    },
+    {
+     "day": 58,
+     "date": "2026-05-28",
+     "median_paise": 450640804,
+     "lo50_paise": 332783344,
+     "hi50_paise": 567044482,
+     "lo90_paise": 156458709,
+     "hi90_paise": 739630299,
+     "calibrated": false
+    },
+    {
+     "day": 59,
+     "date": "2026-05-29",
+     "median_paise": 463911737,
+     "lo50_paise": 346340393,
+     "hi50_paise": 580055855,
+     "lo90_paise": 168124831,
+     "hi90_paise": 753042997,
+     "calibrated": false
+    },
+    {
+     "day": 60,
+     "date": "2026-05-30",
+     "median_paise": 473748003,
+     "lo50_paise": 355432831,
+     "hi50_paise": 590575349,
+     "lo90_paise": 177900946,
+     "hi90_paise": 760896149,
+     "calibrated": false
+    },
+    {
+     "day": 61,
+     "date": "2026-05-31",
+     "median_paise": 482763307,
+     "lo50_paise": 362735181,
+     "hi50_paise": 599751684,
+     "lo90_paise": 186734393,
+     "hi90_paise": 770872709,
+     "calibrated": false
+    },
+    {
+     "day": 62,
+     "date": "2026-06-01",
+     "median_paise": 371579249,
+     "lo50_paise": 252814163,
+     "hi50_paise": 487937847,
+     "lo90_paise": 75627209,
+     "hi90_paise": 662143153,
+     "calibrated": false
+    },
+    {
+     "day": 63,
+     "date": "2026-06-02",
+     "median_paise": 383050808,
+     "lo50_paise": 262783565,
+     "hi50_paise": 500143800,
+     "lo90_paise": 85209806,
+     "hi90_paise": 672874614,
+     "calibrated": false
+    },
+    {
+     "day": 64,
+     "date": "2026-06-03",
+     "median_paise": 364700258,
+     "lo50_paise": 244447601,
+     "hi50_paise": 483672487,
+     "lo90_paise": 67670430,
+     "hi90_paise": 653503510,
+     "calibrated": false
+    },
+    {
+     "day": 65,
+     "date": "2026-06-04",
+     "median_paise": 371462303,
+     "lo50_paise": 248631438,
+     "hi50_paise": 490705983,
+     "lo90_paise": 71814954,
+     "hi90_paise": 661090211,
+     "calibrated": false
+    },
+    {
+     "day": 66,
+     "date": "2026-06-05",
+     "median_paise": 362987578,
+     "lo50_paise": 239577542,
+     "hi50_paise": 484499862,
+     "lo90_paise": 64860546,
+     "hi90_paise": 653809982,
+     "calibrated": false
+    },
+    {
+     "day": 67,
+     "date": "2026-06-06",
+     "median_paise": 372836889,
+     "lo50_paise": 248417928,
+     "hi50_paise": 492206237,
+     "lo90_paise": 73691336,
+     "hi90_paise": 665510732,
+     "calibrated": false
+    },
+    {
+     "day": 68,
+     "date": "2026-06-07",
+     "median_paise": 380815256,
+     "lo50_paise": 256914712,
+     "hi50_paise": 500028437,
+     "lo90_paise": 79720946,
+     "hi90_paise": 675708482,
+     "calibrated": false
+    },
+    {
+     "day": 69,
+     "date": "2026-06-08",
+     "median_paise": 390357519,
+     "lo50_paise": 266243266,
+     "hi50_paise": 510308322,
+     "lo90_paise": 88983281,
+     "hi90_paise": 685208207,
+     "calibrated": false
+    },
+    {
+     "day": 70,
+     "date": "2026-06-09",
+     "median_paise": 400067875,
+     "lo50_paise": 276546280,
+     "hi50_paise": 521506867,
+     "lo90_paise": 99074265,
+     "hi90_paise": 695684216,
+     "calibrated": false
+    },
+    {
+     "day": 71,
+     "date": "2026-06-10",
+     "median_paise": 412729695,
+     "lo50_paise": 290933059,
+     "hi50_paise": 535634854,
+     "lo90_paise": 112177966,
+     "hi90_paise": 712477248,
+     "calibrated": false
+    },
+    {
+     "day": 72,
+     "date": "2026-06-11",
+     "median_paise": 419763074,
+     "lo50_paise": 295285759,
+     "hi50_paise": 541304047,
+     "lo90_paise": 117488865,
+     "hi90_paise": 719986454,
+     "calibrated": false
+    },
+    {
+     "day": 73,
+     "date": "2026-06-12",
+     "median_paise": 432029964,
+     "lo50_paise": 305677341,
+     "hi50_paise": 551157587,
+     "lo90_paise": 128311141,
+     "hi90_paise": 731421745,
+     "calibrated": false
+    },
+    {
+     "day": 74,
+     "date": "2026-06-13",
+     "median_paise": 440089470,
+     "lo50_paise": 314131776,
+     "hi50_paise": 563235153,
+     "lo90_paise": 134094675,
+     "hi90_paise": 741699299,
+     "calibrated": false
+    },
+    {
+     "day": 75,
+     "date": "2026-06-14",
+     "median_paise": 449833930,
+     "lo50_paise": 322193473,
+     "hi50_paise": 572894497,
+     "lo90_paise": 143163980,
+     "hi90_paise": 751520668,
+     "calibrated": false
+    },
+    {
+     "day": 76,
+     "date": "2026-06-15",
+     "median_paise": 439692996,
+     "lo50_paise": 315323280,
+     "hi50_paise": 565160785,
+     "lo90_paise": 132384722,
+     "hi90_paise": 743873406,
+     "calibrated": false
+    },
+    {
+     "day": 77,
+     "date": "2026-06-16",
+     "median_paise": 451537312,
+     "lo50_paise": 325355911,
+     "hi50_paise": 573504321,
+     "lo90_paise": 139465287,
+     "hi90_paise": 761687731,
+     "calibrated": false
+    },
+    {
+     "day": 78,
+     "date": "2026-06-17",
+     "median_paise": 466114873,
+     "lo50_paise": 339510255,
+     "hi50_paise": 591986486,
+     "lo90_paise": 149639933,
+     "hi90_paise": 773586583,
+     "calibrated": false
+    },
+    {
+     "day": 79,
+     "date": "2026-06-18",
+     "median_paise": 473666421,
+     "lo50_paise": 346080528,
+     "hi50_paise": 599858137,
+     "lo90_paise": 155747894,
+     "hi90_paise": 781395353,
+     "calibrated": false
+    },
+    {
+     "day": 80,
+     "date": "2026-06-19",
+     "median_paise": 485345540,
+     "lo50_paise": 356101629,
+     "hi50_paise": 610724479,
+     "lo90_paise": 164474884,
+     "hi90_paise": 796120023,
+     "calibrated": false
+    },
+    {
+     "day": 81,
+     "date": "2026-06-20",
+     "median_paise": 435338486,
+     "lo50_paise": 307375038,
+     "hi50_paise": 563033862,
+     "lo90_paise": 114588902,
+     "hi90_paise": 745122831,
+     "calibrated": false
+    },
+    {
+     "day": 82,
+     "date": "2026-06-21",
+     "median_paise": 442989999,
+     "lo50_paise": 315604519,
+     "hi50_paise": 570978200,
+     "lo90_paise": 122230585,
+     "hi90_paise": 754669198,
+     "calibrated": false
+    },
+    {
+     "day": 83,
+     "date": "2026-06-22",
+     "median_paise": 451959785,
+     "lo50_paise": 324070875,
+     "hi50_paise": 578833213,
+     "lo90_paise": 129085815,
+     "hi90_paise": 763397835,
+     "calibrated": false
+    },
+    {
+     "day": 84,
+     "date": "2026-06-23",
+     "median_paise": 462683461,
+     "lo50_paise": 333567408,
+     "hi50_paise": 590590423,
+     "lo90_paise": 140515818,
+     "hi90_paise": 775170085,
+     "calibrated": false
+    },
+    {
+     "day": 85,
+     "date": "2026-06-24",
+     "median_paise": 474511573,
+     "lo50_paise": 345515310,
+     "hi50_paise": 603063335,
+     "lo90_paise": 152053930,
+     "hi90_paise": 790611865,
+     "calibrated": false
+    },
+    {
+     "day": 86,
+     "date": "2026-06-25",
+     "median_paise": 477927290,
+     "lo50_paise": 349862745,
+     "hi50_paise": 609573397,
+     "lo90_paise": 158349704,
+     "hi90_paise": 797369111,
+     "calibrated": false
+    },
+    {
+     "day": 87,
+     "date": "2026-06-26",
+     "median_paise": 488193562,
+     "lo50_paise": 361296061,
+     "hi50_paise": 620785168,
+     "lo90_paise": 168955128,
+     "hi90_paise": 807675351,
+     "calibrated": false
+    },
+    {
+     "day": 88,
+     "date": "2026-06-27",
+     "median_paise": 497685334,
+     "lo50_paise": 368616301,
+     "hi50_paise": 629789046,
+     "lo90_paise": 176183957,
+     "hi90_paise": 818761833,
+     "calibrated": false
+    },
+    {
+     "day": 89,
+     "date": "2026-06-28",
+     "median_paise": 507642487,
+     "lo50_paise": 377436913,
+     "hi50_paise": 638484368,
+     "lo90_paise": 187450518,
+     "hi90_paise": 832242709,
+     "calibrated": false
+    },
+    {
+     "day": 90,
+     "date": "2026-06-29",
+     "median_paise": 514426382,
+     "lo50_paise": 384163416,
+     "hi50_paise": 646984496,
+     "lo90_paise": 192345050,
+     "hi90_paise": 841182005,
+     "calibrated": false
+    }
+   ],
+   "risk_by_day": [
+    0.0012,
+    0.0052,
+    0.0372,
+    0.0521,
+    0.096,
+    0.1136,
+    0.1282,
+    0.1377,
+    0.1467,
+    0.1537,
+    0.1617,
+    0.1671,
+    0.1706,
+    0.1731,
+    0.179,
+    0.1832,
+    0.1856,
+    0.1881,
+    0.1894,
+    0.2185,
+    0.2253,
+    0.2288,
+    0.2314,
+    0.2338,
+    0.2361,
+    0.2372,
+    0.2378,
+    0.2382,
+    0.239,
+    0.2399,
+    0.2822,
+    0.2877,
+    0.3046,
+    0.3081,
+    0.3173,
+    0.32,
+    0.3223,
+    0.3253,
+    0.3267,
+    0.3277,
+    0.3285,
+    0.3293,
+    0.3302,
+    0.3312,
+    0.3326,
+    0.3336,
+    0.3344,
+    0.3347,
+    0.335,
+    0.339,
+    0.34,
+    0.3405,
+    0.3414,
+    0.3421,
+    0.3424,
+    0.3428,
+    0.3432,
+    0.3437,
+    0.344,
+    0.3444,
+    0.3446,
+    0.3567,
+    0.3584,
+    0.3649,
+    0.3676,
+    0.3717,
+    0.3741,
+    0.3751,
+    0.3761,
+    0.3767,
+    0.3772,
+    0.3779,
+    0.3782,
+    0.379,
+    0.3792,
+    0.3808,
+    0.381,
+    0.3818,
+    0.3828,
+    0.383,
+    0.3869,
+    0.3878,
+    0.388,
+    0.3885,
+    0.389,
+    0.3893,
+    0.3896,
+    0.39,
+    0.3903,
+    0.3908
+   ]
+  }
+ ],
+ "owed": {
+  "items": [
+   {
+    "invoice_id": "ce200ff41264c149932ddacc60daeeb5",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 105329471,
+     "text": "Rs 10.5 lakh"
+    },
+    "days_late": 320,
+    "interest": {
+     "paise": 16269466,
+     "text": "Rs 1.6 lakh"
+    }
+   },
+   {
+    "invoice_id": "9f8d3368df8e043a514c27248c94784e",
+    "buyer": "Nav Ganesh Foods Pvt Ltd",
+    "amount": {
+     "paise": 92570206,
+     "text": "Rs 9.3 lakh"
+    },
+    "days_late": 300,
+    "interest": {
+     "paise": 13359841,
+     "text": "Rs 1.3 lakh"
+    }
+   },
+   {
+    "invoice_id": "57bd5cf5cd2e73a912e0f0acfc25f783",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 32774108,
+     "text": "Rs 3.3 lakh"
+    },
+    "days_late": 261,
+    "interest": {
+     "paise": 4075375,
+     "text": "Rs 40,754"
+    }
+   },
+   {
+    "invoice_id": "7b7823ee4281516b7e2901a11c1d4d6a",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 24818130,
+     "text": "Rs 2.5 lakh"
+    },
+    "days_late": 322,
+    "interest": {
+     "paise": 3858711,
+     "text": "Rs 38,587"
+    }
+   },
+   {
+    "invoice_id": "d4eaeb7ada207cb1b9e6e76c3b70505e",
+    "buyer": "Shree Shakti Weavers Pvt Ltd",
+    "amount": {
+     "paise": 27329976,
+     "text": "Rs 2.7 lakh"
+    },
+    "days_late": 270,
+    "interest": {
+     "paise": 3520106,
+     "text": "Rs 35,201"
+    }
+   },
+   {
+    "invoice_id": "ed7e9878e46a0d86f0c65a220be4130b",
+    "buyer": "Shree Shakti Weavers Pvt Ltd",
+    "amount": {
+     "paise": 21129238,
+     "text": "Rs 2.1 lakh"
+    },
+    "days_late": 221,
+    "interest": {
+     "paise": 2212336,
+     "text": "Rs 22,123"
+    }
+   },
+   {
+    "invoice_id": "ce9ed3b5b8e6fae673208e1cc56059af",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 15917934,
+     "text": "Rs 1.6 lakh"
+    },
+    "days_late": 283,
+    "interest": {
+     "paise": 2161572,
+     "text": "Rs 21,616"
+    }
+   },
+   {
+    "invoice_id": "e62d65ebc87701b9facbae91b6c2298e",
+    "buyer": "Nav Ganesh Foods Pvt Ltd",
+    "amount": {
+     "paise": 23200694,
+     "text": "Rs 2.3 lakh"
+    },
+    "days_late": 197,
+    "interest": {
+     "paise": 2159781,
+     "text": "Rs 21,598"
+    }
+   },
+   {
+    "invoice_id": "e9b891b39a1756b5411dba4c45b96845",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 16642730,
+     "text": "Rs 1.7 lakh"
+    },
+    "days_late": 250,
+    "interest": {
+     "paise": 1978906,
+     "text": "Rs 19,789"
+    }
+   },
+   {
+    "invoice_id": "5f710137ac09c57942fbee25a1f418c4",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 22612041,
+     "text": "Rs 2.3 lakh"
+    },
+    "days_late": 185,
+    "interest": {
+     "paise": 1974351,
+     "text": "Rs 19,744"
+    }
+   },
+   {
+    "invoice_id": "666dbeafa13ce1d46bd5283cf0faf77e",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 15104305,
+     "text": "Rs 1.5 lakh"
+    },
+    "days_late": 257,
+    "interest": {
+     "paise": 1848290,
+     "text": "Rs 18,483"
+    }
+   },
+   {
+    "invoice_id": "0e2c8f42c2c621fcee67972f287ee6c8",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 21288933,
+     "text": "Rs 2.1 lakh"
+    },
+    "days_late": 178,
+    "interest": {
+     "paise": 1777390,
+     "text": "Rs 17,774"
+    }
+   },
+   {
+    "invoice_id": "592dbd44bd247612ad1fc9ee29c0f3bf",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 12171369,
+     "text": "Rs 1.2 lakh"
+    },
+    "days_late": 301,
+    "interest": {
+     "paise": 1762691,
+     "text": "Rs 17,627"
+    }
+   },
+   {
+    "invoice_id": "5a56bbb67bfab7dfd0445f3b6ca28aae",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 22379558,
+     "text": "Rs 2.2 lakh"
+    },
+    "days_late": 158,
+    "interest": {
+     "paise": 1655887,
+     "text": "Rs 16,559"
+    }
+   },
+   {
+    "invoice_id": "3f77ffa7948a4afc2d7e47c1a781aa07",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 19547991,
+     "text": "Rs 2 lakh"
+    },
+    "days_late": 128,
+    "interest": {
+     "paise": 1170776,
+     "text": "Rs 11,708"
+    }
+   },
+   {
+    "invoice_id": "b41784b14877e70b26720b17fbdb1b8b",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 13208771,
+     "text": "Rs 1.3 lakh"
+    },
+    "days_late": 150,
+    "interest": {
+     "paise": 927234,
+     "text": "Rs 9,272"
+    }
+   },
+   {
+    "invoice_id": "13fbf8b23e21c15a9f3f9448470cccea",
+    "buyer": "Nav Ganesh Foods Pvt Ltd",
+    "amount": {
+     "paise": 15694650,
+     "text": "Rs 1.6 lakh"
+    },
+    "days_late": 124,
+    "interest": {
+     "paise": 910582,
+     "text": "Rs 9,106"
+    }
+   },
+   {
+    "invoice_id": "a0df87750004e2f71acf993ddfb5a3f9",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 5308700,
+     "text": "Rs 53,087"
+    },
+    "days_late": 323,
+    "interest": {
+     "paise": 828093,
+     "text": "Rs 8,281"
+    }
+   },
+   {
+    "invoice_id": "7fa2a33a2aef306ea0e1a8188938bab5",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 8566618,
+     "text": "Rs 85,666"
+    },
+    "days_late": 202,
+    "interest": {
+     "paise": 818098,
+     "text": "Rs 8,181"
+    }
+   },
+   {
+    "invoice_id": "118e4ea292f98dcc7aaf8110dd277f83",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 9022198,
+     "text": "Rs 90,222"
+    },
+    "days_late": 184,
+    "interest": {
+     "paise": 783422,
+     "text": "Rs 7,834"
+    }
+   },
+   {
+    "invoice_id": "3eaf8d1848663c54a881dd1b46ee58d3",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 15884538,
+     "text": "Rs 1.6 lakh"
+    },
+    "days_late": 68,
+    "interest": {
+     "paise": 504994,
+     "text": "Rs 5,050"
+    }
+   },
+   {
+    "invoice_id": "63673ba9e717226a1d497bd8fac981ee",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 8477764,
+     "text": "Rs 84,778"
+    },
+    "days_late": 125,
+    "interest": {
+     "paise": 495840,
+     "text": "Rs 4,958"
+    }
+   },
+   {
+    "invoice_id": "0403bfb64858796c8632a31bc661264c",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 55450053,
+     "text": "Rs 5.5 lakh"
+    },
+    "days_late": 17,
+    "interest": {
+     "paise": 418111,
+     "text": "Rs 4,181"
+    }
+   },
+   {
+    "invoice_id": "452cc8ba54662ea881822e26013b8afb",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 2662334,
+     "text": "Rs 26,623"
+    },
+    "days_late": 324,
+    "interest": {
+     "paise": 416646,
+     "text": "Rs 4,166"
+    }
+   },
+   {
+    "invoice_id": "fa72b6f0aa936ed181c29926fce5d0be",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 19522181,
+     "text": "Rs 2 lakh"
+    },
+    "days_late": 41,
+    "interest": {
+     "paise": 382545,
+     "text": "Rs 3,825"
+    }
+   },
+   {
+    "invoice_id": "a4abf7c4dab86bc441fbfa0759fab2ea",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 15179046,
+     "text": "Rs 1.5 lakh"
+    },
+    "days_late": 46,
+    "interest": {
+     "paise": 331566,
+     "text": "Rs 3,316"
+    }
+   },
+   {
+    "invoice_id": "0bc7d63d569f7a64d7562cdaf14f2b04",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 15606448,
+     "text": "Rs 1.6 lakh"
+    },
+    "days_late": 42,
+    "interest": {
+     "paise": 312832,
+     "text": "Rs 3,128"
+    }
+   },
+   {
+    "invoice_id": "4f6b43f8e478ee7c76af7fca076d1541",
+    "buyer": "Shree Shakti Weavers Pvt Ltd",
+    "amount": {
+     "paise": 2640929,
+     "text": "Rs 26,409"
+    },
+    "days_late": 221,
+    "interest": {
+     "paise": 276518,
+     "text": "Rs 2,765"
+    }
+   },
+   {
+    "invoice_id": "29aaeb2012ed6bb87a962e83534887a5",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 11628755,
+     "text": "Rs 1.2 lakh"
+    },
+    "days_late": 46,
+    "interest": {
+     "paise": 254014,
+     "text": "Rs 2,540"
+    }
+   },
+   {
+    "invoice_id": "df36eb546e27da058a526c14ca2ee30a",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 11591752,
+     "text": "Rs 1.2 lakh"
+    },
+    "days_late": 34,
+    "interest": {
+     "paise": 190660,
+     "text": "Rs 1,907"
+    }
+   },
+   {
+    "invoice_id": "31e9b946a0999b9c5349e44e9c9b4965",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 14470402,
+     "text": "Rs 1.4 lakh"
+    },
+    "days_late": 29,
+    "interest": {
+     "paise": 186131,
+     "text": "Rs 1,861"
+    }
+   },
+   {
+    "invoice_id": "e957dcac9f3e87b734765d3508e1a788",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 10906337,
+     "text": "Rs 1.1 lakh"
+    },
+    "days_late": 35,
+    "interest": {
+     "paise": 184290,
+     "text": "Rs 1,843"
+    }
+   },
+   {
+    "invoice_id": "9c103c0cce17ea9e6dfd498d68253a5e",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 16856367,
+     "text": "Rs 1.7 lakh"
+    },
+    "days_late": 24,
+    "interest": {
+     "paise": 179439,
+     "text": "Rs 1,794"
+    }
+   },
+   {
+    "invoice_id": "f5e1fda304f1c867042e9f75cbc14b3c",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 14364869,
+     "text": "Rs 1.4 lakh"
+    },
+    "days_late": 26,
+    "interest": {
+     "paise": 165659,
+     "text": "Rs 1,657"
+    }
+   },
+   {
+    "invoice_id": "e0a2868bee5f8e9b7e6233df002f2eae",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 13721975,
+     "text": "Rs 1.4 lakh"
+    },
+    "days_late": 24,
+    "interest": {
+     "paise": 146073,
+     "text": "Rs 1,461"
+    }
+   },
+   {
+    "invoice_id": "c3e3142cd8e1655bcaa84116f0e07df5",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 27968692,
+     "text": "Rs 2.8 lakh"
+    },
+    "days_late": 10,
+    "interest": {
+     "paise": 124055,
+     "text": "Rs 1,241"
+    }
+   },
+   {
+    "invoice_id": "3cdfbd30c55d8fbaf271585ba9506946",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 13597347,
+     "text": "Rs 1.4 lakh"
+    },
+    "days_late": 20,
+    "interest": {
+     "paise": 120622,
+     "text": "Rs 1,206"
+    }
+   },
+   {
+    "invoice_id": "3d9c4a28f12f38a809f12fc41036f7d9",
+    "buyer": "Bhagya Shakti Garments Ltd",
+    "amount": {
+     "paise": 38823933,
+     "text": "Rs 3.9 lakh"
+    },
+    "days_late": 7,
+    "interest": {
+     "paise": 120542,
+     "text": "Rs 1,205"
+    }
+   },
+   {
+    "invoice_id": "a7c0241d40733fd87ff933e1a751dcba",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 13166970,
+     "text": "Rs 1.3 lakh"
+    },
+    "days_late": 18,
+    "interest": {
+     "paise": 105123,
+     "text": "Rs 1,051"
+    }
+   },
+   {
+    "invoice_id": "0575ac702844ac74392f58d707db37b3",
+    "buyer": "Nav Ganesh Foods Pvt Ltd",
+    "amount": {
+     "paise": 15363223,
+     "text": "Rs 1.5 lakh"
+    },
+    "days_late": 12,
+    "interest": {
+     "paise": 81772,
+     "text": "Rs 818"
+    }
+   },
+   {
+    "invoice_id": "b69f9e2f33b8256dcbc64f13081316fd",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 8636585,
+     "text": "Rs 86,366"
+    },
+    "days_late": 21,
+    "interest": {
+     "paise": 80446,
+     "text": "Rs 804"
+    }
+   },
+   {
+    "invoice_id": "6de6395a2e25446ae385e1de54145820",
+    "buyer": "Shree Shakti Weavers Pvt Ltd",
+    "amount": {
+     "paise": 12178643,
+     "text": "Rs 1.2 lakh"
+    },
+    "days_late": 8,
+    "interest": {
+     "paise": 43215,
+     "text": "Rs 432"
+    }
+   },
+   {
+    "invoice_id": "1f72cd1ff9a6ca638e72eb5e094d6a3c",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 3647738,
+     "text": "Rs 36,477"
+    },
+    "days_late": 25,
+    "interest": {
+     "paise": 40449,
+     "text": "Rs 404"
+    }
+   },
+   {
+    "invoice_id": "ebeb20dbbd3fd6696eee814ab0725e59",
+    "buyer": "Shree Krishna Auto Parts Nigam Ltd",
+    "amount": {
+     "paise": 20550764,
+     "text": "Rs 2.1 lakh"
+    },
+    "days_late": 4,
+    "interest": {
+     "paise": 36461,
+     "text": "Rs 365"
+    }
+   },
+   {
+    "invoice_id": "ee7ad380422b72fb8cfa20e899a0e422",
+    "buyer": "Shree Amba Garments Ltd",
+    "amount": {
+     "paise": 4069399,
+     "text": "Rs 40,694"
+    },
+    "days_late": 19,
+    "interest": {
+     "paise": 34295,
+     "text": "Rs 343"
+    }
+   },
+   {
+    "invoice_id": "a3e893bb84b85385d2c712322b7541aa",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 6345463,
+     "text": "Rs 63,455"
+    },
+    "days_late": 11,
+    "interest": {
+     "paise": 30960,
+     "text": "Rs 310"
+    }
+   },
+   {
+    "invoice_id": "6b75fd10cf1e23e21f04e0a24d32dc94",
+    "buyer": "Jai Durga Forgings Nigam Ltd",
+    "amount": {
+     "paise": 20041962,
+     "text": "Rs 2 lakh"
+    },
+    "days_late": 3,
+    "interest": {
+     "paise": 26669,
+     "text": "Rs 267"
+    }
+   },
+   {
+    "invoice_id": "856beb2f87f518d58bd7625fb1ce2525",
+    "buyer": "Anand Vijay Castings Pvt Ltd",
+    "amount": {
+     "paise": 2853745,
+     "text": "Rs 28,537"
+    },
+    "days_late": 21,
+    "interest": {
+     "paise": 26581,
+     "text": "Rs 266"
+    }
+   },
+   {
+    "invoice_id": "6c8b6e8272b61151a76115608aea7e70",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 1817851,
+     "text": "Rs 18,179"
+    },
+    "days_late": 31,
+    "interest": {
+     "paise": 24995,
+     "text": "Rs 250"
+    }
+   },
+   {
+    "invoice_id": "925a7d137aa5be23c6fd7be5aff51bbe",
+    "buyer": "Bhagya Shakti Garments Ltd",
+    "amount": {
+     "paise": 3295927,
+     "text": "Rs 32,959"
+    },
+    "days_late": 15,
+    "interest": {
+     "paise": 21929,
+     "text": "Rs 219"
+    }
+   },
+   {
+    "invoice_id": "d237c4081054c60a77310e838fe5cae3",
+    "buyer": "Shree Krishna Auto Parts Nigam Ltd",
+    "amount": {
+     "paise": 4412806,
+     "text": "Rs 44,128"
+    },
+    "days_late": 9,
+    "interest": {
+     "paise": 17616,
+     "text": "Rs 176"
+    }
+   },
+   {
+    "invoice_id": "1734af721a24cb90523b04bdd3d6c8c1",
+    "buyer": "Om Krishna Garments Pvt Ltd",
+    "amount": {
+     "paise": 19581019,
+     "text": "Rs 2 lakh"
+    },
+    "days_late": 2,
+    "interest": {
+     "paise": 17370,
+     "text": "Rs 174"
+    }
+   },
+   {
+    "invoice_id": "a3c850967d4693e8d8928a1fc1476fa0",
+    "buyer": "Jai Durga Forgings Pvt Ltd",
+    "amount": {
+     "paise": 10855011,
+     "text": "Rs 1.1 lakh"
+    },
+    "days_late": 2,
+    "interest": {
+     "paise": 9629,
+     "text": "Rs 96"
+    }
+   },
+   {
+    "invoice_id": "d0a915173f54a7167ccde0c987184b30",
+    "buyer": "Shree Krishna Auto Parts Nigam Ltd",
+    "amount": {
+     "paise": 1029826,
+     "text": "Rs 10,298"
+    },
+    "days_late": 17,
+    "interest": {
+     "paise": 7765,
+     "text": "Rs 78"
+    }
+   }
+  ],
+  "total_interest": {
+   "paise": 69468720,
+   "text": "Rs 6.9 lakh"
+  },
+  "note": "Claims for late-payment interest go to the MSME ODR portal (Samadhaan). Filing is your choice; this is what the law says you are owed today."
+ },
+ "meta": {
+  "schema_version": "owner-view-v1",
+  "tenant_id": "5f0c6a1e-2b7d-4c3a-9e8f-1a2b3c4d5e6f",
+  "run_id": "demo:borderline:0:decide:verify",
+  "as_of": "2026-03-31",
+  "data_through": "2026-03-29",
+  "latest_data_received": "2026-03-31T17:21:08Z",
+  "data_lag_days": 2,
+  "data_freshness": "Bank data complete up to 29 Mar 2026, 2 days before today.",
+  "model_versions": {
+   "obligations_detector": "v1",
+   "payment_timing": "beta-geometric-2phase-v1+empirical-v1",
+   "sales_forecaster": "negbin-v1+boot",
+   "simulation_engine": "mc-v2",
+   "unscheduled": "bootstrap-8w-v0",
+   "decision_engine": "saa-milp-highs-v1"
+  },
+  "plan_method": "cvar",
+  "plan_run_id": "demo:borderline:0:decide:cvar",
+  "n_paths": 10000
+ }
+}

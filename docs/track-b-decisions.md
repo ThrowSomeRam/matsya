@@ -791,6 +791,72 @@ the median HiGHS time, so some of those plans are likely time-limited too. Optio
 status and MIP gap in the run record, raise the limit, or tighten the formulation (fewer chase
 columns, symmetric overdraft days). Not done.
 
+## Decision engine: CVaR plan (2026-10-25)
+
+**Formulation** (`decide/plan.py` `_solve_cvar`, `decide(method="cvar")`). Rockafellar-Uryasev on the
+same 1,000 solve paths as the chance-constrained plan. The loss per path is the 90-day shortfall depth,
+L_n = max(0, theta - min_t balance).
+
+- **Objective:** minimise the total action cost.
+- **Path rows:** u_n + eta + sum_v delta_v[n, t] x_v >= theta - B[n, t] for every kept (n, t).
+- **CVaR row:** eta + sum_n u_n / (alpha N) <= budget.
+- **Bounds:** u >= 0 and eta >= 0. Loss is never negative, so eta >= 0 loses nothing.
+- **Other rows:** the same as the chance-constrained plan (one action per invoice, one stretch per
+  supplier, the overdraft limit, the chase-invoice linearisation).
+
+There are no per-path binaries. The only integers are the actions (about 26 candidates, median), so the
+problem is still a MILP, but a small one.
+
+Owner inputs: `decision.cvar.alpha` (0.05) and `decision.cvar.budget_paise` (0). With budget 0 the plan
+must leave no solve path short, so alpha has no effect. Where some paths cannot be saved by any action,
+the budget is infeasible. A first solve then minimises the CVaR, and a second finds the cheapest plan
+within 0.1% (or Re 1) of that minimum. The result says so.
+
+Same flow as before:
+
+- verified on 10,000 fresh paths, with the same seeds as the chance-constrained plan (common random
+  numbers);
+- the plan table and LOO ranking are unchanged, with in-sample CVaR as the tie-break;
+- solver status and time are recorded.
+
+The chance-constrained plan stays available (`method="chance"`). The 30-world baseline, sensitivity
+scripts and their tests pin it.
+
+**Benchmark** (`eval/models/decision_cvar.py`, `eval/results/decision_cvar.md`). Same 30 worlds and
+owner inputs as "Decision engine across worlds". Means over worlds, fresh paths:
+
+| plan | cost mean (median), Rs | p_short(90) | meets 0.05 strictly | within MC error | ES if short, Rs | ES over all futures, Rs | worst-5% average shortfall, Rs | solve s median (max) | optimal / time limit |
+|---|---|---|---|---|---|---|---|---|---|
+| do nothing | 0 | 0.498 | 0/30 | 0/30 | 11,19,050 | 5,58,867 | 31,67,241 | | |
+| chance-constrained | 54,106 (26,209) | 0.0467 | 19/30 | 26/30 | 6,40,485 | 30,701 | 6,12,092 | 31.1 (60.1) | 26 / 4 |
+| CVaR | 1,15,801 (1,21,524) | 0.0075 | 30/30 | 30/30 | 5,40,676 | 4,811 | 96,224 | 1.4 (4.2) | 30 / 0 |
+
+- **Cost:** CVaR is dearer in every world (paired +Rs 61,695, 95% CI +49,676 to +73,543). It buys
+  about a sixth of the tail shortfall.
+- **Budget in sample:** met in 7/30 worlds. The other 23 have solve paths no action can save, and get
+  the lowest-CVaR plan.
+- **Solver:** HiGHS proves every CVaR plan optimal in under 5 s. 4/30 chance-constrained plans stop at
+  the 60 s limit.
+- **Chance-constrained, strict hits:** 19/30, down from 24/30 in the earlier run on the same worlds.
+  That run was before the sales bootstrap came back (wider sales paths on the fresh check).
+
+**Stress** (pessimistic model: every payment chance x 0.85 and the order rate x 0.9, as scenario
+transforms on the fresh seed; plans not re-solved):
+
+| plan | p_short(90) normal -> stressed | meets 0.05 stressed | worst-5% normal -> stressed, Rs |
+|---|---|---|---|
+| do nothing | 0.498 -> 0.639 (+0.141) | 0/30 | 31,67,241 -> 37,82,850 (+6,15,609) |
+| chance-constrained | 0.0467 -> 0.1136 (+0.0670) | 0/30 | 6,12,092 -> 13,53,151 (+7,41,059) |
+| CVaR | 0.0075 -> 0.0280 (+0.0205) | 27/30 | 96,224 -> 3,78,575 (+2,82,351) |
+
+The chance-constrained plan sits at the edge of its target, so a mild model error pushes every world
+over it. Its tail also grows more than doing nothing's does. The CVaR plan keeps its margin.
+
+**Default.** The rule set in advance: CVaR becomes the owner-view default if it meets the owner's target
+on fresh paths at least as often. It does (30/30 against 19/30), so `decision.plan_method` = `cvar`.
+The cost of that choice is roughly double the plan cost. If the owner's target is the 5% chance and
+nothing more, the chance-constrained plan is the cheaper answer and still available.
+
 ## Empirical timing in the engine: late bins (2026-10-25)
 
 **What moved.** Learned-mode calibration on the 100 default pasts (oracle 200 futures, 4,000
@@ -1058,6 +1124,74 @@ checks the live replay against offline ACI at the paper gamma.
   placeholder).
 - **Kept:** sections 1-2 of the file (legal and dataset facts the handbook mirrors), whether or
   not code reads them.
+
+## Thin-buyer floor and sales bootstrap restored (2026-10-25)
+
+**Payment-timing model: group prior alpha floored at 1.5.** The proposal from the thin-buyer test,
+done. The group's p prior keeps its method-of-moments mean, and its strength is raised where needed so
+that alpha >= 1.5 (`payment_timing.group_prior_min_alpha`, `timing/hierarchy.py`). Only p is floored:
+1/p is the quantity that blew up. Same 30 worlds, 40 buyers, seeds and bootstrap as before
+(`eval/results/thin_buyers.md`):
+
+| buyers | quantity | type prior only | shrinkage, before | shrinkage, alpha >= 1.5 | difference now (95% CI) |
+|---|---|---|---|---|---|
+| thin (n = 252) | p, MAE vs truth | 0.0816 | 0.0851 | 0.0847 | +0.0031 (-0.0003 to +0.0065) |
+| thin | expected weeks to pay (1/p), MAE vs truth | 4.60 | 7.96 | 5.24 | +0.65 (+0.42 to +0.90) |
+| thin | p_early | 0.0330 | 0.0348 | 0.0349 | +0.0019 (+0.0005 to +0.0033) |
+| heavy (n = 80) | p | 0.0532 | 0.0538 | 0.0537 | +0.0005 (-0.0016 to +0.0028) |
+
+- **What improved:** the weeks-to-pay error falls by 2.7 weeks.
+- **What did not:** shrinkage is still worse than the type prior alone on weeks to pay. On p it is
+  now a tie (the CI crosses 0).
+- **Heavy buyers:** unaffected.
+- **Decision:** shrinkage stays on, as before. The floor is kept because it removes the blow-up and costs
+  nothing on p.
+
+**Sales forecaster: parameter bootstrap restored; demand AR(1) stays removed.** Per-path block-bootstrap
+draws of (m, k, purchase ratio) are back in `sales/model.py` (`sample(param_draws=True)`), and the engine
+uses them by default (`build_learned_inputs(sales_uncertainty=True)`; model version `negbin-v1+boot`).
+The two tests for them are back as well. Learned-mode calibration guard, with the alpha floor also in
+(100 pasts, oracle 200 futures, 4,000 paths):
+
+| variant | mean gap | mean \|gap\| | corr | guard (within 0.02 of -0.033 / 0.133) |
+|---|---|---|---|---|
+| both off (audit) | -0.0496 | 0.1484 | 0.738 | pass, margins 0.0034 / 0.0046 |
+| bootstrap on, AR(1) off (now) | -0.0510 | 0.1472 | 0.739 | pass, margins 0.0020 / 0.0058 |
+
+- **Better:** mean |gap| and corr, close to the audit's off/on run (-0.0502 / 0.1473 / 0.739).
+- **Worse:** the mean-gap margin, now 0.0020 and the binding one. Any further change that pushes
+  forecasts more optimistic will trip the guard.
+- **Bins:** the 0.05-0.20 bin still under-predicts (0.126 predicted vs 0.214 oracle, n 28).
+
+## Owner view payload (2026-10-25)
+
+`present/owner_view.py`: `build_owner_view(tenant_run) -> OwnerView` (pydantic). `present/tenant_run.py`:
+`compute_tenant_run` runs everything once.
+
+- **Baseline:** the decision engine's fresh-path do-nothing run (`<run>:decide:verify`). The plan's
+  "risk after" figures therefore share every random draw with the headline and chart 2.
+- **What-ifs:** every preset, each with its breaking point, run against that baseline.
+- **Drivers:** attribution, on its own seed.
+
+**No LLM.** Strings come from fixed templates, and every number a string shows is also a payload field
+(`Money.text`, `Pct.text` or an integer field). A test checks this, along with every rupee figure
+against the engine, decision engine, scenario and attribution outputs.
+
+**Money format:** Rs 4.2 lakh, Rs 1.3 crore, en-IN grouping below a lakh.
+
+**Breaking point:** the magnitude at which the 90-day chance reaches 0.5, the runway rule.
+
+**Fan:** the engine's own quantiles. Days 1-30 are flagged as calibrated, and would be read at the
+calibration component's level. The demo world has no calibration history, so the scale is 1 and those
+bands equal the engine's.
+
+**Demo payload** (`eval/models/owner_view_demo.py`): `eval/demo/owner_view.json`, built in 620 s at
+10,000 paths. Default world, past seed 0, Rs 10 lakh cushion, categoriser categories, CVaR plan.
+
+- **Today:** Rs 28.6 lakh in the bank.
+- **Risk:** 20% / 29% / 34% chance of running short within 30 / 60 / 90 days; runway beyond 90 days.
+- **Plan:** 6 steps for Rs 1.2 lakh take the 90-day chance to under 1%. Solved optimal.
+- **Money owed:** 54 overdue invoices carry Rs 6.9 lakh of MSMED interest.
 
 ## Requests to Track A
 

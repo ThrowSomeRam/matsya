@@ -34,6 +34,7 @@ invoice, chase the largest buyer) run on the same fresh paths.
 
 import json
 import math
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -119,35 +120,36 @@ def _short_days(bal: np.ndarray, theta: int, day: int) -> float:
     return float((bal[:, 1:day + 1] < theta).sum(axis=1).mean())
 
 
-def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
-    """Returns (x per variable, sum z, solver info, target met, rows). eps is the in-sample target."""
+def _path_rows(cols: Columns, theta: int):
+    """Balance rows that some plan can push below theta: (B, lo, hopeless paths, row path, row day,
+    action-column triplets (row, var, coef) in SCALE units). lo = B + sum_v min(0, ub_v delta_v)."""
     B = cols.base.balance[:, 1:cols.day + 1].astype(float)
-    n, V = B.shape[0], cols.n_vars
     lo, hi = B.copy(), B.copy()
-    for v in range(V):
+    for v in range(cols.n_vars):
         d = cols.delta(v).astype(float) * cols.ub(v)
         lo += np.minimum(d, 0)
         hi += np.maximum(d, 0)
     hopeless = (hi < theta).any(axis=1)
-    keep = (lo < theta) & ~hopeless[:, None]
-    rn, rt = np.nonzero(keep)
-    R = len(rn)
-    # variables: x (V), z (n)
-    blocks = []
-    for v in range(V):
+    return B, lo, hopeless, hi
+
+
+def _triplets(cols: Columns, rn: np.ndarray, rt: np.ndarray):
+    out = []
+    for v in range(cols.n_vars):
         vals = cols.delta(v)[rn, rt].astype(float) / SCALE
         nz = np.flatnonzero(vals)
-        blocks.append((nz, np.full(nz.size, v), vals[nz]))
-    rows = np.concatenate([b[0] for b in blocks] + [np.arange(R)])
-    cidx = np.concatenate([b[1] for b in blocks] + [V + rn])
-    vals = np.concatenate([b[2] for b in blocks] + [(theta - lo[rn, rt]) / SCALE])
-    A_paths = coo_matrix((vals, (rows, cidx)), shape=(R, V + n)).tocsr()
-    lb_paths = (theta - B[rn, rt]) / SCALE
+        out.append((nz, np.full(nz.size, v), vals[nz]))
+    return out
 
+
+def _side_rows(cols: Columns, width: int) -> tuple[list, list, list]:
+    """At most one action per invoice, one stretch length per supplier, overdraft units <= limit, and the
+    y (chase x invoice) linearisation; rows over `width` columns (actions and y come first)."""
+    V = cols.n_vars
     side, s_lo, s_hi = [], [], []
 
     def row(coefs: dict[int, float], lo_: float, hi_: float):
-        r = np.zeros(V + n)
+        r = np.zeros(width)
         for j, c in coefs.items():
             r[j] += c
         side.append(r)
@@ -177,6 +179,33 @@ def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
         row({yv: 1, c: -1}, -np.inf, 0)
         row({yv: 1, **{j: 1 for j in on_i}}, -np.inf, 1)
         row({yv: -1, c: 1, **{j: -1 for j in on_i}}, -np.inf, 0)
+    assert V <= width
+    return side, s_lo, s_hi
+
+
+def _info(res) -> dict:
+    gap = getattr(res, "mip_gap", None)
+    return {"status": int(res.status), "message": res.message, "time_limited": int(res.status) == 1,
+            "mip_gap": None if gap is None or not np.isfinite(gap) else float(gap)}
+
+
+def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
+    """Chance-constrained plan. Returns (x per variable, sum z, solver info, target met, rows). eps is the
+    in-sample target."""
+    B, lo, hopeless, _ = _path_rows(cols, theta)
+    n, V = B.shape[0], cols.n_vars
+    keep = (lo < theta) & ~hopeless[:, None]
+    rn, rt = np.nonzero(keep)
+    R = len(rn)
+    # variables: x (V), z (n)
+    blocks = _triplets(cols, rn, rt)
+    rows = np.concatenate([b[0] for b in blocks] + [np.arange(R)])
+    cidx = np.concatenate([b[1] for b in blocks] + [V + rn])
+    vals = np.concatenate([b[2] for b in blocks] + [(theta - lo[rn, rt]) / SCALE])
+    A_paths = coo_matrix((vals, (rows, cidx)), shape=(R, V + n)).tocsr()
+    lb_paths = (theta - B[rn, rt]) / SCALE
+    side, s_lo, s_hi = _side_rows(cols, V + n)
+    acts = cols.acts
 
     cap = math.floor(eps * n + 1e-9)
     z_lb = hopeless.astype(float)
@@ -208,10 +237,72 @@ def _solve(cols: Columns, theta: int, eps: float, time_limit: float):
             res = r1
     x = np.round(res.x[:V]).astype(np.int64)
     x[len(acts):] = np.clip(x[len(acts):], 0, 1)
-    gap = getattr(res, "mip_gap", None)
-    info = {"status": int(res.status), "message": res.message, "time_limited": int(res.status) == 1,
-            "mip_gap": None if gap is None or not np.isfinite(gap) else float(gap)}
-    return x, int(round(res.x[V:].sum())), info, met, R
+    return x, int(round(res.x[V:].sum())), _info(res), met, R
+
+
+def _solve_cvar(cols: Columns, theta: int, alpha: float, budget_paise: int, time_limit: float):
+    """CVaR plan (Rockafellar-Uryasev). Loss per path L_n = max(0, theta - min_t balance), linear in x:
+
+      minimise   sum_a cost_a x_a
+      subject to u_n + eta + sum_v delta_v[n, t] x_v >= theta - B[n, t]   every kept (n, t)
+                 eta + sum_n u_n / (alpha N) <= budget
+                 u >= 0, eta >= 0, side rows as in the chance-constrained plan
+
+    so eta + mean(u) / alpha >= CVaR_alpha(L) at the optimum (eta is the VaR; L >= 0 so eta >= 0 loses
+    nothing). No per-path binaries: only the actions are integer. If the budget cannot be met, a first
+    solve minimises the CVaR and a second finds the cheapest plan within 0.1% (or Re 1) of that minimum.
+    Returns (x, in-sample CVaR in paise, solver info, budget met, rows)."""
+    B, lo, _, _ = _path_rows(cols, theta)
+    n, V = B.shape[0], cols.n_vars
+    rn, rt = np.nonzero(lo < theta)
+    R = len(rn)
+    # variables: x (V), u (n), eta
+    W = V + n + 1
+    blocks = _triplets(cols, rn, rt)
+    rows = np.concatenate([b[0] for b in blocks] + [np.arange(R), np.arange(R)])
+    cidx = np.concatenate([b[1] for b in blocks] + [V + rn, np.full(R, V + n)])
+    vals = np.concatenate([b[2] for b in blocks] + [np.ones(R), np.ones(R)])
+    cons = [LinearConstraint(coo_matrix((vals, (rows, cidx)), shape=(R, W)).tocsr(),
+                             (theta - B[rn, rt]) / SCALE, np.inf)] if R else []
+    side, s_lo, s_hi = _side_rows(cols, W)
+    if side:
+        cons.append(LinearConstraint(csr_matrix(np.array(side)), s_lo, s_hi))
+    cvar_row = np.concatenate([np.zeros(V), np.full(n, 1 / (alpha * n)), [1.0]])
+    acts = cols.acts
+    lb = np.zeros(W)
+    ub = np.concatenate([[cols.ub(v) for v in range(V)], np.full(n + 1, np.inf)])
+    integrality = np.concatenate([[1] * len(acts), [0] * len(cols.y), np.zeros(n + 1)])
+    cost = np.concatenate([[a.cost_paise / SCALE for a in acts], np.zeros(len(cols.y)), np.zeros(n + 1)])
+    opts = {"time_limit": time_limit, "disp": False, "presolve": True}
+
+    def go(c, cap):
+        return milp(c, constraints=cons + [LinearConstraint(csr_matrix(cvar_row[None, :]), -np.inf, cap)],
+                    integrality=integrality, bounds=Bounds(lb, ub), options=opts)
+
+    met = True
+    res = go(cost, budget_paise / SCALE)
+    if res.x is None:
+        met = False
+        r1 = go(cvar_row, np.inf)
+        if r1.x is None:
+            raise RuntimeError(f"decision MILP failed: {r1.message}")
+        best = float(cvar_row @ r1.x)
+        res = go(cost, best * 1.001 + 100 / SCALE)
+        if res.x is None:
+            res = r1
+    x = np.round(res.x[:V]).astype(np.int64)
+    x[len(acts):] = np.clip(x[len(acts):], 0, 1)
+    return x, float(cvar_row @ res.x) * SCALE, _info(res), met, R
+
+
+def shortfall_stats(bal: np.ndarray, theta: int, day: int, alpha: float = 0.05) -> dict:
+    """p_short by day, expected depth below theta (over paths that breach, and over all paths) and the
+    average depth in the worst alpha of paths (CVaR), from a (paths, 1 + horizon) balance array."""
+    depth = np.maximum(0, theta - bal[:, 1:day + 1].min(axis=1)).astype(float)
+    k = max(1, math.ceil(alpha * depth.size))
+    short = depth > 0
+    return {"p_short": float(short.mean()), "es_cond_paise": float(depth[short].mean()) if short.any() else 0.0,
+            "es_uncond_paise": float(depth.mean()), "cvar_paise": float(np.sort(depth)[-k:].mean())}
 
 
 @dataclass
@@ -238,6 +329,12 @@ class DecisionResult:
     n_candidates: int
     n_rows: int
     record: dict
+    method: str = "chance"  # "chance" (chance-constrained) or "cvar"
+    cvar_alpha: float | None = None
+    cvar_budget_paise: int | None = None
+    cvar_sub_paise: float | None = None  # the plan's in-sample CVaR (cvar plans)
+    fresh: dict | None = None  # shortfall_stats on the fresh paths: {"do_nothing": ..., "plan": ...}
+    p_short_by_day: dict | None = None  # fresh paths, days 1..horizon: {"do_nothing": array, "plan": array}
 
     @property
     def cost_paise(self) -> int:
@@ -270,19 +367,24 @@ def _baseline_row(name: str, bal: np.ndarray, theta: int, day: int, cost: int, n
 
 def decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_transforms: list | None = None,
            n_sub: int | None = None, n_verify: int | None = None, horizon: int = 90,
-           constants_overrides: dict | None = None) -> DecisionResult:
+           constants_overrides: dict | None = None, method: str | None = None) -> DecisionResult:
     """The cheapest plan meeting the target for this tenant at as_of, verified on fresh paths.
 
+    method: "chance" (p_short by day D <= eps) or "cvar" (CVaR_alpha of the day-D shortfall depth <=
+    budget); None = decision.plan_method. Both use the same solve and fresh paths (common random numbers).
     constants_overrides: decision constants by dotted path, for this call only (sensitivity runs);
     kept in the run record for replay."""
     with C.overrides(constants_overrides):
-        res = _decide(inp, dinp, base_run_id, active_transforms, n_sub, n_verify, horizon)
+        method = method or C.constants()["plan_method"]["value"]
+        if method not in ("chance", "cvar"):
+            raise ValueError(f"unknown plan method {method!r}")
+        res = _decide(inp, dinp, base_run_id, active_transforms, n_sub, n_verify, horizon, method)
     res.record["constants_overrides"] = dict(sorted((constants_overrides or {}).items()))
     return res
 
 
 def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_transforms: list | None,
-            n_sub: int | None, n_verify: int | None, horizon: int) -> DecisionResult:
+            n_sub: int | None, n_verify: int | None, horizon: int, method: str = "chance") -> DecisionResult:
     k = C.constants()
     active = list(active_transforms or [])
     eps = dinp.eps if dinp.eps is not None else k["shortfall_target_eps"]["value"]
@@ -296,8 +398,9 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
         raise ValueError("the shortfall threshold is the owner cushion and cannot be negative; overdraft "
                          "headroom enters only as overdraft draws, so a negative threshold would count it twice")
     inp_a = apply_transforms(inp, active)
-    run_id = f"{base_run_id}:decide"
-    sub_id, ver_id = f"{run_id}:subsample", f"{run_id}:verify"
+    seed_run = f"{base_run_id}:decide"  # both plan methods solve and verify on the same paths
+    run_id = seed_run if method == "chance" else f"{seed_run}:cvar"
+    sub_id, ver_id = f"{seed_run}:subsample", f"{seed_run}:verify"
 
     base = run_engine(inp_a, sub_id, n_sub, horizon, keep_flows=True)
     every = candidate_actions(inp_a, dinp, base, horizon, active)
@@ -305,7 +408,14 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
     money_owed = _money_owed(inp_a, dinp, [a for a in every if a.kind == "msmed_interest"])
     cols = _columns(inp, active, acts, base, sub_id, n_sub, horizon, day)
     eps_solve = k["solve_eps_factor"]["value"] * eps
-    x, z_sum, solver, met, n_rows = _solve(cols, theta, eps_solve, k["milp_time_limit_s"]["value"])
+    alpha, budget = float(k["cvar"]["alpha"]["value"]), int(k["cvar"]["budget_paise"]["value"])
+    t0 = time.perf_counter()
+    if method == "chance":
+        x, z_sum, solver, met, n_rows = _solve(cols, theta, eps_solve, k["milp_time_limit_s"]["value"])
+        cvar_sub = None
+    else:
+        x, cvar_sub, solver, met, n_rows = _solve_cvar(cols, theta, alpha, budget, k["milp_time_limit_s"]["value"])
+    solver["seconds"] = time.perf_counter() - t0
     chosen_idx = [j for j in range(len(acts)) if x[j] > 0]
 
     # In-sample plan balance (linear model) and leave-one-out importance for the ranking.
@@ -314,14 +424,18 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
     plan_bal = B + sum(contrib.values()) if contrib else B
     p_plan_sub = float((plan_bal.min(axis=1) < theta).mean())
 
-    def loo(j: int) -> float:
+    def loo(j: int) -> tuple[float, float]:
+        """Rise in p_short and in the in-sample CVaR of the depth when action j is dropped."""
         d = plan_bal - contrib[j]
         for yi, (c, _) in enumerate(cols.y):
             if c == j and len(acts) + yi in contrib:
                 d = d - contrib[len(acts) + yi]
-        return float((d.min(axis=1) < theta).mean()) - p_plan_sub
+        cv = shortfall_stats(np.hstack([np.zeros((d.shape[0], 1)), d]), theta, day, alpha)["cvar_paise"]
+        return float((d.min(axis=1) < theta).mean()) - p_plan_sub, cv
 
-    order = sorted(chosen_idx, key=lambda j: (-loo(j), acts[j].cost(int(x[j])), acts[j].kind, acts[j].target_id))
+    imp = {j: loo(j) for j in chosen_idx}
+    order = sorted(chosen_idx, key=lambda j: (-imp[j][0], -imp[j][1], acts[j].cost(int(x[j])), acts[j].kind,
+                                              acts[j].target_id))
 
     # Fresh paths: baseline, the plan step by step (additive on these paths), the full plan as a run.
     vbase = run_engine(inp_a, ver_id, n_verify, horizon, keep_flows=True)
@@ -361,8 +475,16 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
     base_rows.append(_baseline_row("plan", vplan.balance, theta, day,
                                    sum(acts[j].cost(int(x[j])) for j in chosen_idx), len(chosen_idx)))
     baselines = pl.DataFrame(base_rows)
+    fresh = {"do_nothing": shortfall_stats(vbase.balance, theta, day, alpha),
+             "plan": shortfall_stats(vplan.balance, theta, day, alpha)}
+    by_day = {name: np.minimum.accumulate(r.balance[:, 1:], axis=1).__lt__(theta).mean(axis=0)
+              for name, r in (("do_nothing", vbase), ("plan", vplan))}
 
-    if met:
+    if method == "cvar":
+        msg = (f"CVaR budget {'met' if met else 'cannot be met'} in sample: average shortfall in the worst "
+               f"{alpha:.0%} of solve paths Rs {cvar_sub / 100:,.0f} (budget Rs {budget / 100:,.0f})"
+               + ("" if met else "; plan minimises it"))
+    elif met:
         msg = (f"target met in sample: {z_sum}/{n_sub} paths short by day {day} "
                f"(cap {math.floor(eps_solve * n_sub + 1e-9)} at {eps_solve:.3f}, target {eps:.3f})")
     else:
@@ -374,7 +496,9 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
               "active_transforms_json": to_json(active), "plan_transforms_json": to_json(plan_ts),
               "plan_transforms_hash": transforms_hash(plan_ts), "eps": eps, "day": day, "threshold_paise": theta,
               "n_sub": n_sub, "n_verify": n_verify, "eps_solve": eps_solve, "solver": solver["message"],
-              "solver_status": solver["status"], "time_limited": solver["time_limited"], "mip_gap": solver["mip_gap"]}
+              "solver_status": solver["status"], "time_limited": solver["time_limited"], "mip_gap": solver["mip_gap"],
+              "method": method,  # solve time is in DecisionResult.solver only: the record must replay exactly
+              **({"cvar_alpha": alpha, "cvar_budget_paise": budget, "cvar_sub_paise": cvar_sub} if method == "cvar" else {})}
     return DecisionResult(
         run_id=run_id, tenant_id=inp.tenant_id, plan=plan, chosen=[(acts[j], int(x[j])) for j in order],
         transforms=plan_ts, target_met=met, eps=eps, day=day, n_sub=n_sub, n_verify=n_verify,
@@ -382,4 +506,6 @@ def _decide(inp: EngineInputs, dinp: DecisionInputs, base_run_id: str, active_tr
         p_short_verified_se=math.sqrt(max(p_ver * (1 - p_ver), 1e-12) / n_verify),
         baselines=baselines, msmed_owed=owed_interest(inp_a, dinp), money_owed=money_owed, solver=solver,
         eps_solve=eps_solve, message=msg, n_candidates=len(acts),
-        n_rows=n_rows, record=json.loads(json.dumps(record, default=str)))
+        n_rows=n_rows, record=json.loads(json.dumps(record, default=str)), method=method,
+        cvar_alpha=alpha if method == "cvar" else None, cvar_budget_paise=budget if method == "cvar" else None,
+        cvar_sub_paise=cvar_sub, fresh=fresh, p_short_by_day=by_day)

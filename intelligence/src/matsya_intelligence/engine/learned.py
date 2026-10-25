@@ -19,6 +19,7 @@ the same weekday, from the whole history (full_unscheduled, the default) or the 
 so rare large flows can appear.
 
 Flags (each was a calibration step; see eval/models/engine_calibration.py):
+  sales_uncertainty: per-path bootstrap draws of order rate, dispersion, purchase ratio
   sector_shocks:     per-path sector lateness paths from the shock component, applied
                      to base chances solved so the shock-averaged chance is the posterior
   full_unscheduled:  bootstrap unscheduled flows from the full history
@@ -103,7 +104,7 @@ def bootstrap_unscheduled(txns: pl.DataFrame, categories: pl.DataFrame, as_of: d
 
 def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFrame, as_of: date | datetime, run_id: str,
                          threshold_paise: int = 0, gst_rate: float | None = None, horizon: int = 90,
-                         with_sales: bool = True,
+                         with_sales: bool = True, sales_uncertainty: bool = True,
                          sector_shocks: bool = True, full_unscheduled: bool = True,
                          naive_purchases: bool = False, timing_priors: dict | None = None,
                          timing_hierarchical: bool = True, shock_base: bool = True,
@@ -144,7 +145,7 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         sm = fit_sales(inv, txns, categories, as_of)
 
         def sales_fn(n_paths: int, H: int, rng: np.random.Generator, **scenario):
-            fut, pur = sm.sample(n_paths, H, rng, **scenario)
+            fut, pur = sm.sample(n_paths, H, rng, param_draws=sales_uncertainty, **scenario)
             b = np.array([bidx[x] for x in fut["buyer_id"]], dtype=np.int64)
             gross = fut["gross_paise"].to_numpy()
             tds = np.round(gross * np.array([sm.tds_ratio.get(x, 0.0) for x in fut["buyer_id"]])).astype(np.int64)
@@ -208,7 +209,7 @@ def build_learned_inputs(tables: dict[str, pl.DataFrame], categories: pl.DataFra
         survival_through_day=(through - as_of).days, sales=sales_fn, fixed=fixed, gst_rate=gst_rate,
         gst_due_days=gst_days, gst_history_net=known, gst_carry_in=carry,
         unscheduled=unscheduled, shift_sampler=shock_sampler,
-        model_versions={"payment_timing": "beta-geometric-2phase-v1+empirical-v1" if tm.hazards else "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1",
+        model_versions={"payment_timing": "beta-geometric-2phase-v1+empirical-v1" if tm.hazards else "beta-geometric-2phase-v1", "sales_forecaster": "negbin-v1+boot" if sales_uncertainty else "negbin-v1",
                         "obligations_detector": "v1", "unscheduled": unscheduled_version},
         input_snapshot_ids=[f"{k}:{_snapshot_id(v)}" for k, v in sorted(obs.items()) if isinstance(v, pl.DataFrame)]
         + [f"opening_balance:{obs['opening_balance']['closing_paise']}@{obs['opening_balance']['date']}",

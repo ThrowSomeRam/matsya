@@ -7,6 +7,8 @@
 #   make test-s3        platform and eval suites against MinIO (starts it)
 #   make minio-up       MinIO on 127.0.0.1:9000, console on http://127.0.0.1:9001
 #   make minio-down     stop it, keep the data;  make minio-reset  stop it and delete the data
+#   make owner-view-up  owner-view API and dashboard on the demo world: http://127.0.0.1:8080
+#   make owner-view-down
 #
 # .env is gitignored and holds real secrets: never commit it.
 
@@ -20,13 +22,13 @@ COMPOSE := docker compose -p matsya --env-file .env -f infra/compose.platform.ym
 export
 
 .PHONY: setup env test test-contracts test-platform test-eval test-pipeline test-s3 \
-        minio-up minio-down minio-reset
+        minio-up minio-down minio-reset owner-view-up owner-view-down
 
 setup: $(VENV)/.installed
 
 $(VENV)/.installed: contracts/pyproject.toml platform/pyproject.toml eval/platform/pyproject.toml
 	uv venv --allow-existing --python 3.12 $(VENV)
-	uv pip install --python $(PY) -e contracts[dev] -e 'platform[dev,s3]' -e eval/platform[dev]
+	uv pip install --python $(PY) -e contracts[dev] -e 'platform[dev,s3,api]' -e eval/platform[dev]
 	touch $@
 
 env:
@@ -71,3 +73,10 @@ minio-down:
 
 minio-reset:
 	$(COMPOSE) down -v
+
+owner-view-up:
+	@[ -f .env ] || { echo "no .env: run make env first"; exit 1; }
+	$(COMPOSE) up -d --build --wait api dashboard
+
+owner-view-down:
+	$(COMPOSE) stop api dashboard

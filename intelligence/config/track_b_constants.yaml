@@ -178,6 +178,11 @@ decision:            # B9
   solve_eps_factor: {value: 0.8, status: assumption, why: "solve at 0.8 eps: the in-sample count is optimistic (30 worlds at 1.0: fresh p_short 0.054 vs 0.049 in sample, 5/30 strictly under eps)"}
   shortfall_day: {value: 90, status: assumption, why: "the brief: no breach by day 90"}
   milp_time_limit_s: {value: 60, status: assumption}
+  plan_method: {value: cvar, status: decided, note: "default plan for the owner view: chance (chance-constrained) or cvar. cvar: meets the owner target on fresh paths in 30/30 worlds vs 19/30 (docs/track-b-decisions.md, CVaR plan)"}
+  cvar:
+    # Rockafellar-Uryasev: CVaR_alpha of the 90-day shortfall depth max(0, threshold - min balance) <= budget.
+    alpha: {value: 0.05, status: decide, note: "owner input: the worst share of futures the budget applies to"}
+    budget_paise: {value: 0, status: decide, note: "owner input: average shortfall allowed in the worst alpha of futures; 0 = no shortfall on any solve path, so alpha does not matter"}
   treds:
     # VERIFY: no source yet for typical TReDS discount rates (see treds.discount_rate).
     discount_rate_annual: {value: 0.09, status: verify, note: "default only; owner or platform quote replaces it"}
@@ -218,6 +223,7 @@ payment_timing:      # B4
   week_origin: {value: issue_date, status: assumption, why: "T >= 1 always; terms_days as covariate"}
   never_paid_cutoff_days: {value: 365, status: assumption, note: "proposed, not yet agreed"}
   prior_strength: {value: 8, status: tune, method: "empirical Bayes per sector; check on synthetic first 3-5 invoices"}
+  group_prior_min_alpha: {value: 1.5, status: assumption, why: "floor on the group p prior's alpha at the same mean (strength may exceed prior_strength): below 1 the prior allows p near 0 and E[1/p] blows up (thin-buyer test)"}
   pi_prior: {status: tune, note: "derive stock-to-flow correction from steady-state equation; keep wide. Weakest number."}
   gibbs_sweeps: {value: 50, status: tune, check: "R-hat < 1.01 across chains on synthetic data", note: "burn-in; 20 gave max R-hat 1.021 for pi"}
   gibbs_draws: {value: 400, status: tune, note: "kept draws after burn-in"}
