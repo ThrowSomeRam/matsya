@@ -1,0 +1,2551 @@
+[
+ {
+  "preset": "healthy",
+  "seed": 0,
+  "do_nothing": {
+   "p_short": 0.4939,
+   "es_cond_paise": 35735148.11378822,
+   "es_uncond_paise": 17649589.6534,
+   "cvar_paise": 114742903.3,
+   "stress": {
+    "p_short": 0.5939,
+    "es_cond_paise": 50080475.26654319,
+    "es_uncond_paise": 29742794.2608,
+    "cvar_paise": 163965377.444
+   }
+  },
+  "chance": {
+   "p_short": 0.0403,
+   "es_cond_paise": 16548156.498759305,
+   "es_uncond_paise": 666890.7069,
+   "cvar_paise": 13337814.138,
+   "cost_paise": 1069347,
+   "n_actions": 5,
+   "solve_s": 7.696468445999926,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 29,
+   "n_rows": 3110,
+   "actions": [
+    "overdraft:day1x3",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:e8361324250168931f556c40ea64317ax1",
+    "treds_discount:b74d5de34bd1aa99095a2a2bfc0570acx1",
+    "treds_discount:5a5e5562803a18d01c88d71398dc05d2x1"
+   ],
+   "stress": {
+    "p_short": 0.083,
+    "es_cond_paise": 29720456.091566265,
+    "es_uncond_paise": 2466797.8556,
+    "cvar_paise": 46030055.862
+   }
+  },
+  "cvar": {
+   "p_short": 0.0044,
+   "es_cond_paise": 24135242.90909091,
+   "es_uncond_paise": 106195.0688,
+   "cvar_paise": 2123901.376,
+   "cost_paise": 1981637,
+   "n_actions": 7,
+   "solve_s": 0.26254208499995,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": 0.0,
+   "n_candidates": 29,
+   "n_rows": 3110,
+   "actions": [
+    "overdraft:day1x6",
+    "supplier_stretch:S2:+30dx1",
+    "chase:79e4733276381687e1862a05291493fcx1",
+    "chase:d1fa72363ad699ad1c482b1af89ffcc7x1",
+    "treds_discount:5a5e5562803a18d01c88d71398dc05d2x1",
+    "treds_discount:b74d5de34bd1aa99095a2a2bfc0570acx1",
+    "treds_discount:a9952a4eb4bcd707eb1bea023e985752x1"
+   ],
+   "stress": {
+    "p_short": 0.0188,
+    "es_cond_paise": 34347575.43617021,
+    "es_uncond_paise": 645734.4182,
+    "cvar_paise": 12914688.364
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 1,
+  "do_nothing": {
+   "p_short": 0.4834,
+   "es_cond_paise": 48192304.14646256,
+   "es_uncond_paise": 23296159.8244,
+   "cvar_paise": 164145575.378,
+   "stress": {
+    "p_short": 0.6046,
+    "es_cond_paise": 69323320.97072445,
+    "es_uncond_paise": 41912879.8589,
+    "cvar_paise": 222763572.326
+   }
+  },
+  "chance": {
+   "p_short": 0.046,
+   "es_cond_paise": 30061527.867391303,
+   "es_uncond_paise": 1382830.2819,
+   "cvar_paise": 27656605.638,
+   "cost_paise": 1002604,
+   "n_actions": 7,
+   "solve_s": 11.099641708000036,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 23,
+   "n_rows": 4174,
+   "actions": [
+    "overdraft:day1x2",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:eb6fda4a03a9bca4866f11909b99280ex1",
+    "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1",
+    "chase:49ec0a3a5ecad3cf07ca756bac1e20edx1",
+    "chase:b759884108225efe897ac445b0a43338x1",
+    "treds_discount:cc63248728169d1c39d5ea9e3a8d2530x1"
+   ],
+   "stress": {
+    "p_short": 0.1059,
+    "es_cond_paise": 44954319.65250236,
+    "es_uncond_paise": 4760662.4512,
+    "cvar_paise": 80658075.644
+   }
+  },
+  "cvar": {
+   "p_short": 0.0015,
+   "es_cond_paise": 25153946.066666666,
+   "es_uncond_paise": 37730.9191,
+   "cvar_paise": 754618.382,
+   "cost_paise": 9024933,
+   "n_actions": 9,
+   "solve_s": 0.6741684389999136,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 239131.82000000073,
+   "n_candidates": 23,
+   "n_rows": 4174,
+   "actions": [
+    "overdraft:day1x3",
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:d41f437afe2f3b79a3b0085c8765e3e2x1",
+    "overdraft:day30x6",
+    "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1",
+    "chase:39ecdf76d8ee779e5dec481bd4e5194ex1",
+    "chase:d13674a95e5d5c5441503a152d38d5edx1",
+    "overdraft:day45x1"
+   ],
+   "stress": {
+    "p_short": 0.0093,
+    "es_cond_paise": 24189771.720430106,
+    "es_uncond_paise": 224964.877,
+    "cvar_paise": 4499297.54
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 2,
+  "do_nothing": {
+   "p_short": 0.4935,
+   "es_cond_paise": 46299734.0881459,
+   "es_uncond_paise": 22848918.7725,
+   "cvar_paise": 150770944.47,
+   "stress": {
+    "p_short": 0.6237,
+    "es_cond_paise": 68111316.667789,
+    "es_uncond_paise": 42481028.2057,
+    "cvar_paise": 219710356.974
+   }
+  },
+  "chance": {
+   "p_short": 0.0471,
+   "es_cond_paise": 18180716.220806792,
+   "es_uncond_paise": 856311.734,
+   "cvar_paise": 17126234.68,
+   "cost_paise": 721192,
+   "n_actions": 7,
+   "solve_s": 4.504780674999893,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 26,
+   "n_rows": 3624,
+   "actions": [
+    "treds_discount:90a11343fb1d67ff3fde989d7d80f08ex1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day1x1",
+    "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+    "chase:87e5e9df1337c8f63c1caf78b7849e62x1",
+    "chase:dfbd4693e784ebda0ffd8c221efb921fx1",
+    "chase:9acee0fbd3c24c88575819948eae2b40x1"
+   ],
+   "stress": {
+    "p_short": 0.0992,
+    "es_cond_paise": 40433634.98891129,
+    "es_uncond_paise": 4011016.5909,
+    "cvar_paise": 72218478.57
+   }
+  },
+  "cvar": {
+   "p_short": 0.0049,
+   "es_cond_paise": 31805120.979591835,
+   "es_uncond_paise": 155845.0928,
+   "cvar_paise": 3116901.856,
+   "cost_paise": 2454616,
+   "n_actions": 10,
+   "solve_s": 0.24222974600024827,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": 0.0,
+   "n_candidates": 26,
+   "n_rows": 3624,
+   "actions": [
+    "overdraft:day1x6",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:90a11343fb1d67ff3fde989d7d80f08ex1",
+    "chase:87e5e9df1337c8f63c1caf78b7849e62x1",
+    "chase:dfbd4693e784ebda0ffd8c221efb921fx1",
+    "overdraft:day45x2",
+    "chase:bbc85d7b9172af2b6b84a7bf8ccf6c9ex1",
+    "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+    "chase:84f23d6b02adcfa454abc05809c0f3d7x1",
+    "chase:f295d036e9da286bc8b7980fb9579f31x1"
+   ],
+   "stress": {
+    "p_short": 0.0269,
+    "es_cond_paise": 46472843.26394052,
+    "es_uncond_paise": 1250119.4838,
+    "cvar_paise": 25002389.676
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 3,
+  "do_nothing": {
+   "p_short": 0.4928,
+   "es_cond_paise": 66558097.88271104,
+   "es_uncond_paise": 32799830.6366,
+   "cvar_paise": 182387548.09,
+   "stress": {
+    "p_short": 0.716,
+    "es_cond_paise": 89846342.45432961,
+    "es_uncond_paise": 64329981.1973,
+    "cvar_paise": 239357465.294
+   }
+  },
+  "chance": {
+   "p_short": 0.0487,
+   "es_cond_paise": 40449538.570841886,
+   "es_uncond_paise": 1969892.5284,
+   "cvar_paise": 39397850.568,
+   "cost_paise": 1585664,
+   "n_actions": 11,
+   "solve_s": 60.11855847400011,
+   "solver_status": 1,
+   "solver_message": "Time limit reached. (HiGHS Status 13: Time limit reached)",
+   "time_limited": true,
+   "mip_gap": 0.3433049582951264,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 33,
+   "n_rows": 6649,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:b7d873f92200b3017b3ee25a62a79149x1",
+    "overdraft:day30x2",
+    "overdraft:day60x2",
+    "treds_discount:66f668a53886173fe3f20b92aca04215x1",
+    "overdraft:day45x1",
+    "treds_discount:691b6b91cf673f5589099620523bf761x1",
+    "chase:5030b1639c652c25d0140a5d11461031x1",
+    "chase:1c89b28cfd0df0faaade9c4c79d470d5x1",
+    "chase:d1314ee84c88a934fc7ee97f54b2ea8ax1",
+    "chase:e36911f04dcfe0f6b5d3ffeb3f3c0048x1"
+   ],
+   "stress": {
+    "p_short": 0.1672,
+    "es_cond_paise": 48752839.392942585,
+    "es_uncond_paise": 8151474.7465,
+    "cvar_paise": 102653546.994
+   }
+  },
+  "cvar": {
+   "p_short": 0.005,
+   "es_cond_paise": 36464921.46,
+   "es_uncond_paise": 182324.6073,
+   "cvar_paise": 3646492.146,
+   "cost_paise": 7529606,
+   "n_actions": 10,
+   "solve_s": 1.3550323770000432,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 7.47714788376989e-05,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": 0.0,
+   "n_candidates": 33,
+   "n_rows": 6649,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x3",
+    "overdraft:day45x1",
+    "overdraft:day60x5",
+    "chase:d1314ee84c88a934fc7ee97f54b2ea8ax1",
+    "chase:5030b1639c652c25d0140a5d11461031x1",
+    "chase:e36911f04dcfe0f6b5d3ffeb3f3c0048x1",
+    "treds_discount:66f668a53886173fe3f20b92aca04215x1",
+    "treds_discount:9f182d94763d73262c660d573974af1dx1"
+   ],
+   "stress": {
+    "p_short": 0.0333,
+    "es_cond_paise": 38037849.72072072,
+    "es_uncond_paise": 1266660.3957,
+    "cvar_paise": 25333207.914
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 4,
+  "do_nothing": {
+   "p_short": 0.4889,
+   "es_cond_paise": 70774146.6050317,
+   "es_uncond_paise": 34601480.2752,
+   "cvar_paise": 212796535.536,
+   "stress": {
+    "p_short": 0.6565,
+    "es_cond_paise": 95342303.58050266,
+    "es_uncond_paise": 62592222.3006,
+    "cvar_paise": 270770486.664
+   }
+  },
+  "chance": {
+   "p_short": 0.039,
+   "es_cond_paise": 48189421.56153846,
+   "es_uncond_paise": 1879387.4409,
+   "cvar_paise": 37587748.818,
+   "cost_paise": 2123835,
+   "n_actions": 7,
+   "solve_s": 22.063226234000012,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 21,
+   "n_rows": 6352,
+   "actions": [
+    "overdraft:day1x5",
+    "supplier_stretch:S2:+30dx1",
+    "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+    "overdraft:day30x2",
+    "chase:4a29ffb000fbdf8ef9e0dd606bd37288x1",
+    "chase:0a6f58adf031dbea05d15dcd3c48b566x1",
+    "chase:e4bb9017ef430412383c866a73ff7d2cx1"
+   ],
+   "stress": {
+    "p_short": 0.1237,
+    "es_cond_paise": 56880810.60388035,
+    "es_uncond_paise": 7036156.2717,
+    "cvar_paise": 106767036.752
+   }
+  },
+  "cvar": {
+   "p_short": 0.0061,
+   "es_cond_paise": 28907934.163934425,
+   "es_uncond_paise": 176338.3984,
+   "cvar_paise": 3526767.968,
+   "cost_paise": 8348222,
+   "n_actions": 11,
+   "solve_s": 1.2463960750001206,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 2497708.1330200005,
+   "n_candidates": 21,
+   "n_rows": 6352,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "overdraft:day1x2",
+    "supplier_stretch:S2:+30dx1",
+    "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+    "overdraft:day30x2",
+    "chase:4a29ffb000fbdf8ef9e0dd606bd37288x1",
+    "overdraft:day45x4",
+    "chase:0a6f58adf031dbea05d15dcd3c48b566x1",
+    "chase:e4bb9017ef430412383c866a73ff7d2cx1",
+    "chase:b1235be9202f6ae7e6045c1e1200d603x1",
+    "overdraft:day60x2"
+   ],
+   "stress": {
+    "p_short": 0.0287,
+    "es_cond_paise": 40926610.65505227,
+    "es_uncond_paise": 1174593.7258,
+    "cvar_paise": 23491874.516
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 5,
+  "do_nothing": {
+   "p_short": 0.509,
+   "es_cond_paise": 31647082.274852652,
+   "es_uncond_paise": 16108364.8779,
+   "cvar_paise": 100667615.104,
+   "stress": {
+    "p_short": 0.5752,
+    "es_cond_paise": 42319942.47965925,
+    "es_uncond_paise": 24342430.9143,
+    "cvar_paise": 148708182.03
+   }
+  },
+  "chance": {
+   "p_short": 0.0283,
+   "es_cond_paise": 14079113.77385159,
+   "es_uncond_paise": 398438.9198,
+   "cvar_paise": 7968778.396,
+   "cost_paise": 1403659,
+   "n_actions": 6,
+   "solve_s": 13.57104971400031,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 38,
+   "n_rows": 2604,
+   "actions": [
+    "overdraft:day1x4",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:07b95cae964fe579a575244db9af1b0dx1",
+    "chase:f802b7046e8237af81d27d972d2b7127x1",
+    "treds_discount:36d6a94ab015dd4d9697300af311ff62x1",
+    "treds_discount:45c1b5546e9be1809058815eaea9093cx1"
+   ],
+   "stress": {
+    "p_short": 0.053,
+    "es_cond_paise": 27955440.650943395,
+    "es_uncond_paise": 1481638.3545,
+    "cvar_paise": 29616900.78
+   }
+  },
+  "cvar": {
+   "p_short": 0.0024,
+   "es_cond_paise": 23482044.041666668,
+   "es_uncond_paise": 56356.9057,
+   "cvar_paise": 1127138.114,
+   "cost_paise": 2295337,
+   "n_actions": 6,
+   "solve_s": 0.16460347000020192,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": 0.0,
+   "n_candidates": 38,
+   "n_rows": 2604,
+   "actions": [
+    "overdraft:day1x7",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:6c6fa09aa2e430ec32acdb44d3b43dc6x1",
+    "chase:cba2366ad90e9441288e2493221738b3x1",
+    "chase:d666aadbacb20c7d5291f9893c356ebax1",
+    "treds_discount:2f81d3119a3937f3776fb3654aad38edx1"
+   ],
+   "stress": {
+    "p_short": 0.0117,
+    "es_cond_paise": 41785106.75213675,
+    "es_uncond_paise": 488885.749,
+    "cvar_paise": 9777714.98
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 6,
+  "do_nothing": {
+   "p_short": 0.4826,
+   "es_cond_paise": 38869101.002486534,
+   "es_uncond_paise": 18758228.1438,
+   "cvar_paise": 131793133.848,
+   "stress": {
+    "p_short": 0.564,
+    "es_cond_paise": 54744624.43262412,
+    "es_uncond_paise": 30875968.18,
+    "cvar_paise": 183487472.432
+   }
+  },
+  "chance": {
+   "p_short": 0.0395,
+   "es_cond_paise": 26849247.8,
+   "es_uncond_paise": 1060545.2881,
+   "cvar_paise": 21210905.762,
+   "cost_paise": 830589,
+   "n_actions": 4,
+   "solve_s": 8.566279914000006,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 27,
+   "n_rows": 3131,
+   "actions": [
+    "overdraft:day1x2",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:83a3ffdd2cd78ba399d98d3e764c9038x1",
+    "treds_discount:3ae284b18e3ae04c66185f5ec8df7e5ax1"
+   ],
+   "stress": {
+    "p_short": 0.0887,
+    "es_cond_paise": 41498758.29199549,
+    "es_uncond_paise": 3680939.8605,
+    "cvar_paise": 66999414.962
+   }
+  },
+  "cvar": {
+   "p_short": 0.0032,
+   "es_cond_paise": 25076843.90625,
+   "es_uncond_paise": 80245.9005,
+   "cvar_paise": 1604918.01,
+   "cost_paise": 2267986,
+   "n_actions": 12,
+   "solve_s": 0.33368128400024943,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": 0.0,
+   "n_candidates": 27,
+   "n_rows": 3131,
+   "actions": [
+    "overdraft:day1x5",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:83a3ffdd2cd78ba399d98d3e764c9038x1",
+    "chase:550c10ef465a5d2bd52f330cfa781aedx1",
+    "treds_discount:3ae284b18e3ae04c66185f5ec8df7e5ax1",
+    "overdraft:day30x1",
+    "chase:5a48da5b9800468b025a4e78ad2c9e4bx1",
+    "chase:caed157da9c68c1666cba2bcefe5e428x1",
+    "chase:e8020f06c39fd3fa159b47ed11775cefx1",
+    "overdraft:day60x1",
+    "overdraft:day75x2",
+    "chase:1efc5211fd1c4ff09f73e088ca7c5d0cx1"
+   ],
+   "stress": {
+    "p_short": 0.0165,
+    "es_cond_paise": 42693349.36363637,
+    "es_uncond_paise": 704440.2645,
+    "cvar_paise": 14088805.29
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 7,
+  "do_nothing": {
+   "p_short": 0.5027,
+   "es_cond_paise": 72528314.19872688,
+   "es_uncond_paise": 36459983.5477,
+   "cvar_paise": 255139247.12,
+   "stress": {
+    "p_short": 0.6363,
+    "es_cond_paise": 100521535.92660695,
+    "es_uncond_paise": 63961853.3101,
+    "cvar_paise": 327281624.88
+   }
+  },
+  "chance": {
+   "p_short": 0.0465,
+   "es_cond_paise": 65681834.00430108,
+   "es_uncond_paise": 3054205.2812,
+   "cvar_paise": 61084105.624,
+   "cost_paise": 2641507,
+   "n_actions": 11,
+   "solve_s": 19.504228552999848,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 21,
+   "n_rows": 7631,
+   "actions": [
+    "overdraft:day1x6",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x3",
+    "chase:e6202004069431866dc6196b5b0ee45ex1",
+    "chase:5ac939a87f31ca0a3ef88df53cc91640x1",
+    "overdraft:day30x1",
+    "chase:dce1f4f8c627bf0dac79202b6e3dad18x1",
+    "chase:c5e0262c5d631685e842cc5ab53dfd77x1",
+    "chase:64764205ba54d9c79e6e35acd811c123x1",
+    "chase:f865dde3639578bba9eacecbdbe41cd0x1",
+    "chase:6d0a629abd05b96b68be64dff4048025x1"
+   ],
+   "stress": {
+    "p_short": 0.1111,
+    "es_cond_paise": 78158500.98559856,
+    "es_uncond_paise": 8683409.4595,
+    "cvar_paise": 138543019.276
+   }
+  },
+  "cvar": {
+   "p_short": 0.0092,
+   "es_cond_paise": 56091509.77173913,
+   "es_uncond_paise": 516041.8899,
+   "cvar_paise": 10320837.798,
+   "cost_paise": 10047701,
+   "n_actions": 13,
+   "solve_s": 1.1986834310000631,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 10980922.320000004,
+   "n_candidates": 21,
+   "n_rows": 7631,
+   "actions": [
+    "overdraft:day1x5",
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x5",
+    "chase:e6202004069431866dc6196b5b0ee45ex1",
+    "chase:5ac939a87f31ca0a3ef88df53cc91640x1",
+    "chase:dce1f4f8c627bf0dac79202b6e3dad18x1",
+    "chase:61a4f7cfde0b79be25bea25d972109bdx1",
+    "chase:64764205ba54d9c79e6e35acd811c123x1",
+    "chase:c32c670d60d1e1c539a7d5fb2486241ex1",
+    "chase:6d0a629abd05b96b68be64dff4048025x1",
+    "chase:f865dde3639578bba9eacecbdbe41cd0x1",
+    "chase:c5e0262c5d631685e842cc5ab53dfd77x1"
+   ],
+   "stress": {
+    "p_short": 0.0334,
+    "es_cond_paise": 69942710.01796407,
+    "es_uncond_paise": 2336086.5146,
+    "cvar_paise": 46721730.292
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 8,
+  "do_nothing": {
+   "p_short": 0.484,
+   "es_cond_paise": 72605945.73367769,
+   "es_uncond_paise": 35141277.7351,
+   "cvar_paise": 219134637.396,
+   "stress": {
+    "p_short": 0.6591,
+    "es_cond_paise": 99527218.48748294,
+    "es_uncond_paise": 65598389.7051,
+    "cvar_paise": 282945134.97
+   }
+  },
+  "chance": {
+   "p_short": 0.0481,
+   "es_cond_paise": 55553063.75467776,
+   "es_uncond_paise": 2672102.3666,
+   "cvar_paise": 53442047.332,
+   "cost_paise": 1956164,
+   "n_actions": 10,
+   "solve_s": 26.76033816800009,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 22,
+   "n_rows": 6746,
+   "actions": [
+    "overdraft:day1x5",
+    "supplier_stretch:S2:+30dx1",
+    "chase:9cd4fc7b57271e4479585d8e6c7170d3x1",
+    "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1",
+    "chase:a3fd6327064861bed894498d0596dc4ex1",
+    "chase:0776dbc5b84ca2278a8b73b64476698ex1",
+    "chase:ed6981c2b37ad749c9857ed12d96bd7ax1",
+    "chase:cb035395abed20e01d79da89b6948ffdx1",
+    "chase:bb07d650855fe5f0be8af5777c5d4905x1",
+    "chase:c270acaba5858085d49e724641f1770fx1"
+   ],
+   "stress": {
+    "p_short": 0.1417,
+    "es_cond_paise": 63518462.386026815,
+    "es_uncond_paise": 9000566.1201,
+    "cvar_paise": 124702673.224
+   }
+  },
+  "cvar": {
+   "p_short": 0.0043,
+   "es_cond_paise": 43841080.1627907,
+   "es_uncond_paise": 188516.6447,
+   "cvar_paise": 3770332.894,
+   "cost_paise": 9191422,
+   "n_actions": 12,
+   "solve_s": 1.4159117710000828,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 1985069.0000000033,
+   "n_candidates": 22,
+   "n_rows": 6746,
+   "actions": [
+    "overdraft:day1x5",
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x4",
+    "chase:0776dbc5b84ca2278a8b73b64476698ex1",
+    "chase:ed6981c2b37ad749c9857ed12d96bd7ax1",
+    "chase:a3fd6327064861bed894498d0596dc4ex1",
+    "overdraft:day30x1",
+    "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1",
+    "chase:9cd4fc7b57271e4479585d8e6c7170d3x1",
+    "chase:cb035395abed20e01d79da89b6948ffdx1",
+    "chase:bb07d650855fe5f0be8af5777c5d4905x1"
+   ],
+   "stress": {
+    "p_short": 0.0184,
+    "es_cond_paise": 42840322.35326087,
+    "es_uncond_paise": 788261.9313,
+    "cvar_paise": 15765238.626
+   }
+  }
+ },
+ {
+  "preset": "healthy",
+  "seed": 9,
+  "do_nothing": {
+   "p_short": 0.4938,
+   "es_cond_paise": 82939085.25010125,
+   "es_uncond_paise": 40955320.2965,
+   "cvar_paise": 231619211.86,
+   "stress": {
+    "p_short": 0.6989,
+    "es_cond_paise": 109923257.3708685,
+    "es_uncond_paise": 76825364.5765,
+    "cvar_paise": 299981228.624
+   }
+  },
+  "chance": {
+   "p_short": 0.0444,
+   "es_cond_paise": 49198823.027027026,
+   "es_uncond_paise": 2184427.7424,
+   "cvar_paise": 43688554.848,
+   "cost_paise": 2190750,
+   "n_actions": 12,
+   "solve_s": 49.04076544600002,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 26,
+   "n_rows": 9165,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x5",
+    "overdraft:day45x4",
+    "chase:daa503db0e210c87105af71ec6d69eb8x1",
+    "chase:635a7adedd1a64621af81ce66cdb6c22x1",
+    "treds_discount:f0148f713a2cebf1dce720a9173b1423x1",
+    "treds_discount:38e8be3d49aa2b117fc5984402d114cbx1",
+    "treds_discount:91214118d9eb9f52b9e016576bd1e54dx1",
+    "chase:e04f4b556cdafaaae7c5363828b243ecx1",
+    "chase:2f5a0461765361ec70faaf7babb70c0dx1",
+    "chase:be40f35c7517277bf54312d73c6b8c8ex1",
+    "chase:9916b0ef79126c217e2e849b5ce552e0x1"
+   ],
+   "stress": {
+    "p_short": 0.1331,
+    "es_cond_paise": 61514446.749060854,
+    "es_uncond_paise": 8187572.8623,
+    "cvar_paise": 116611098.498
+   }
+  },
+  "cvar": {
+   "p_short": 0.0134,
+   "es_cond_paise": 39821508.62686567,
+   "es_uncond_paise": 533608.2156,
+   "cvar_paise": 10672164.312,
+   "cost_paise": 7897701,
+   "n_actions": 11,
+   "solve_s": 2.3451349669999217,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 179521.94269999952,
+   "n_candidates": 26,
+   "n_rows": 9165,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x6",
+    "overdraft:day30x2",
+    "chase:daa503db0e210c87105af71ec6d69eb8x1",
+    "overdraft:day45x2",
+    "chase:e04f4b556cdafaaae7c5363828b243ecx1",
+    "treds_discount:f0148f713a2cebf1dce720a9173b1423x1",
+    "chase:635a7adedd1a64621af81ce66cdb6c22x1",
+    "treds_discount:77dca74d4ec29fffbf47fe67603cf882x1",
+    "chase:be40f35c7517277bf54312d73c6b8c8ex1"
+   ],
+   "stress": {
+    "p_short": 0.0578,
+    "es_cond_paise": 50754291.53287197,
+    "es_uncond_paise": 2933598.0506,
+    "cvar_paise": 58126300.12
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 0,
+  "do_nothing": {
+   "p_short": 0.483,
+   "es_cond_paise": 87773073.55093168,
+   "es_uncond_paise": 42394394.5251,
+   "cvar_paise": 256354193.788,
+   "stress": {
+    "p_short": 0.6487,
+    "es_cond_paise": 112335300.21350393,
+    "es_uncond_paise": 72871909.2485,
+    "cvar_paise": 321656850.234
+   }
+  },
+  "chance": {
+   "p_short": 0.0513,
+   "es_cond_paise": 53636361.70565302,
+   "es_uncond_paise": 2751545.3555,
+   "cvar_paise": 55007048.278,
+   "cost_paise": 1270082,
+   "n_actions": 12,
+   "solve_s": 53.16107783000007,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 4.487895672957889e-05,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 29,
+   "n_rows": 7385,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:ceda0ddd8f0b3921b9f2520a915f5546x1",
+    "overdraft:day60x4",
+    "overdraft:day1x1",
+    "treds_discount:1e4041eb91588df89e29465f8e7c76c0x1",
+    "chase:d1fa72363ad699ad1c482b1af89ffcc7x1",
+    "treds_discount:20695b2316b51127bc722bc74272318bx1",
+    "chase:79e4733276381687e1862a05291493fcx1",
+    "chase:834754774c49a08ea1bf3ef76126354dx1",
+    "chase:6ab6dfcb0ac5af9ce4a458400fa965e7x1",
+    "treds_discount:a985764c1541ed3a2bf9d63ca815c74fx1",
+    "treds_discount:4e8b755296dabedb5004fecfe9856c89x1"
+   ],
+   "stress": {
+    "p_short": 0.1332,
+    "es_cond_paise": 66088270.90015015,
+    "es_uncond_paise": 8802957.6839,
+    "cvar_paise": 127409101.15
+   }
+  },
+  "cvar": {
+   "p_short": 0.0017,
+   "es_cond_paise": 38424909.52941176,
+   "es_uncond_paise": 65322.3462,
+   "cvar_paise": 1306446.924,
+   "cost_paise": 12403137,
+   "n_actions": 10,
+   "solve_s": 0.5965436730002693,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": 0.0,
+   "n_candidates": 29,
+   "n_rows": 7385,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:b73f5691f54b76b7cabb7b512c184164x1",
+    "overdraft:day30x1",
+    "chase:ae0eec12836e51fc40b3cee4fec50286x1",
+    "overdraft:day60x7",
+    "chase:834754774c49a08ea1bf3ef76126354dx1",
+    "chase:2f0a6aded60ebd0ebb54f6377c4d2edcx1",
+    "chase:a506f6e2d1a119e5a295c9cd74027eddx1",
+    "treds_discount:ff23e6ba64143f9c8a487253dfa69021x1"
+   ],
+   "stress": {
+    "p_short": 0.0108,
+    "es_cond_paise": 41607026.43518519,
+    "es_uncond_paise": 449355.8855,
+    "cvar_paise": 8987117.71
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 1,
+  "do_nothing": {
+   "p_short": 0.5313,
+   "es_cond_paise": 110902078.49181254,
+   "es_uncond_paise": 58922274.3027,
+   "cvar_paise": 322872533.57,
+   "stress": {
+    "p_short": 0.6801,
+    "es_cond_paise": 140447930.7892957,
+    "es_uncond_paise": 95518637.7298,
+    "cvar_paise": 391695629.576
+   }
+  },
+  "chance": {
+   "p_short": 0.0379,
+   "es_cond_paise": 71270636.81530343,
+   "es_uncond_paise": 2701157.1353,
+   "cvar_paise": 54023142.706,
+   "cost_paise": 2600334,
+   "n_actions": 14,
+   "solve_s": 17.479653048999808,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 23,
+   "n_rows": 9440,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x5",
+    "overdraft:day1x3",
+    "chase:49ec0a3a5ecad3cf07ca756bac1e20edx1",
+    "treds_discount:dad8ba0298adba1b54ed3d3e5abdbe6fx1",
+    "treds_discount:1c9d8d9984905cb5ea93029175a8ab4ax1",
+    "chase:b759884108225efe897ac445b0a43338x1",
+    "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1",
+    "treds_discount:a673fa32126bcc9213c123aa0544ab09x1",
+    "chase:7826ae742768fa26a273d36ad35d86d7x1",
+    "overdraft:day60x1",
+    "chase:d13674a95e5d5c5441503a152d38d5edx1",
+    "chase:39ecdf76d8ee779e5dec481bd4e5194ex1",
+    "chase:c38b77936c5cd01dbc7a2e57e8ef0bc3x1"
+   ],
+   "stress": {
+    "p_short": 0.1041,
+    "es_cond_paise": 77720239.4745437,
+    "es_uncond_paise": 8090676.9293,
+    "cvar_paise": 133311912.036
+   }
+  },
+  "cvar": {
+   "p_short": 0.0049,
+   "es_cond_paise": 61151915.510204084,
+   "es_uncond_paise": 299644.386,
+   "cvar_paise": 5992887.72,
+   "cost_paise": 12278696,
+   "n_actions": 11,
+   "solve_s": 1.523404625999774,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 4722733.840000016,
+   "n_candidates": 23,
+   "n_rows": 9440,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x5",
+    "overdraft:day30x2",
+    "overdraft:day60x3",
+    "chase:49ec0a3a5ecad3cf07ca756bac1e20edx1",
+    "treds_discount:1c9d8d9984905cb5ea93029175a8ab4ax1",
+    "chase:b759884108225efe897ac445b0a43338x1",
+    "treds_discount:a673fa32126bcc9213c123aa0544ab09x1",
+    "treds_discount:dad8ba0298adba1b54ed3d3e5abdbe6fx1",
+    "chase:7826ae742768fa26a273d36ad35d86d7x1"
+   ],
+   "stress": {
+    "p_short": 0.0208,
+    "es_cond_paise": 60122176.177884616,
+    "es_uncond_paise": 1250541.2645,
+    "cvar_paise": 25010825.29
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 2,
+  "do_nothing": {
+   "p_short": 0.4978,
+   "es_cond_paise": 121955536.75331458,
+   "es_uncond_paise": 60709466.1958,
+   "cvar_paise": 353283091.154,
+   "stress": {
+    "p_short": 0.669,
+    "es_cond_paise": 151975328.86995515,
+    "es_uncond_paise": 101671495.014,
+    "cvar_paise": 422970467.562
+   }
+  },
+  "chance": {
+   "p_short": 0.0465,
+   "es_cond_paise": 78605944.65806451,
+   "es_uncond_paise": 3655176.4266,
+   "cvar_paise": 73103528.532,
+   "cost_paise": 2202698,
+   "n_actions": 11,
+   "solve_s": 26.29713654699981,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 26,
+   "n_rows": 9865,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x5",
+    "overdraft:day15x2",
+    "overdraft:day45x2",
+    "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+    "treds_discount:561ba48177193b00b9c3edb289ce4887x1",
+    "chase:9acee0fbd3c24c88575819948eae2b40x1",
+    "chase:87e5e9df1337c8f63c1caf78b7849e62x1",
+    "chase:dfbd4693e784ebda0ffd8c221efb921fx1",
+    "overdraft:day75x1",
+    "chase:bbc85d7b9172af2b6b84a7bf8ccf6c9ex1"
+   ],
+   "stress": {
+    "p_short": 0.1231,
+    "es_cond_paise": 87839196.37449229,
+    "es_uncond_paise": 10813005.0737,
+    "cvar_paise": 162574879.088
+   }
+  },
+  "cvar": {
+   "p_short": 0.0033,
+   "es_cond_paise": 61244018.57575758,
+   "es_uncond_paise": 202105.2613,
+   "cvar_paise": 4042105.226,
+   "cost_paise": 13984135,
+   "n_actions": 10,
+   "solve_s": 2.2561102349995963,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 5004363.780000003,
+   "n_candidates": 26,
+   "n_rows": 9865,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x9",
+    "chase:9acee0fbd3c24c88575819948eae2b40x1",
+    "overdraft:day60x1",
+    "chase:dfbd4693e784ebda0ffd8c221efb921fx1",
+    "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+    "chase:f295d036e9da286bc8b7980fb9579f31x1",
+    "chase:84f23d6b02adcfa454abc05809c0f3d7x1",
+    "chase:87e5e9df1337c8f63c1caf78b7849e62x1"
+   ],
+   "stress": {
+    "p_short": 0.0189,
+    "es_cond_paise": 64893944.70899471,
+    "es_uncond_paise": 1226495.555,
+    "cvar_paise": 24529911.1
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 3,
+  "do_nothing": {
+   "p_short": 0.5145,
+   "es_cond_paise": 103174258.23362488,
+   "es_uncond_paise": 53083155.8612,
+   "cvar_paise": 281020153.312,
+   "stress": {
+    "p_short": 0.6954,
+    "es_cond_paise": 124154749.04371585,
+    "es_uncond_paise": 86337212.485,
+    "cvar_paise": 338258717.418
+   }
+  },
+  "chance": {
+   "p_short": 0.0505,
+   "es_cond_paise": 56634988.14851485,
+   "es_uncond_paise": 2860066.9015,
+   "cvar_paise": 57198137.75,
+   "cost_paise": 2375573,
+   "n_actions": 9,
+   "solve_s": 60.12562920600021,
+   "solver_status": 1,
+   "solver_message": "Time limit reached. (HiGHS Status 13: Time limit reached)",
+   "time_limited": true,
+   "mip_gap": 0.16048205612622482,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 33,
+   "n_rows": 9712,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x5",
+    "overdraft:day45x5",
+    "treds_discount:ffec6459c1936b1fb18426d1591e4869x1",
+    "chase:1c89b28cfd0df0faaade9c4c79d470d5x1",
+    "chase:d1314ee84c88a934fc7ee97f54b2ea8ax1",
+    "treds_discount:88c0cfe943e186134743aa8d3fc0e74ax1",
+    "chase:ce212e256bf2727c4209eb66bab66c21x1",
+    "chase:5030b1639c652c25d0140a5d11461031x1"
+   ],
+   "stress": {
+    "p_short": 0.1288,
+    "es_cond_paise": 67364873.93400621,
+    "es_uncond_paise": 8676595.7627,
+    "cvar_paise": 126220116.632
+   }
+  },
+  "cvar": {
+   "p_short": 0.0036,
+   "es_cond_paise": 43816116.44444445,
+   "es_uncond_paise": 157738.0192,
+   "cvar_paise": 3154760.384,
+   "cost_paise": 11498920,
+   "n_actions": 5,
+   "solve_s": 1.9489242639997428,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 715941.3462200002,
+   "n_candidates": 33,
+   "n_rows": 9712,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "overdraft:day45x10",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:ffec6459c1936b1fb18426d1591e4869x1",
+    "chase:e36911f04dcfe0f6b5d3ffeb3f3c0048x1"
+   ],
+   "stress": {
+    "p_short": 0.022,
+    "es_cond_paise": 49500320.43181818,
+    "es_uncond_paise": 1089007.0495,
+    "cvar_paise": 21780140.99
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 4,
+  "do_nothing": {
+   "p_short": 0.5058,
+   "es_cond_paise": 124306152.86793199,
+   "es_uncond_paise": 62874052.1206,
+   "cvar_paise": 340714516.52,
+   "stress": {
+    "p_short": 0.6669,
+    "es_cond_paise": 146494954.44024593,
+    "es_uncond_paise": 97697485.1162,
+    "cvar_paise": 402665677.55
+   }
+  },
+  "chance": {
+   "p_short": 0.0525,
+   "es_cond_paise": 68843049.70095238,
+   "es_uncond_paise": 3614260.1093,
+   "cvar_paise": 72193754.172,
+   "cost_paise": 7740112,
+   "n_actions": 8,
+   "solve_s": 35.501862128000084,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 5.3059947057068627e-05,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 21,
+   "n_rows": 10433,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "supplier_stretch:S1:+14dx1",
+    "overdraft:day60x4",
+    "overdraft:day45x2",
+    "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+    "overdraft:day75x3",
+    "chase:0a6f58adf031dbea05d15dcd3c48b566x1",
+    "chase:e4bb9017ef430412383c866a73ff7d2cx1"
+   ],
+   "stress": {
+    "p_short": 0.1344,
+    "es_cond_paise": 80205225.78199404,
+    "es_uncond_paise": 10779582.3451,
+    "cvar_paise": 152781531.84
+   }
+  },
+  "cvar": {
+   "p_short": 0.0085,
+   "es_cond_paise": 52645052.97647059,
+   "es_uncond_paise": 447482.9503,
+   "cvar_paise": 8949659.006,
+   "cost_paise": 11730417,
+   "n_actions": 8,
+   "solve_s": 1.3865404339999259,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 11910780.979999999,
+   "n_candidates": 21,
+   "n_rows": 10433,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x10",
+    "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+    "chase:0a6f58adf031dbea05d15dcd3c48b566x1",
+    "chase:81be4f7ea798b58ac68eabe95db1808bx1",
+    "chase:e4bb9017ef430412383c866a73ff7d2cx1",
+    "chase:4a29ffb000fbdf8ef9e0dd606bd37288x1"
+   ],
+   "stress": {
+    "p_short": 0.0361,
+    "es_cond_paise": 63566349.12465374,
+    "es_uncond_paise": 2294745.2034,
+    "cvar_paise": 45894904.068
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 5,
+  "do_nothing": {
+   "p_short": 0.4975,
+   "es_cond_paise": 74142098.52341709,
+   "es_uncond_paise": 36885694.0154,
+   "cvar_paise": 248116514.326,
+   "stress": {
+    "p_short": 0.6286,
+    "es_cond_paise": 101941005.04040726,
+    "es_uncond_paise": 64080115.7684,
+    "cvar_paise": 319553377.516
+   }
+  },
+  "chance": {
+   "p_short": 0.0462,
+   "es_cond_paise": 50172176.65584416,
+   "es_uncond_paise": 2317954.5615,
+   "cvar_paise": 46359091.23,
+   "cost_paise": 1443472,
+   "n_actions": 9,
+   "solve_s": 60.123640896000325,
+   "solver_status": 1,
+   "solver_message": "Time limit reached. (HiGHS Status 13: Time limit reached)",
+   "time_limited": true,
+   "mip_gap": 0.10428458532129067,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 37,
+   "n_rows": 7097,
+   "actions": [
+    "overdraft:day1x3",
+    "supplier_stretch:S2:+30dx1",
+    "chase:fc1d047960809e9a224fae1122c7e7b2x1",
+    "chase:d666aadbacb20c7d5291f9893c356ebax1",
+    "chase:f802b7046e8237af81d27d972d2b7127x1",
+    "treds_discount:406f1a3679bb83d1b52c740e8747a3edx1",
+    "treds_discount:95fcb7891c046dcf2fd6aa21f70c0a6ax1",
+    "chase:2198cd59c956a0df185e69342e4a10bfx1",
+    "treds_discount:e2de4e8c4874777f93bade118c5d49ecx1"
+   ],
+   "stress": {
+    "p_short": 0.1105,
+    "es_cond_paise": 71589206.43167421,
+    "es_uncond_paise": 7910607.3107,
+    "cvar_paise": 130205334.152
+   }
+  },
+  "cvar": {
+   "p_short": 0.0036,
+   "es_cond_paise": 13289455.416666666,
+   "es_uncond_paise": 47842.0395,
+   "cvar_paise": 956840.79,
+   "cost_paise": 12723180,
+   "n_actions": 14,
+   "solve_s": 1.248852340999747,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": 0.0,
+   "n_candidates": 37,
+   "n_rows": 7097,
+   "actions": [
+    "overdraft:day1x2",
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x4",
+    "treds_discount:6fc5d97e5a290eaffa44dce96090ac30x1",
+    "treds_discount:4a3879f4a7c7cc18bee9156277ae09d7x1",
+    "treds_discount:587d5d7a1de02d2d1761e00615869677x1",
+    "chase:cba2366ad90e9441288e2493221738b3x1",
+    "chase:51ee09c5cf52d568e2de3d401e077339x1",
+    "chase:a7965be08a32bc22cd2574b5359fcc99x1",
+    "treds_discount:406f1a3679bb83d1b52c740e8747a3edx1",
+    "chase:d666aadbacb20c7d5291f9893c356ebax1",
+    "treds_discount:369d2ccc0f20de99834f93d48477f130x1",
+    "chase:97f96151b93a2f2aafec5316e6882b19x1"
+   ],
+   "stress": {
+    "p_short": 0.0118,
+    "es_cond_paise": 44569409.94067796,
+    "es_uncond_paise": 525919.0373,
+    "cvar_paise": 10518380.746
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 6,
+  "do_nothing": {
+   "p_short": 0.4886,
+   "es_cond_paise": 91060018.11420384,
+   "es_uncond_paise": 44491924.8506,
+   "cvar_paise": 270633510.542,
+   "stress": {
+    "p_short": 0.6372,
+    "es_cond_paise": 117226459.03123039,
+    "es_uncond_paise": 74696699.6947,
+    "cvar_paise": 342477665.88
+   }
+  },
+  "chance": {
+   "p_short": 0.0511,
+   "es_cond_paise": 68947374.2485323,
+   "es_uncond_paise": 3523210.8241,
+   "cvar_paise": 70450560.894,
+   "cost_paise": 1395547,
+   "n_actions": 10,
+   "solve_s": 48.80571924299966,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 2.766433804975738e-05,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 27,
+   "n_rows": 7358,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:8a6267143880955b72039aa41411d89cx1",
+    "overdraft:day60x3",
+    "overdraft:day1x1",
+    "treds_discount:c62fa7311bebed1ffed0870b014e25a1x1",
+    "chase:550c10ef465a5d2bd52f330cfa781aedx1",
+    "chase:b22a465bf77eb3173a160a6f7951e1f1x1",
+    "chase:caed157da9c68c1666cba2bcefe5e428x1",
+    "treds_discount:ced343b66f1dd7d9c344b52d82298d07x1",
+    "chase:ed64c2dfe0ca8b28ba0353e6c1bf7c40x1"
+   ],
+   "stress": {
+    "p_short": 0.1245,
+    "es_cond_paise": 78546918.68433735,
+    "es_uncond_paise": 9779091.3762,
+    "cvar_paise": 148723704.562
+   }
+  },
+  "cvar": {
+   "p_short": 0.0017,
+   "es_cond_paise": 50919395.47058824,
+   "es_uncond_paise": 86562.9723,
+   "cvar_paise": 1731259.446,
+   "cost_paise": 11972816,
+   "n_actions": 10,
+   "solve_s": 1.0677432470001804,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 1406297.719999998,
+   "n_candidates": 27,
+   "n_rows": 7358,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "overdraft:day45x10",
+    "supplier_stretch:S2:+30dx1",
+    "treds_discount:50aa1edd2bc1b1ba1b9d274471d828aex1",
+    "treds_discount:c62fa7311bebed1ffed0870b014e25a1x1",
+    "chase:550c10ef465a5d2bd52f330cfa781aedx1",
+    "chase:1efc5211fd1c4ff09f73e088ca7c5d0cx1",
+    "chase:b22a465bf77eb3173a160a6f7951e1f1x1",
+    "chase:caed157da9c68c1666cba2bcefe5e428x1",
+    "treds_discount:ced343b66f1dd7d9c344b52d82298d07x1"
+   ],
+   "stress": {
+    "p_short": 0.0114,
+    "es_cond_paise": 51405340.921052635,
+    "es_uncond_paise": 586020.8865,
+    "cvar_paise": 11720417.73
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 7,
+  "do_nothing": {
+   "p_short": 0.503,
+   "es_cond_paise": 163443957.4725646,
+   "es_uncond_paise": 82212310.6087,
+   "cvar_paise": 436038097.792,
+   "stress": {
+    "p_short": 0.6519,
+    "es_cond_paise": 187746464.87804878,
+    "es_uncond_paise": 122391920.454,
+    "cvar_paise": 503474671.106
+   }
+  },
+  "chance": {
+   "p_short": 0.0372,
+   "es_cond_paise": 83659643.8172043,
+   "es_uncond_paise": 3112138.75,
+   "cvar_paise": 62242775.0,
+   "cost_paise": 12771709,
+   "n_actions": 8,
+   "solve_s": 11.40187340500006,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 9.87128462271642e-05,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 21,
+   "n_rows": 13877,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x6",
+    "overdraft:day45x2",
+    "chase:e6202004069431866dc6196b5b0ee45ex1",
+    "overdraft:day75x2",
+    "chase:dce1f4f8c627bf0dac79202b6e3dad18x1",
+    "chase:5ac939a87f31ca0a3ef88df53cc91640x1"
+   ],
+   "stress": {
+    "p_short": 0.0958,
+    "es_cond_paise": 94703775.2724426,
+    "es_uncond_paise": 9072621.6711,
+    "cvar_paise": 154090991.2
+   }
+  },
+  "cvar": {
+   "p_short": 0.0271,
+   "es_cond_paise": 80647459.64575645,
+   "es_uncond_paise": 2185546.1564,
+   "cvar_paise": 43710923.128,
+   "cost_paise": 13523764,
+   "n_actions": 12,
+   "solve_s": 1.5920852210001613,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 42291622.09282,
+   "n_candidates": 21,
+   "n_rows": 13877,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "overdraft:day45x10",
+    "supplier_stretch:S2:+30dx1",
+    "chase:e6202004069431866dc6196b5b0ee45ex1",
+    "chase:5ac939a87f31ca0a3ef88df53cc91640x1",
+    "chase:dce1f4f8c627bf0dac79202b6e3dad18x1",
+    "chase:64764205ba54d9c79e6e35acd811c123x1",
+    "chase:61a4f7cfde0b79be25bea25d972109bdx1",
+    "chase:c32c670d60d1e1c539a7d5fb2486241ex1",
+    "chase:6d0a629abd05b96b68be64dff4048025x1",
+    "chase:c5e0262c5d631685e842cc5ab53dfd77x1",
+    "chase:f865dde3639578bba9eacecbdbe41cd0x1"
+   ],
+   "stress": {
+    "p_short": 0.0694,
+    "es_cond_paise": 98792644.9927954,
+    "es_uncond_paise": 6856209.5625,
+    "cvar_paise": 130446631.0
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 8,
+  "do_nothing": {
+   "p_short": 0.491,
+   "es_cond_paise": 130658481.43727088,
+   "es_uncond_paise": 64153314.3857,
+   "cvar_paise": 358031859.674,
+   "stress": {
+    "p_short": 0.6689,
+    "es_cond_paise": 156237276.9055165,
+    "es_uncond_paise": 104507114.5221,
+    "cvar_paise": 424772662.89
+   }
+  },
+  "chance": {
+   "p_short": 0.056,
+   "es_cond_paise": 73921106.275,
+   "es_uncond_paise": 4139581.9514,
+   "cvar_paise": 82240423.062,
+   "cost_paise": 7150434,
+   "n_actions": 10,
+   "solve_s": 55.175552418999814,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 22,
+   "n_rows": 10888,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "supplier_stretch:S1:+7dx1",
+    "overdraft:day60x5",
+    "overdraft:day45x3",
+    "overdraft:day30x2",
+    "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1",
+    "chase:cb035395abed20e01d79da89b6948ffdx1",
+    "chase:9cd4fc7b57271e4479585d8e6c7170d3x1",
+    "chase:ed6981c2b37ad749c9857ed12d96bd7ax1",
+    "chase:0776dbc5b84ca2278a8b73b64476698ex1"
+   ],
+   "stress": {
+    "p_short": 0.143,
+    "es_cond_paise": 83160234.67902099,
+    "es_uncond_paise": 11891913.5591,
+    "cvar_paise": 165019775.286
+   }
+  },
+  "cvar": {
+   "p_short": 0.0131,
+   "es_cond_paise": 60606166.44274809,
+   "es_uncond_paise": 793940.7804,
+   "cvar_paise": 15878815.608,
+   "cost_paise": 12026051,
+   "n_actions": 9,
+   "solve_s": 1.8319316739998612,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 7536738.2,
+   "n_candidates": 22,
+   "n_rows": 10888,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x4",
+    "overdraft:day60x6",
+    "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1",
+    "chase:a3fd6327064861bed894498d0596dc4ex1",
+    "chase:9cd4fc7b57271e4479585d8e6c7170d3x1",
+    "chase:ed6981c2b37ad749c9857ed12d96bd7ax1",
+    "chase:c270acaba5858085d49e724641f1770fx1"
+   ],
+   "stress": {
+    "p_short": 0.0471,
+    "es_cond_paise": 68438235.90870488,
+    "es_uncond_paise": 3223440.9113,
+    "cvar_paise": 64468818.226
+   }
+  }
+ },
+ {
+  "preset": "borderline",
+  "seed": 9,
+  "do_nothing": {
+   "p_short": 0.5127,
+   "es_cond_paise": 124715416.53715624,
+   "es_uncond_paise": 63941594.0586,
+   "cvar_paise": 335130584.924,
+   "stress": {
+    "p_short": 0.6825,
+    "es_cond_paise": 150746585.80263737,
+    "es_uncond_paise": 102884544.8103,
+    "cvar_paise": 400998102.938
+   }
+  },
+  "chance": {
+   "p_short": 0.0459,
+   "es_cond_paise": 68385723.05010894,
+   "es_uncond_paise": 3138904.688,
+   "cvar_paise": 62778093.76,
+   "cost_paise": 7545379,
+   "n_actions": 15,
+   "solve_s": 41.42044319600018,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 26,
+   "n_rows": 10936,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x7",
+    "supplier_stretch:S1:+7dx1",
+    "overdraft:day60x2",
+    "overdraft:day45x1",
+    "chase:635a7adedd1a64621af81ce66cdb6c22x1",
+    "chase:daa503db0e210c87105af71ec6d69eb8x1",
+    "chase:2f5a0461765361ec70faaf7babb70c0dx1",
+    "chase:be40f35c7517277bf54312d73c6b8c8ex1",
+    "chase:e04f4b556cdafaaae7c5363828b243ecx1",
+    "treds_discount:6f5e9b36269131b091f9ee63484ae645x1",
+    "treds_discount:8c8d2b799729cfddeab01b84e14cc8b7x1",
+    "treds_discount:9409fc3e36421cb22c73afddaf53cadax1",
+    "treds_discount:765e9e192b663116c0b4dcb8f08a0f8dx1",
+    "chase:2cf4ce23a436604fd86cdb5fc1a83070x1"
+   ],
+   "stress": {
+    "p_short": 0.1241,
+    "es_cond_paise": 77395087.24899274,
+    "es_uncond_paise": 9604730.3276,
+    "cvar_paise": 142901904.68
+   }
+  },
+  "cvar": {
+   "p_short": 0.0117,
+   "es_cond_paise": 54743572.87179487,
+   "es_uncond_paise": 640499.8026,
+   "cvar_paise": 12809996.052,
+   "cost_paise": 12021764,
+   "n_actions": 13,
+   "solve_s": 2.0244102999999996,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 10983234.382219998,
+   "n_candidates": 26,
+   "n_rows": 10936,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "overdraft:day45x10",
+    "supplier_stretch:S2:+30dx1",
+    "chase:2f5a0461765361ec70faaf7babb70c0dx1",
+    "chase:daa503db0e210c87105af71ec6d69eb8x1",
+    "treds_discount:9409fc3e36421cb22c73afddaf53cadax1",
+    "chase:9916b0ef79126c217e2e849b5ce552e0x1",
+    "chase:e04f4b556cdafaaae7c5363828b243ecx1",
+    "chase:635a7adedd1a64621af81ce66cdb6c22x1",
+    "treds_discount:765e9e192b663116c0b4dcb8f08a0f8dx1",
+    "treds_discount:8c8d2b799729cfddeab01b84e14cc8b7x1",
+    "chase:b535aacaa3c6c976f414edbdd26393ebx1",
+    "chase:2cf4ce23a436604fd86cdb5fc1a83070x1"
+   ],
+   "stress": {
+    "p_short": 0.0431,
+    "es_cond_paise": 62641388.56148492,
+    "es_uncond_paise": 2699843.847,
+    "cvar_paise": 53996876.94
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 0,
+  "do_nothing": {
+   "p_short": 0.4949,
+   "es_cond_paise": 151818445.55950698,
+   "es_uncond_paise": 75134948.7074,
+   "cvar_paise": 416365753.518,
+   "stress": {
+    "p_short": 0.6251,
+    "es_cond_paise": 172280338.53223485,
+    "es_uncond_paise": 107692439.6165,
+    "cvar_paise": 479859657.128
+   }
+  },
+  "chance": {
+   "p_short": 0.0304,
+   "es_cond_paise": 74234370.34210527,
+   "es_uncond_paise": 2256724.8584,
+   "cvar_paise": 45134497.168,
+   "cost_paise": 11227628,
+   "n_actions": 6,
+   "solve_s": 50.384589770000275,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 7.681376322649734e-05,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 29,
+   "n_rows": 11497,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "supplier_stretch:S1:+14dx1",
+    "overdraft:day60x5",
+    "chase:d1fa72363ad699ad1c482b1af89ffcc7x1",
+    "overdraft:day75x3",
+    "chase:79e4733276381687e1862a05291493fcx1"
+   ],
+   "stress": {
+    "p_short": 0.0774,
+    "es_cond_paise": 90670601.33074935,
+    "es_uncond_paise": 7017904.543,
+    "cvar_paise": 129007048.766
+   }
+  },
+  "cvar": {
+   "p_short": 0.0032,
+   "es_cond_paise": 70565251.34375,
+   "es_uncond_paise": 225808.8043,
+   "cvar_paise": 4516176.086,
+   "cost_paise": 17205141,
+   "n_actions": 10,
+   "solve_s": 2.379110705999665,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 3178840.12,
+   "n_candidates": 29,
+   "n_rows": 11497,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x7",
+    "overdraft:day60x3",
+    "treds_discount:dd6f7f11c0db8bce80c6809c15541506x1",
+    "chase:6ab6dfcb0ac5af9ce4a458400fa965e7x1",
+    "chase:a506f6e2d1a119e5a295c9cd74027eddx1",
+    "chase:834754774c49a08ea1bf3ef76126354dx1",
+    "treds_discount:c83d14e21fc24f22e173e2f7754dfecax1",
+    "chase:79e4733276381687e1862a05291493fcx1"
+   ],
+   "stress": {
+    "p_short": 0.0162,
+    "es_cond_paise": 66548244.2037037,
+    "es_uncond_paise": 1078081.5561,
+    "cvar_paise": 21561631.122
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 1,
+  "do_nothing": {
+   "p_short": 0.4907,
+   "es_cond_paise": 166919782.38944367,
+   "es_uncond_paise": 81907537.2185,
+   "cvar_paise": 469353791.678,
+   "stress": {
+    "p_short": 0.6227,
+    "es_cond_paise": 190815465.37690702,
+    "es_uncond_paise": 118820790.2902,
+    "cvar_paise": 534864559.47
+   }
+  },
+  "chance": {
+   "p_short": 0.0458,
+   "es_cond_paise": 103726834.73362446,
+   "es_uncond_paise": 4750689.0308,
+   "cvar_paise": 95013780.616,
+   "cost_paise": 9651905,
+   "n_actions": 10,
+   "solve_s": 40.97160426499977,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 23,
+   "n_rows": 10355,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x7",
+    "supplier_stretch:S1:+7dx1",
+    "overdraft:day45x2",
+    "chase:49ec0a3a5ecad3cf07ca756bac1e20edx1",
+    "chase:b759884108225efe897ac445b0a43338x1",
+    "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1",
+    "chase:7826ae742768fa26a273d36ad35d86d7x1",
+    "overdraft:day60x1",
+    "chase:d13674a95e5d5c5441503a152d38d5edx1"
+   ],
+   "stress": {
+    "p_short": 0.1077,
+    "es_cond_paise": 103990894.46239555,
+    "es_uncond_paise": 11199819.3336,
+    "cvar_paise": 182141569.466
+   }
+  },
+  "cvar": {
+   "p_short": 0.0084,
+   "es_cond_paise": 82851398.08333333,
+   "es_uncond_paise": 695951.7439,
+   "cvar_paise": 13919034.878,
+   "cost_paise": 16683782,
+   "n_actions": 12,
+   "solve_s": 1.661110817000008,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 12962240.67148,
+   "n_candidates": 23,
+   "n_rows": 10355,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day45x10",
+    "chase:b759884108225efe897ac445b0a43338x1",
+    "chase:d13674a95e5d5c5441503a152d38d5edx1",
+    "treds_discount:874ff44b70bf0196393ddca4bada16a1x1",
+    "chase:49ec0a3a5ecad3cf07ca756bac1e20edx1",
+    "chase:ee57fdcb033ef3a0e29e9436b2c1c6f6x1",
+    "chase:39ecdf76d8ee779e5dec481bd4e5194ex1",
+    "treds_discount:2d73249a320fe11bfa4370d275ad7346x1",
+    "chase:7826ae742768fa26a273d36ad35d86d7x1",
+    "treds_discount:c14ac3c67beb39cde68cef8c699aa456x1"
+   ],
+   "stress": {
+    "p_short": 0.0241,
+    "es_cond_paise": 86290608.89626557,
+    "es_uncond_paise": 2079603.6744,
+    "cvar_paise": 41592073.488
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 2,
+  "do_nothing": {
+   "p_short": 0.505,
+   "es_cond_paise": 181951021.98039603,
+   "es_uncond_paise": 91885266.1001,
+   "cvar_paise": 494423198.032,
+   "stress": {
+    "p_short": 0.6352,
+    "es_cond_paise": 207331731.85437658,
+    "es_uncond_paise": 131697116.0739,
+    "cvar_paise": 574541801.014
+   }
+  },
+  "chance": {
+   "p_short": 0.052,
+   "es_cond_paise": 92742270.97884615,
+   "es_uncond_paise": 4822598.0909,
+   "cvar_paise": 96369467.08,
+   "cost_paise": 11659248,
+   "n_actions": 7,
+   "solve_s": 25.023357292999663,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 26,
+   "n_rows": 10954,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "supplier_stretch:S1:+14dx1",
+    "overdraft:day75x6",
+    "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+    "chase:9acee0fbd3c24c88575819948eae2b40x1",
+    "chase:87e5e9df1337c8f63c1caf78b7849e62x1",
+    "chase:20aa908256a46dad275da41dc885bd41x1"
+   ],
+   "stress": {
+    "p_short": 0.125,
+    "es_cond_paise": 114183687.9256,
+    "es_uncond_paise": 14272960.9907,
+    "cvar_paise": 211021204.718
+   }
+  },
+  "cvar": {
+   "p_short": 0.0064,
+   "es_cond_paise": 83047526.09375,
+   "es_uncond_paise": 531504.167,
+   "cvar_paise": 10630083.34,
+   "cost_paise": 17842387,
+   "n_actions": 9,
+   "solve_s": 1.8530922390000342,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 4686581.679999998,
+   "n_candidates": 26,
+   "n_rows": 10954,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x8",
+    "overdraft:day75x2",
+    "chase:9acee0fbd3c24c88575819948eae2b40x1",
+    "chase:bd8a68da6228062f07ff968dd5d50bf1x1",
+    "chase:dfbd4693e784ebda0ffd8c221efb921fx1",
+    "chase:87e5e9df1337c8f63c1caf78b7849e62x1",
+    "chase:f295d036e9da286bc8b7980fb9579f31x1"
+   ],
+   "stress": {
+    "p_short": 0.0279,
+    "es_cond_paise": 88776275.99283154,
+    "es_uncond_paise": 2476858.1002,
+    "cvar_paise": 49537162.004
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 3,
+  "do_nothing": {
+   "p_short": 0.5,
+   "es_cond_paise": 138834624.9854,
+   "es_uncond_paise": 69417312.4927,
+   "cvar_paise": 375354022.304,
+   "stress": {
+    "p_short": 0.6189,
+    "es_cond_paise": 155276200.57246727,
+    "es_uncond_paise": 96100440.5343,
+    "cvar_paise": 418178850.816
+   }
+  },
+  "chance": {
+   "p_short": 0.0539,
+   "es_cond_paise": 68955987.56029685,
+   "es_uncond_paise": 3716727.7295,
+   "cvar_paise": 74104701.29,
+   "cost_paise": 8103769,
+   "n_actions": 7,
+   "solve_s": 50.62427653700024,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 33,
+   "n_rows": 9623,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x6",
+    "supplier_stretch:S1:+7dx1",
+    "overdraft:day45x2",
+    "overdraft:day75x2",
+    "chase:d1314ee84c88a934fc7ee97f54b2ea8ax1",
+    "chase:ce212e256bf2727c4209eb66bab66c21x1"
+   ],
+   "stress": {
+    "p_short": 0.1166,
+    "es_cond_paise": 78977324.73070326,
+    "es_uncond_paise": 9208756.0636,
+    "cvar_paise": 141001976.34
+   }
+  },
+  "cvar": {
+   "p_short": 0.004,
+   "es_cond_paise": 60424012.775,
+   "es_uncond_paise": 241696.0511,
+   "cvar_paise": 4833921.022,
+   "cost_paise": 14513305,
+   "n_actions": 6,
+   "solve_s": 1.9193266319998656,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 432571.0990599991,
+   "n_candidates": 33,
+   "n_rows": 9623,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x10",
+    "chase:5030b1639c652c25d0140a5d11461031x1",
+    "treds_discount:33ad7776c144dd184a1b03c592e1e6edx1",
+    "chase:c691cea05e59bf7efee1e39dd85075bex1"
+   ],
+   "stress": {
+    "p_short": 0.0224,
+    "es_cond_paise": 65048470.25446428,
+    "es_uncond_paise": 1457085.7337,
+    "cvar_paise": 29141714.674
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 4,
+  "do_nothing": {
+   "p_short": 0.4898,
+   "es_cond_paise": 165245871.11678237,
+   "es_uncond_paise": 80937427.673,
+   "cvar_paise": 456748852.55,
+   "stress": {
+    "p_short": 0.5953,
+    "es_cond_paise": 183534054.27196372,
+    "es_uncond_paise": 109257822.5081,
+    "cvar_paise": 502949288.89
+   }
+  },
+  "chance": {
+   "p_short": 0.0396,
+   "es_cond_paise": 88548650.83838384,
+   "es_uncond_paise": 3506526.5732,
+   "cvar_paise": 70130531.464,
+   "cost_paise": 10844426,
+   "n_actions": 9,
+   "solve_s": 14.211290246999852,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 21,
+   "n_rows": 10169,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "supplier_stretch:S1:+14dx1",
+    "overdraft:day45x5",
+    "overdraft:day60x3",
+    "overdraft:day30x1",
+    "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+    "overdraft:day75x1",
+    "chase:0a6f58adf031dbea05d15dcd3c48b566x1",
+    "chase:4a29ffb000fbdf8ef9e0dd606bd37288x1"
+   ],
+   "stress": {
+    "p_short": 0.0841,
+    "es_cond_paise": 97334025.20927468,
+    "es_uncond_paise": 8185791.5201,
+    "cvar_paise": 146223258.242
+   }
+  },
+  "cvar": {
+   "p_short": 0.0121,
+   "es_cond_paise": 74168046.94214876,
+   "es_uncond_paise": 897433.368,
+   "cvar_paise": 17948667.36,
+   "cost_paise": 15580144,
+   "n_actions": 10,
+   "solve_s": 1.4291447309997238,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 7894423.697260004,
+   "n_candidates": 21,
+   "n_rows": 10169,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x6",
+    "overdraft:day45x4",
+    "chase:b4bdb5274ac8898b6084d6b3a57f6410x1",
+    "chase:e4bb9017ef430412383c866a73ff7d2cx1",
+    "chase:1fe171e8c61e0b12dbade6a4d25abb0fx1",
+    "chase:4a29ffb000fbdf8ef9e0dd606bd37288x1",
+    "chase:1f357f891a00c57105e89e4f3b8b23a1x1",
+    "chase:0a6f58adf031dbea05d15dcd3c48b566x1"
+   ],
+   "stress": {
+    "p_short": 0.0321,
+    "es_cond_paise": 85079237.211838,
+    "es_uncond_paise": 2731043.5145,
+    "cvar_paise": 54620870.29
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 5,
+  "do_nothing": {
+   "p_short": 0.5123,
+   "es_cond_paise": 156317528.38297874,
+   "es_uncond_paise": 80081469.7906,
+   "cvar_paise": 435683952.722,
+   "stress": {
+    "p_short": 0.655,
+    "es_cond_paise": 180923918.70671755,
+    "es_uncond_paise": 118505166.7529,
+    "cvar_paise": 499051439.616
+   }
+  },
+  "chance": {
+   "p_short": 0.0625,
+   "es_cond_paise": 94016570.7104,
+   "es_uncond_paise": 5876035.6694,
+   "cvar_paise": 114690193.054,
+   "cost_paise": 2904974,
+   "n_actions": 12,
+   "solve_s": 39.49704406699993,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 37,
+   "n_rows": 12008,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day30x5",
+    "overdraft:day45x5",
+    "chase:d666aadbacb20c7d5291f9893c356ebax1",
+    "treds_discount:311743bc25c6bd82153b816f7b2be07cx1",
+    "treds_discount:792c1059d58a984f89fde7daea55219dx1",
+    "chase:fc1d047960809e9a224fae1122c7e7b2x1",
+    "treds_discount:11fa49a83dcbef2830b37a5c3c68cc4ax1",
+    "chase:f802b7046e8237af81d27d972d2b7127x1",
+    "treds_discount:4530a0ec5aea9e3340e1ee05c2044fe8x1",
+    "chase:cba2366ad90e9441288e2493221738b3x1",
+    "chase:a7965be08a32bc22cd2574b5359fcc99x1"
+   ],
+   "stress": {
+    "p_short": 0.1227,
+    "es_cond_paise": 108960688.39445803,
+    "es_uncond_paise": 13369476.466,
+    "cvar_paise": 196558796.458
+   }
+  },
+  "cvar": {
+   "p_short": 0.0053,
+   "es_cond_paise": 69873881.13207547,
+   "es_uncond_paise": 370331.57,
+   "cvar_paise": 7406631.4,
+   "cost_paise": 16175790,
+   "n_actions": 14,
+   "solve_s": 4.184525843999836,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 9017420.040000001,
+   "n_candidates": 37,
+   "n_rows": 12008,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x9",
+    "treds_discount:792c1059d58a984f89fde7daea55219dx1",
+    "overdraft:day45x1",
+    "treds_discount:bd7d85ca9fd3860cefa2be37e88446b3x1",
+    "chase:d666aadbacb20c7d5291f9893c356ebax1",
+    "chase:f802b7046e8237af81d27d972d2b7127x1",
+    "treds_discount:311743bc25c6bd82153b816f7b2be07cx1",
+    "chase:2198cd59c956a0df185e69342e4a10bfx1",
+    "chase:97f96151b93a2f2aafec5316e6882b19x1",
+    "chase:fc1d047960809e9a224fae1122c7e7b2x1",
+    "treds_discount:091a8904411eb91650d736a2a3bd2f7bx1",
+    "treds_discount:52e955305cdd92402659f378479041a4x1"
+   ],
+   "stress": {
+    "p_short": 0.0228,
+    "es_cond_paise": 71435351.28947368,
+    "es_uncond_paise": 1628726.0094,
+    "cvar_paise": 32574520.188
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 6,
+  "do_nothing": {
+   "p_short": 0.4949,
+   "es_cond_paise": 151352945.27379268,
+   "es_uncond_paise": 74904572.616,
+   "cvar_paise": 419608037.84,
+   "stress": {
+    "p_short": 0.6309,
+    "es_cond_paise": 170597181.30749723,
+    "es_uncond_paise": 107629761.6869,
+    "cvar_paise": 477803472.476
+   }
+  },
+  "chance": {
+   "p_short": 0.056,
+   "es_cond_paise": 82317489.83214286,
+   "es_uncond_paise": 4609779.4306,
+   "cvar_paise": 91629918.134,
+   "cost_paise": 8485458,
+   "n_actions": 9,
+   "solve_s": 60.10740940300002,
+   "solver_status": 1,
+   "solver_message": "Time limit reached. (HiGHS Status 13: Time limit reached)",
+   "time_limited": true,
+   "mip_gap": 0.03450422095094743,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 27,
+   "n_rows": 10420,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x9",
+    "supplier_stretch:S1:+7dx1",
+    "overdraft:day30x1",
+    "treds_discount:653ec4dc56b1bf16b987994ae24655adx1",
+    "chase:caed157da9c68c1666cba2bcefe5e428x1",
+    "chase:550c10ef465a5d2bd52f330cfa781aedx1",
+    "chase:1efc5211fd1c4ff09f73e088ca7c5d0cx1",
+    "chase:b22a465bf77eb3173a160a6f7951e1f1x1"
+   ],
+   "stress": {
+    "p_short": 0.1128,
+    "es_cond_paise": 97106153.82890071,
+    "es_uncond_paise": 10953574.1519,
+    "cvar_paise": 171143400.156
+   }
+  },
+  "cvar": {
+   "p_short": 0.0076,
+   "es_cond_paise": 67089373.2631579,
+   "es_uncond_paise": 509879.2368,
+   "cvar_paise": 10197584.736,
+   "cost_paise": 15226772,
+   "n_actions": 8,
+   "solve_s": 2.8064717319998636,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 3196455.8599999975,
+   "n_candidates": 27,
+   "n_rows": 10420,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x9",
+    "overdraft:day45x1",
+    "treds_discount:cd21c72c1b69adefd694827307e2b33cx1",
+    "treds_discount:a6334111bc1e8464d053bd1a5879b17cx1",
+    "chase:9ddca1fc3815d6d116d0b5e8ca3493fbx1",
+    "chase:caed157da9c68c1666cba2bcefe5e428x1"
+   ],
+   "stress": {
+    "p_short": 0.0273,
+    "es_cond_paise": 79029576.5018315,
+    "es_uncond_paise": 2157507.4385,
+    "cvar_paise": 43150148.77
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 7,
+  "do_nothing": {
+   "p_short": 0.5069,
+   "es_cond_paise": 203804727.955218,
+   "es_uncond_paise": 103308616.6005,
+   "cvar_paise": 548133405.152,
+   "stress": {
+    "p_short": 0.6139,
+    "es_cond_paise": 221848746.2832709,
+    "es_uncond_paise": 136192945.3433,
+    "cvar_paise": 601702512.862
+   }
+  },
+  "chance": {
+   "p_short": 0.058,
+   "es_cond_paise": 106520529.18448275,
+   "es_uncond_paise": 6178190.6927,
+   "cvar_paise": 122195281.152,
+   "cost_paise": 16275384,
+   "n_actions": 5,
+   "solve_s": 3.3806648310001037,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 21,
+   "n_rows": 11245,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day75x2",
+    "chase:5ac939a87f31ca0a3ef88df53cc91640x1",
+    "chase:e6202004069431866dc6196b5b0ee45ex1"
+   ],
+   "stress": {
+    "p_short": 0.1143,
+    "es_cond_paise": 121991002.52143481,
+    "es_uncond_paise": 13943571.5882,
+    "cvar_paise": 214436055.424
+   }
+  },
+  "cvar": {
+   "p_short": 0.0228,
+   "es_cond_paise": 98687434.10964912,
+   "es_uncond_paise": 2250073.4977,
+   "cvar_paise": 45001469.954,
+   "cost_paise": 17503603,
+   "n_actions": 12,
+   "solve_s": 1.2332158019999042,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 34958359.25592001,
+   "n_candidates": 21,
+   "n_rows": 11245,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x8",
+    "overdraft:day45x2",
+    "chase:e6202004069431866dc6196b5b0ee45ex1",
+    "chase:5ac939a87f31ca0a3ef88df53cc91640x1",
+    "chase:64764205ba54d9c79e6e35acd811c123x1",
+    "chase:dce1f4f8c627bf0dac79202b6e3dad18x1",
+    "chase:c5e0262c5d631685e842cc5ab53dfd77x1",
+    "chase:f865dde3639578bba9eacecbdbe41cd0x1",
+    "chase:c32c670d60d1e1c539a7d5fb2486241ex1",
+    "chase:61a4f7cfde0b79be25bea25d972109bdx1"
+   ],
+   "stress": {
+    "p_short": 0.0538,
+    "es_cond_paise": 105992863.43866171,
+    "es_uncond_paise": 5702416.053,
+    "cvar_paise": 113582670.658
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 8,
+  "do_nothing": {
+   "p_short": 0.5085,
+   "es_cond_paise": 180403523.51956734,
+   "es_uncond_paise": 91735191.7097,
+   "cvar_paise": 484877025.902,
+   "stress": {
+    "p_short": 0.6211,
+    "es_cond_paise": 204754370.48333603,
+    "es_uncond_paise": 127172939.5072,
+    "cvar_paise": 543584861.636
+   }
+  },
+  "chance": {
+   "p_short": 0.0502,
+   "es_cond_paise": 89018982.71314742,
+   "es_uncond_paise": 4468752.9322,
+   "cvar_paise": 89374699.638,
+   "cost_paise": 10913431,
+   "n_actions": 7,
+   "solve_s": 19.467578759999924,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 22,
+   "n_rows": 11163,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "supplier_stretch:S1:+14dx1",
+    "overdraft:day60x8",
+    "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1",
+    "overdraft:day45x1",
+    "chase:cb035395abed20e01d79da89b6948ffdx1",
+    "overdraft:day75x1"
+   ],
+   "stress": {
+    "p_short": 0.1177,
+    "es_cond_paise": 96940020.49787596,
+    "es_uncond_paise": 11409840.4126,
+    "cvar_paise": 178019342.996
+   }
+  },
+  "cvar": {
+   "p_short": 0.0119,
+   "es_cond_paise": 80781994.13445379,
+   "es_uncond_paise": 961305.7302,
+   "cvar_paise": 19226114.604,
+   "cost_paise": 16155576,
+   "n_actions": 11,
+   "solve_s": 1.244449159999931,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 24980235.15997999,
+   "n_candidates": 22,
+   "n_rows": 11163,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x8",
+    "overdraft:day45x2",
+    "chase:9cd4fc7b57271e4479585d8e6c7170d3x1",
+    "chase:06ee0e629d6be3cc1f2fdd0fabe37d4dx1",
+    "chase:0776dbc5b84ca2278a8b73b64476698ex1",
+    "chase:bb07d650855fe5f0be8af5777c5d4905x1",
+    "chase:59a986093846588f10595d5c39b7a828x1",
+    "chase:ed6981c2b37ad749c9857ed12d96bd7ax1",
+    "chase:a3fd6327064861bed894498d0596dc4ex1"
+   ],
+   "stress": {
+    "p_short": 0.0366,
+    "es_cond_paise": 90483826.94262294,
+    "es_uncond_paise": 3311708.0661,
+    "cvar_paise": 66234161.322
+   }
+  }
+ },
+ {
+  "preset": "distressed",
+  "seed": 9,
+  "do_nothing": {
+   "p_short": 0.487,
+   "es_cond_paise": 162221626.98706365,
+   "es_uncond_paise": 79001932.3427,
+   "cvar_paise": 435781069.68,
+   "stress": {
+    "p_short": 0.6062,
+    "es_cond_paise": 180078449.81854174,
+    "es_uncond_paise": 109163556.28,
+    "cvar_paise": 488518163.998
+   }
+  },
+  "chance": {
+   "p_short": 0.0482,
+   "es_cond_paise": 82504673.58921161,
+   "es_uncond_paise": 3976725.267,
+   "cvar_paise": 79534505.34,
+   "cost_paise": 10231756,
+   "n_actions": 5,
+   "solve_s": 37.64090446,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 6.275225116060697e-06,
+   "budget_met_in_sample": true,
+   "cvar_sub_paise": null,
+   "n_candidates": 26,
+   "n_rows": 9574,
+   "actions": [
+    "supplier_stretch:S2:+30dx1",
+    "supplier_stretch:S1:+14dx1",
+    "overdraft:day60x8",
+    "overdraft:day75x2",
+    "chase:daa503db0e210c87105af71ec6d69eb8x1"
+   ],
+   "stress": {
+    "p_short": 0.1021,
+    "es_cond_paise": 95870287.01273261,
+    "es_uncond_paise": 9788356.304,
+    "cvar_paise": 161860310.826
+   }
+  },
+  "cvar": {
+   "p_short": 0.0096,
+   "es_cond_paise": 82269950.66666667,
+   "es_uncond_paise": 789791.5264,
+   "cvar_paise": 15795830.528,
+   "cost_paise": 15314638,
+   "n_actions": 11,
+   "solve_s": 1.7511765330000344,
+   "solver_status": 0,
+   "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "time_limited": false,
+   "mip_gap": 0.0,
+   "budget_met_in_sample": false,
+   "cvar_sub_paise": 7047540.6400000015,
+   "n_candidates": 26,
+   "n_rows": 9574,
+   "actions": [
+    "supplier_stretch:S1:+30dx1",
+    "supplier_stretch:S2:+30dx1",
+    "overdraft:day60x9",
+    "chase:daa503db0e210c87105af71ec6d69eb8x1",
+    "chase:635a7adedd1a64621af81ce66cdb6c22x1",
+    "overdraft:day45x1",
+    "treds_discount:42adf03328af9597d04a26f524dad851x1",
+    "treds_discount:4deea32829e6b6ae4126262b83253c92x1",
+    "chase:2f5a0461765361ec70faaf7babb70c0dx1",
+    "treds_discount:05bfbb2c14a22c8da867b970e32ba1bdx1",
+    "chase:e04f4b556cdafaaae7c5363828b243ecx1"
+   ],
+   "stress": {
+    "p_short": 0.0312,
+    "es_cond_paise": 81179813.45192307,
+    "es_uncond_paise": 2532810.1797,
+    "cvar_paise": 50656203.594
+   }
+  }
+ }
+]

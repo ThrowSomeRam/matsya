@@ -114,6 +114,12 @@ production path now calibrates 1-30 days (batch).
 | same | solver at time limit | 30 | none | 5/30 (max gap 0.87) | **fail** (not proven optimal) | `38ec284` |
 | chase-column trim | mean plan cost | 30 | default (Rs 61,899) | trimmed Rs 65,520 | **loss** (+3,621, CI +975 to +7,303): trim rejected | batch |
 | MSMED claims ("money owed") | invoices worth claiming at defaults | 1,453 overdue | | 0 | (finding) | `38ec284` |
+| CVaR plan vs chance-constrained (alpha 0.05, budget Rs 0), same 30 worlds and paths | owner target met strictly on fresh paths (p_short(90) <= 0.05) | 30 worlds | chance-constrained 19/30 | CVaR 30/30 | win: CVaR is the owner-view default | batch |
+| same | mean plan cost | 30 | chance-constrained Rs 54,106 | CVaR Rs 1,15,801 | **dearer** (+Rs 61,695, CI +49,676 to +73,543; 30/30 worlds) | batch |
+| same | fresh p_short(90) / expected shortfall over all futures / worst-5% average shortfall | 30 | 0.0467 / Rs 30,701 / Rs 6,12,092 | 0.0075 / Rs 4,811 / Rs 96,224 | win | batch |
+| same | solve time median (max); solver at time limit | 30 | 31.1 s (60.1 s); 4/30 | 1.4 s (4.2 s); 0/30 | win | batch |
+| same | CVaR budget met in sample | 30 | | 7/30 (23/30 have paths no action saves; fallback: lowest CVaR, then cheapest within 0.1%) | (finding) | batch |
+| stress: payment chances x 0.85, order rate x 0.9, plans not re-solved | p_short(90) rise / worst-5% rise | 30 | chance-constrained +0.0670 / +Rs 7,41,059 | CVaR +0.0205 / +Rs 2,82,351 | win (CVaR meets target 27/30 stressed, chance 0/30) | batch |
 
 ## Attribution (batch)
 

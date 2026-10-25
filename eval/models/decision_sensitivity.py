@@ -49,7 +49,7 @@ def one(name: str) -> dict:
     dinp = decision_inputs(obs, inp, "small", overdraft_limit_paise=10_00_000_00,
                            suppliers=[Supplier("S1", 0.5, "micro", 30), Supplier("S2", 0.3, "none", 30)],
                            entity_type="company")
-    r = decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER, constants_overrides=RUNS[name])
+    r = decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER, constants_overrides=RUNS[name], method="chance")
     worth = r.money_owed.filter(pl.col("net_value_paise") > 0)
     return {"run": name, "actions": [f"{a.kind} {a.target_id[:12]}" + (f" x{k}" if a.kind == "overdraft" else "")
                                      for a, k in r.chosen],

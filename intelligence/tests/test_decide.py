@@ -79,7 +79,7 @@ def world():
 @pytest.fixture(scope="module")
 def result(world):
     _, _, inp, dinp = world
-    return decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER)
+    return decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER, method="chance")
 
 
 def test_plan_meets_the_target_out_of_sample(result):
@@ -134,7 +134,7 @@ def test_run_record_has_solver_status_and_gap(result):
 
 def test_replay_is_deterministic(world, result):
     _, _, inp, dinp = world
-    again = decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER)
+    again = decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER, method="chance")
     assert again.plan.equals(result.plan)
     assert again.record == result.record
     assert again.baselines.equals(result.baselines)
@@ -153,7 +153,7 @@ def test_overdraft_limit_is_counted_once(world, result):
 def test_target_that_cannot_be_met_returns_the_lowest_p_short(world):
     _, _, inp, dinp = world
     bare = replace(dinp, overdraft_limit_paise=0, suppliers=[], eps=0.0)
-    r = decide(inp, bare, RUN, n_sub=300, n_verify=1000)
+    r = decide(inp, bare, RUN, n_sub=300, n_verify=1000, method="chance")
     assert not r.target_met
     assert "cannot be met" in r.message
     nothing = r.baselines.filter(r.baselines["baseline"] == "do_nothing")["p_short"][0]
@@ -375,3 +375,49 @@ def test_decide_records_its_overrides(world):
     assert r.money_owed.height == 0  # claims off: none listed either
     again = decide(inp, dinp, RUN, n_sub=100, n_verify=200, constants_overrides={"msmed_claim.enabled": False})
     assert again.plan.equals(r.plan) and again.record == r.record
+
+
+# ---------------------------------------------------------------- CVaR plan
+
+
+@pytest.fixture(scope="module")
+def cvar_result(world):
+    _, _, inp, dinp = world
+    return decide(inp, dinp, RUN, n_sub=N_SUB, n_verify=N_VER, method="cvar")
+
+
+def test_cvar_plan_meets_its_budget_in_sample_and_shares_the_paths(result, cvar_result):
+    r, c = result, cvar_result
+    assert c.method == "cvar" and r.method == "chance" and c.run_id != r.run_id
+    assert c.record["seed_ids"] == r.record["seed_ids"]  # same solve and fresh paths
+    assert c.fresh["do_nothing"] == r.fresh["do_nothing"]
+    if c.target_met:
+        assert c.cvar_sub_paise <= c.cvar_budget_paise + 1
+    for key in ("status", "seconds", "time_limited"):
+        assert key in c.solver
+    assert c.record["method"] == "cvar" and c.record["cvar_alpha"] == 0.05
+    validate(c.contract_tables()["decisions.plans"], "decisions.plans")
+    assert c.plan["p_short_after"][-1] == c.p_short_verified
+
+
+def test_cvar_budget_zero_leaves_no_solve_path_short(world, cvar_result):
+    """budget 0: every solve path is kept above the threshold (in the linear model) when it can be."""
+    from matsya_intelligence.decide.plan import shortfall_stats
+
+    c = cvar_result
+    assert c.target_met
+    assert c.p_short_sub == 0.0
+    s = c.fresh["plan"]
+    assert 0 <= s["p_short"] <= 1 and s["cvar_paise"] >= s["es_uncond_paise"] >= 0
+    bal = np.array([[0, 5, -3, 2], [0, 1, 1, 1], [0, -10, 4, 4]])
+    st = shortfall_stats(bal, 0, 3, alpha=0.3)  # worst 1 of 3 paths
+    assert st["p_short"] == pytest.approx(2 / 3) and st["es_cond_paise"] == pytest.approx(6.5)
+    assert st["cvar_paise"] == pytest.approx(10.0)
+
+
+def test_plan_method_defaults_to_the_constants_file(world):
+    k = load_constants()["decision"]
+    assert k["plan_method"]["value"] in ("chance", "cvar")
+    _, _, inp, dinp = world
+    with pytest.raises(ValueError):
+        decide(inp, dinp, RUN, n_sub=50, n_verify=50, method="robust")

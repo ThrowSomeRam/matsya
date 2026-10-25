@@ -791,6 +791,72 @@ the median HiGHS time, so some of those plans are likely time-limited too. Optio
 status and MIP gap in the run record, raise the limit, or tighten the formulation (fewer chase
 columns, symmetric overdraft days). Not done.
 
+## Decision engine: CVaR plan (2026-10-25)
+
+**Formulation** (`decide/plan.py` `_solve_cvar`, `decide(method="cvar")`). Rockafellar-Uryasev on the
+same 1,000 solve paths as the chance-constrained plan. The loss per path is the 90-day shortfall depth,
+L_n = max(0, theta - min_t balance).
+
+- **Objective:** minimise the total action cost.
+- **Path rows:** u_n + eta + sum_v delta_v[n, t] x_v >= theta - B[n, t] for every kept (n, t).
+- **CVaR row:** eta + sum_n u_n / (alpha N) <= budget.
+- **Bounds:** u >= 0 and eta >= 0. Loss is never negative, so eta >= 0 loses nothing.
+- **Other rows:** the same as the chance-constrained plan (one action per invoice, one stretch per
+  supplier, the overdraft limit, the chase-invoice linearisation).
+
+There are no per-path binaries. The only integers are the actions (about 26 candidates, median), so the
+problem is still a MILP, but a small one.
+
+Owner inputs: `decision.cvar.alpha` (0.05) and `decision.cvar.budget_paise` (0). With budget 0 the plan
+must leave no solve path short, so alpha has no effect. Where some paths cannot be saved by any action,
+the budget is infeasible. A first solve then minimises the CVaR, and a second finds the cheapest plan
+within 0.1% (or Re 1) of that minimum. The result says so.
+
+Same flow as before:
+
+- verified on 10,000 fresh paths, with the same seeds as the chance-constrained plan (common random
+  numbers);
+- the plan table and LOO ranking are unchanged, with in-sample CVaR as the tie-break;
+- solver status and time are recorded.
+
+The chance-constrained plan stays available (`method="chance"`). The 30-world baseline, sensitivity
+scripts and their tests pin it.
+
+**Benchmark** (`eval/models/decision_cvar.py`, `eval/results/decision_cvar.md`). Same 30 worlds and
+owner inputs as "Decision engine across worlds". Means over worlds, fresh paths:
+
+| plan | cost mean (median), Rs | p_short(90) | meets 0.05 strictly | within MC error | ES if short, Rs | ES over all futures, Rs | worst-5% average shortfall, Rs | solve s median (max) | optimal / time limit |
+|---|---|---|---|---|---|---|---|---|---|
+| do nothing | 0 | 0.498 | 0/30 | 0/30 | 11,19,050 | 5,58,867 | 31,67,241 | | |
+| chance-constrained | 54,106 (26,209) | 0.0467 | 19/30 | 26/30 | 6,40,485 | 30,701 | 6,12,092 | 31.1 (60.1) | 26 / 4 |
+| CVaR | 1,15,801 (1,21,524) | 0.0075 | 30/30 | 30/30 | 5,40,676 | 4,811 | 96,224 | 1.4 (4.2) | 30 / 0 |
+
+- **Cost:** CVaR is dearer in every world (paired +Rs 61,695, 95% CI +49,676 to +73,543). It buys
+  about a sixth of the tail shortfall.
+- **Budget in sample:** met in 7/30 worlds. The other 23 have solve paths no action can save, and get
+  the lowest-CVaR plan.
+- **Solver:** HiGHS proves every CVaR plan optimal in under 5 s. 4/30 chance-constrained plans stop at
+  the 60 s limit.
+- **Chance-constrained, strict hits:** 19/30, down from 24/30 in the earlier run on the same worlds.
+  That run was before the sales bootstrap came back (wider sales paths on the fresh check).
+
+**Stress** (pessimistic model: every payment chance x 0.85 and the order rate x 0.9, as scenario
+transforms on the fresh seed; plans not re-solved):
+
+| plan | p_short(90) normal -> stressed | meets 0.05 stressed | worst-5% normal -> stressed, Rs |
+|---|---|---|---|
+| do nothing | 0.498 -> 0.639 (+0.141) | 0/30 | 31,67,241 -> 37,82,850 (+6,15,609) |
+| chance-constrained | 0.0467 -> 0.1136 (+0.0670) | 0/30 | 6,12,092 -> 13,53,151 (+7,41,059) |
+| CVaR | 0.0075 -> 0.0280 (+0.0205) | 27/30 | 96,224 -> 3,78,575 (+2,82,351) |
+
+The chance-constrained plan sits at the edge of its target, so a mild model error pushes every world
+over it. Its tail also grows more than doing nothing's does. The CVaR plan keeps its margin.
+
+**Default.** The rule set in advance: CVaR becomes the owner-view default if it meets the owner's target
+on fresh paths at least as often. It does (30/30 against 19/30), so `decision.plan_method` = `cvar`.
+The cost of that choice is roughly double the plan cost. If the owner's target is the 5% chance and
+nothing more, the chance-constrained plan is the cheaper answer and still available.
+
 ## Empirical timing in the engine: late bins (2026-10-25)
 
 **What moved.** Learned-mode calibration on the 100 default pasts (oracle 200 futures, 4,000
