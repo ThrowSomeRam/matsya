@@ -247,3 +247,26 @@ def test_view_days_report(world):
     v = sr.at_days([30, 90])
     assert v["day"].to_list() == [30, 90]
     assert v["p_short_base"][1] == base.shortfall["p_short"][89] and v["p_short"][1] == sr.result.shortfall["p_short"][89]
+
+
+@pytest.mark.parametrize("sticky", [0, 14])
+def test_sustained_order_cut_long_horizon_matches_order_linked_flows(world, sticky):
+    """Orders x 0.7 from as_of over 365 days, same seed. Each order is dropped with chance 0.3, so
+    the mean ending balance moves by -0.3 x (its receipts - its purchases - its GST) inside the
+    horizon. Purchases on days 1..L+S belong to orders already placed and are not cut; GST is
+    the order-driven part (baseline minus a zero-orders run), not the part from history."""
+    cfg, obs, cats, _, _ = world
+    H, n = 365, 2000
+    inp = build_learned_inputs(obs, cats, cfg.as_of_date, RUN, horizon=H)
+    base = run_engine(inp, RUN, n, H, keep_flows=True)
+    L = int(inp.features["features.sales_process"].filter(pl.col("name") == "purchase_lag_days")["value"][0])
+    res = run_scenario(inp, RUN, [RateMultiplier(target="orders", factor=0.7, purchase_stickiness_days=sticky)],
+                       n_paths=n, horizon=H, base=base).result
+    none = run_scenario(inp, RUN, [RateMultiplier(target="orders", factor=0.0, purchase_stickiness_days=sticky)],
+                        n_paths=n, horizon=H, base=base, keep_flows=True).result
+    f = base.flows
+    linked = (f["future_invoice_receipts"].sum(1).mean() + f["purchases"][:, L + sticky + 1:].sum(1).mean()
+              + f["gst"].sum(1).mean() - none.flows["gst"].sum(1).mean())
+    d = (res.balance[:, -1] - base.balance[:, -1]).astype(float)
+    se = d.std(ddof=1) / np.sqrt(n)
+    assert abs(d.mean() - (-0.3 * linked)) < 4 * se + 0.01 * abs(0.3 * linked)
