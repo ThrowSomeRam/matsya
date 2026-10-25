@@ -132,6 +132,43 @@ production path now calibrates 1-30 days (batch).
 | top 5 across 3 seeds | ranks 1-4 identical; 5 and 6 swap within Monte Carlo error: pass on the stated rule, not exact |
 | time | 62 s at 10,000 paths, about 20 s at 4,000 (default world, 113 drivers) |
 
+## Naive vs ours (demo evidence, batch)
+
+`eval/models/naive_vs_ours.py`, `eval/results/naive_vs_ours.md`. Naive = the same engine with every open
+bill paid on its due date (no learned timing, no never-paid share), no future sales or linked purchases
+(supplier payments as a flat daily outflow at their historical average), no sector shocks, no parameter
+uncertainty, no calibration, no plan. Both are scored against the oracle (100 true futures per world).
+Setup: 30 worlds (presets x past seeds 0-9), threshold 0, 10,000 paths. Paired bootstrap over worlds.
+
+| metric | n | naive | ours | ours - naive (95% CI) | verdict |
+|---|---|---|---|---|---|
+| median balance error, day 30 (Rs lakh) | 30 | 84.71 | 3.77 | -80.95 (-91.70 to -69.27) | win (30/30 worlds) |
+| median balance error, day 60 | 30 | 44.36 | 6.73 | -37.63 (-45.36 to -30.02) | win (30/30) |
+| median balance error, day 90 | 30 | 24.80 | 10.30 | -14.50 (-22.07 to -8.13) | win (25/30) |
+| p_short(90) error | 30 | 0.267 | 0.089 | -0.178 (-0.261 to -0.104) | win (26/30) |
+| flags a real shortfall (p >= 0.5): caught / false alarms | 14 real | 10/14 / 1 | 11/14 / 0 | | win (small) |
+| same at p >= 0.2 | 20 real | 11/20 / 0 | 16/20 / 0 | | win |
+
+**Why naive's error is so large early on.** It counts every overdue bill as cash on day 1. Its error
+shrinks by day 90 only because the missing future sales and purchases partly offset that.
+
+**Demo world** (borderline, past seed 0, Rs 10 lakh cushion; the true 90-day chance is 0.46):
+
+| | 90-day chance | ours (Rs lakh) | naive (Rs lakh) | truth (Rs lakh) |
+|---|---|---|---|---|
+| truth | 0.460 | | | |
+| ours | 0.327 | | | |
+| naive | 0.000 | | | |
+| median day 30 | | 37.62 | 128.53 | 34.46 |
+| median day 90 | | 52.23 | 36.31 | 45.01 |
+
+- **Dead bills:** naive counts 20 bills (Rs 40.69 lakh) as certain cash that ours marks as likely never
+  paid (chance >= 0.5). In truth, 19 of the 20 are never paid.
+- **Ours still under-predicts:** 0.33 against the true 0.46, the same low-risk under-prediction the
+  calibration guard bins show.
+
+Chart data: `eval/demo/naive_vs_ours.json`.
+
 ## Generator
 
 | benchmark | metric | n | baseline (value) | ours | verdict | commit |
