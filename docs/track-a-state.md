@@ -43,9 +43,10 @@ of flat files named `<namespace>.<table>.parquet` (`intelligence/src/matsya_inte
 Test counts are collected tests (`pytest --collect-only`), as of this writing. Totals:
 platform 201 (the store tests run once per backend: locally 161 pass, 39 MinIO cases skip and
 1 strict xfail pins contract gap F1; with MinIO configured 199 pass, 1 local-only skip, the
-xfail), eval 28, contracts 101.
-"Wired" means used by the running path, which today is the eval loop (`python -m render.cli
-loop|score|sweep`, section 5); there is no other running path yet.
+xfail), eval 34, contracts 101.
+"Wired" means used by a running path: the eval loop (`python -m render.cli
+loop|score|sweep`, section 5), and the product pipeline (section 2.11), which runs every
+component below on a schedule.
 
 ### 2.1 A4 ledger builder
 - **Does:** parses ReBIT AA deposit payloads into one deduplicated transaction list per
@@ -200,6 +201,47 @@ reproducible once Track B records `store_as_of` (section 9). Tested by 2 tests i
   per test (`eval/platform/tests/conftest.py`).
 - The `score.py` module docstring still says invoices are ingested "with the generic CSV
   adapter"; it uses all three now.
+
+### 2.11 The pipeline: every component as one scheduled run
+- **Does:** `python -m matsya_platform.pipeline -c pipeline.toml run` (also installed as
+  `matsya-pipeline`) runs, per tenant under an active consent: consent expiry, A2 fetch into
+  the encrypted raw store, A4 build, reference tables, A6 invoice ingest from an inbox (one
+  folder per adapter), the A6 matcher, persistence; then one export for Track B. Config is
+  one TOML file (`pipeline/config.py` docstring). Files: `platform/src/matsya_platform/pipeline/`
+  (`run.py`, `config.py`, `__main__.py`).
+- **Automation:** `run` is what cron calls; `run --every N` stays up and repeats;
+  `replay --start --end --step-days` drives a simulated clock (a year of weekly runs on the
+  `loop` world takes 48 s and ends at the same 394 links and 12 review items as one run).
+  A lock file under the store root refuses an overlapping run (exit 2). `consent
+  grant|pause|resume|revoke` stands in for the AA consent flow; `status` prints consents,
+  payloads applied or failed, and the last run.
+- **Incremental and idempotent.** The builder's state is rebuilt each run by replaying the
+  applied payloads from the raw store (`aux.build_log` holds their order), because it cannot
+  be rebuilt from the ledger tables (F2); then only new payloads are built. `aux.ingest_log`
+  keeps each invoice file's sha256. The matcher appends only match rows and labels that
+  differ from their latest stored version. A repeat run at the same time writes nothing but
+  the export (tested). A payload whose balances break continuity is logged once as failed
+  and never applied or retried: accepting a gap needs the owner (`ops.owner_inputs`, not
+  built).
+- **Consent rules:** no active consent, nothing runs for the tenant, invoices included, so an
+  erased tenant's inbox cannot bring its data back (tested).
+- **Tests:** 6 in `eval/platform/tests/test_pipeline.py`: weekly runs end exactly where one
+  run over everything ends (transactions, balances, invoices, matches, labels, on a tiny world
+  with buyer payments added), a repeat run writes nothing, a broken payload is logged once and
+  never applied, nothing runs or returns after a revoke, an overlapping run is refused, and the
+  command line runs a replay.
+- **Limits:**
+  - The AA source is still the folder stub (`LocalFolderAdapter`, fetching up to `now`).
+  - The replay feeds the year's invoice files on day one, so invoices are known before their
+    issue date. The matcher now leaves out invoices issued after its `as_of`
+    (`match/engine.py`); before this they produced labels censored after they were known,
+    which the label validator rejects. A realistic replay would drop files in over time.
+  - Replaying every applied payload makes each run O(payloads held).
+  - The lock is per machine, so with MinIO and two machines it does not hold.
+  - `ledger.matches` cannot retract a link: if a later run stops making a link, the earlier
+    row stays the latest version Track B reads (a contract gap, not yet in the F list).
+  - Without Track B's categoriser (`txn_category` in the config) the category gate is off;
+    on the `loop` world that is 12 review items against 5 with the oracle categories.
 
 ## 3. The data model
 
@@ -535,7 +577,7 @@ Against the handbook's A1 to A10 and phases P0 to P5.
 | A6 Zoho adapter | not built | pending |
 | A7 buyer disclosures pipeline (`ref.buyers`, `ref.buyer_disclosures` from annual reports) | not built | pending; the handbook allows moving it to Track B |
 | A8 privacy gate | not built | Trino skipped; DuckDB views proposed, not built |
-| A9 orchestration and observability (Dagster, Redpanda, OpenTelemetry) | not built | Redpanda skipped (section H); Dagster and OpenTelemetry not decided |
+| A9 orchestration and observability (Dagster, Redpanda, OpenTelemetry) | partial: the pipeline (section 2.11) runs every component on a schedule (cron, `--every`), with a lock and a JSON run report; no Dagster, metrics or tracing | Redpanda skipped (section H); Dagster and OpenTelemetry not decided |
 | A10 drafting service | not built | pending; the handbook allows moving it to Track B |
 | owner input loader (`ops.owner_inputs`), `labels.txn_corrections` writer | not built | pending (agreed in positions doc B) |
 | `ops.match_runs` metrics and alerting | not built | pending (F13) |

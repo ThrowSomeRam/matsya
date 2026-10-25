@@ -22,6 +22,7 @@ import polars as pl
 from matsya_contracts import tables as T
 from matsya_contracts.enums import MatchMethod, PayerKind, SettlementKind
 from matsya_contracts.validate import frame
+from matsya_platform.ledger.rebit import IST
 from matsya_platform.match import references
 from matsya_platform.match.buyers import PATH_CONFIDENCE, CreditBuyerResolver
 from matsya_platform.match.config import MatchConfig
@@ -510,8 +511,11 @@ def match(transactions: pl.DataFrame, invoices: pl.DataFrame, buyers: pl.DataFra
     cfg = config
     btype = dict(zip(buyers["buyer_id"], buyers["type"]))
     mandated = dict(zip(buyers["buyer_id"], buyers["treds_mandated"]))
-    inv_rows = invoices.filter(pl.col("known_at") <= as_of).sort("known_at").group_by(
-        "invoice_id", maintain_order=True).last().sort("issue_date", "invoice_id")
+    # An invoice dated after as_of (post-dated, or a file holding later invoices) is not issued
+    # yet: nothing can pay it, and its label would be censored after it was known.
+    inv_rows = invoices.filter((pl.col("known_at") <= as_of) & (pl.col("issue_date") <= as_of.astimezone(IST).date())
+                               ).sort("known_at").group_by("invoice_id", maintain_order=True).last().sort(
+        "issue_date", "invoice_id")
     invs = {r["invoice_id"]: Inv(r["invoice_id"], r["buyer_id"], r["issue_date"], r["due_date"], r["gross_paise"],
                                  r["gst_paise"] or 0, btype.get(r["buyer_id"]) == "cpse" or bool(mandated.get(r["buyer_id"])))
             for r in inv_rows.iter_rows(named=True)}
