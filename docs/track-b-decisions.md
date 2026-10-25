@@ -587,18 +587,18 @@ not built (the weekly Kaggle metrics cannot score it).
 |---|---|---|
 | TReDS discount (per open invoice of a CPSE buyer, or one the owner marks onboarded; not yet due after the lag) | `invoice_cash` replace: A - A r d / 365 on day L, the invoice leaves payment timing | A r d / 365, d = days from day L to the due date |
 | chase a buyer | `rate_multiplier` buyer x 1.5 for 2 weeks (new `weeks` field) | Rs 500 |
-| MSMED claim (micro/small tenant, invoice past its s.15 deadline) | `invoice_cash` if_unpaid: principal + interest on day 90, only on paths still unpaid then | penalty (10% of principal) - recovery (0.5) x P(unpaid by day 90) x interest |
+| MSMED claim (micro/small tenant, invoice past its s.15 deadline) | `invoice_cash` if_unpaid: principal + interest on day 90, only on paths still unpaid then | penalty (10% of principal) - recovery (0.5) x P(unpaid by day 90) x interest x (1 - tax rate): the recovered interest is taxable income |
 | overdraft draw | `cash_event` + k x limit / 10 on day d in {1, 15, 30, 45, 60, 75} | A r (H + 1 - d) / 365 (repaid after the horizon) |
-| stretch a supplier | `date_shift` supplier_payments, share s (new field), N in {7, 14, 30} days | owner penalty; micro/small and terms + N > 45: MSMED interest on the expected stretched amount for the days past 45 (full cost: s.23 makes it non-deductible), plus the delay in the s.43B(h) / 37(2)(g) deduction: tax rate x amount x cost of funds x FYs moved (0 for a late payment in the same FY) |
+| stretch a supplier | `date_shift` supplier_payments, share s (new field), N in {7, 14, 30} days | owner penalty; micro/small paid past its s.15 deadline (written terms capped at 45 days, else 15; VERIFY): MSMED interest on the expected stretched amount for the late days the stretch adds (full cost: s.23 makes it non-deductible), plus the delay in the s.43B(h) / 37(2)(g) deduction: tax rate x amount net of GST x cost of funds x FYs moved (0 for a late payment in the same FY) |
 
 Rates without a source are config defaults with status verify: TReDS 9%, overdraft 11%, claim
 cash lag 90 days (s.18(5) award window). The income-tax rate is an owner input by entity type
-(proprietor, partnership, company); only the company rate has a default (25.17%, verify), and a
-stretch that can pass 45 days for a micro/small supplier without a rate is refused. The cost of
+(proprietor, partnership, company); only the company rate has a default (25.17%, verify).
+Without a rate, a micro/small supplier stretch or an open MSMED claim is refused. The cost of
 funds for the deduction delay is an owner input, defaulting to the overdraft rate. Worked
 example (tested): as_of 1 Mar 2026, half of Rs 1 lakh a day, 30-day terms stretched 30 days:
-Rs 30 lakh of deductions move one FY, cost 0.2517 x 30 lakh x 10% = Rs 75,510 (the earlier
-full-tax rule gave Rs 7,55,100). The shortfall threshold is the owner cushion and is never
+Rs 30 lakh of payments move one FY, cost 0.2517 x 30 lakh x 10% = Rs 75,510 with no GST (the
+earlier full-tax rule gave Rs 7,55,100), Rs 63,991.53 with 18% GST netted off. The shortfall threshold is the owner cushion and is never
 negative (decide refuses one); the overdraft limit enters only as draws with their interest,
 so it is counted once (tested). Interest is
 P (prod_k (1 + 3 r_k / 12) - 1) with r_k the bank rate in force on each monthly rest date; an
@@ -668,15 +668,18 @@ paths, 10,000 fresh paths; eps 0.05 at day 90). One world, illustrative only:
 
 | baseline | actions | cost (Rs) | p_short(90) | expected days below threshold |
 |---|---|---|---|---|
-| do nothing | 0 | 0 | 0.717 | 10.62 |
-| discount every eligible invoice | 7 | 2,442 | 0.645 | 7.14 |
-| chase the largest buyer | 1 | 500 | 0.695 | 9.43 |
-| plan | 7 | 13,727 | 0.042 (in sample 0.046) | 0.19 |
+| do nothing | 0 | 0 | 0.707 | 9.56 |
+| discount every eligible invoice | 7 | 2,442 | 0.630 | 6.40 |
+| chase the largest buyer | 1 | 500 | 0.684 | 8.49 |
+| plan | 8 | 22,743 | 0.045 (in sample 0.050) | 0.38 |
 
-Plan: Rs 4 lakh overdraft on day 1 (Rs 10,849 interest), S1 +14 days and S2 +30 days (Rs 2,000
-each; S1 stays within 45 days so owes no MSMED interest), and four MSMED claims whose expected
-interest just beats the penalty. 83 candidates, 11,397 constraint rows after pruning, about 47 s
-(23 engine runs).
+Plan (company tenant, s.15 deadline = written terms): Rs 7 lakh overdraft on day 1 (Rs 18,986
+interest), S2 +30 days (Rs 2,000; not MSME), two chases (Rs 500 each) and four TReDS discounts
+(Rs 757 together). S1 is not stretched: with 30-day written terms any stretch is late and owes
+interest. No claim is chosen: net of tax, the expected interest no longer beats the penalty.
+83 candidates, 10,504 constraint rows after pruning, about 88 s, of which HiGHS about 47 s.
+Before the s.15, GST and claim-tax changes the same world gave Rs 13,705 net (Rs 14,849
+clamped), p_short 0.036, with S1 +14 days and four claims of negative net cost.
 
 **Contract gaps (proposals, additive).** 15. `decisions.plans` has no amount or parameters: an
 overdraft row's amount is in target_id (`day1:40000000`), a stretch's days in target_id

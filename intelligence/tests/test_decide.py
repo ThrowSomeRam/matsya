@@ -1,6 +1,7 @@
 import math
 from dataclasses import replace
 from datetime import date, timedelta
+from decimal import Decimal
 from fractions import Fraction
 
 import numpy as np
@@ -13,6 +14,7 @@ from matsya_intelligence.decide.costs import bank_rate_history, income_tax_rate
 from matsya_intelligence.engine import build_learned_inputs, run_engine
 from matsya_intelligence.scenarios import DateShift, RateMultiplier, apply_transforms, preset
 from matsya_intelligence.synth import WorldConfig, generate_world
+from matsya_intelligence.synth.world import load_constants
 
 RUN = "decide-run"
 THRESHOLD = 20_00_000_00  # Rs 20 lakh cushion: makes the default world risky (p_short(90) about 0.7)
@@ -199,51 +201,85 @@ def test_no_stretch_for_a_supplier_that_tightened_terms(world):
 
 
 TAX, COF = Fraction(2517, 10000), 0.10
+LAKH_A_DAY = np.full((10, 90), 1_00_000_00.0)
 
 
-def test_stretch_past_45_days_costs_msmed_interest_for_micro_suppliers_only():
-    purch = np.full((10, 90), 1_00_000_00.0)  # Rs 1 lakh a day
-    as_of = date(2026, 3, 1)  # stretches cross 31 Mar
+def _cost(s, n, as_of, gst=0.0):
+    return stretch_cost(s, n, LAKH_A_DAY, as_of, HIST, TAX, COF, gst)
+
+
+def test_s15_deadline_is_written_terms_capped_at_45_else_15():
+    assert Supplier("A", 1, "micro", 30).msmed_deadline_days == 30
+    assert Supplier("A", 1, "micro", 60).msmed_deadline_days == 45
+    assert Supplier("A", 1, "micro", 30, terms_in_writing=False).msmed_deadline_days == 15
+
+
+def test_stretch_past_the_agreed_date_costs_msmed_interest_for_micro_suppliers_only():
+    as_of = date(2026, 5, 1)  # everything inside FY 2026-27: no deferral
+    start = as_of + timedelta(days=1)
     micro = Supplier("M", 0.5, "micro", 30, penalty_paise=1_000)
-    big = Supplier("B", 0.5, "none", 30, penalty_paise=1_000)
-    c_short, d_short = stretch_cost(micro, 14, purch, as_of, HIST, TAX, COF)  # 30 + 14 = 44 days: within s.15
-    assert c_short == 1_000 and d_short["msmed_interest_paise"] == 0 and d_short["deferral_paise"] == 0
-    c_long, d_long = stretch_cost(micro, 30, purch, as_of, HIST, TAX, COF)  # 60 days: 15 days late
-    assert d_long["late_days"] == 15
-    assert d_long["msmed_interest_paise"] == msmed_interest(d_long["amount_paise"], as_of + timedelta(days=1),
-                                                            as_of + timedelta(days=16), HIST)
-    assert d_long["deferral_paise"] > 0
+    c, d = _cost(micro, 14, as_of)  # written 30 days: 14 days late, though within 45
+    assert d["late_days"] == 14 and d["late_days_before"] == 0
+    assert d["msmed_interest_paise"] == msmed_interest(d["amount_paise"], start, start + timedelta(days=14), HIST) > 0
     # s.23: the MSMED interest is not deductible, so it enters at full cost with no tax saving netted off
-    assert c_long == 1_000 + d_long["msmed_interest_paise"] + d_long["deferral_paise"]
-    assert stretch_cost(big, 30, purch, as_of, HIST, TAX, COF)[0] == 1_000
+    assert d["deferral_paise"] == 0 and c == 1_000 + d["msmed_interest_paise"]
+    # nothing in writing: deadline 15, already 15 days late; the stretch adds only the extra interest
+    oral = Supplier("O", 0.5, "micro", 30, penalty_paise=1_000, terms_in_writing=False)
+    _, d = _cost(oral, 14, as_of)
+    assert (d["late_days_before"], d["late_days"]) == (15, 29)
+    amt = d["amount_paise"]
+    assert d["msmed_interest_paise"] == (msmed_interest(amt, start, start + timedelta(days=29), HIST)
+                                         - msmed_interest(amt, start, start + timedelta(days=15), HIST))
+    assert _cost(Supplier("B", 0.5, "none", 30, penalty_paise=1_000), 30, as_of)[0] == 1_000
+    assert _cost(Supplier("D", 0.5, "medium", 30, penalty_paise=1_000), 30, as_of)[0] == 1_000
 
 
 def test_43bh_is_a_deferral_worked_example():
-    # as_of 1 Mar 2026, share 0.5 of Rs 1 lakh a day, 30-day terms stretched 30 days (60 in total, late).
+    # as_of 1 Mar 2026, share 0.5 of Rs 1 lakh a day, 30-day terms stretched 30 days (late).
     # Payment days t = 1..60 were accepted by 31 Mar (FY 2025-26) and now land on or after 1 Apr
     # (FY 2026-27): Rs 50,000 x 60 = Rs 30 lakh deferred one year. Later days stay in FY 2026-27.
-    purch = np.full((10, 90), 1_00_000_00.0)
     micro = Supplier("M", 0.5, "micro", 30, penalty_paise=0)
-    _, d = stretch_cost(micro, 30, purch, date(2026, 3, 1), HIST, TAX, COF)
+    _, d = _cost(micro, 30, date(2026, 3, 1))
     assert d["deferred_amount_years_paise"] == 30_00_000_00
-    # 0.2517 x Rs 30 lakh x 10% x 1 year = Rs 75,510 (the full tax would have been Rs 7,55,100)
+    # no GST: 0.2517 x Rs 30 lakh x 10% x 1 year = Rs 75,510 (the full tax would have been Rs 7,55,100)
     assert d["deferral_paise"] == 75_510_00
+    # purchases carry 18% GST: only the amount net of GST is deductible
+    _, g = _cost(micro, 30, date(2026, 3, 1), gst=0.18)
+    want = Fraction(30_00_000_00) / Fraction(118, 100) * TAX * Fraction(1, 10)
+    assert g["deferral_paise"] == math.floor(want + Fraction(1, 2)) == 63_991_53
 
 
 def test_late_payment_in_the_same_fy_costs_no_deferral():
-    purch = np.full((10, 90), 1_00_000_00.0)
     micro = Supplier("M", 0.5, "micro", 30, penalty_paise=0)
-    c, d = stretch_cost(micro, 30, purch, date(2026, 5, 1), HIST, TAX, COF)  # everything inside FY 2026-27
+    c, d = _cost(micro, 30, date(2026, 5, 1))
     assert d["deferral_paise"] == 0 and d["deferred_amount_years_paise"] == 0
     assert c == d["msmed_interest_paise"] > 0  # still late: the interest is owed
 
 
 def test_already_late_supplier_defers_only_when_payment_crosses_31_march():
-    purch = np.full((10, 90), 1_00_000_00.0)
-    late = Supplier("L", 0.5, "micro", 60, penalty_paise=0)  # 60-day terms: already past 45 days
-    _, d = stretch_cost(late, 7, purch, date(2026, 3, 1), HIST, TAX, COF)
-    # deduction already sits in the FY of payment; it moves only for payments on 25-31 Mar (t = 24..30)
+    late = Supplier("L", 0.5, "micro", 60, penalty_paise=0)  # written 60 days: capped at 45, already late
+    _, d = _cost(late, 7, date(2026, 3, 1))
+    # the deduction already sits in the FY of payment; it moves only for payments on 25-31 Mar (t = 24..30)
     assert d["deferred_amount_years_paise"] == 7 * 50_000_00
+
+
+def test_claim_value_is_net_of_tax_on_the_recovered_interest(world):
+    _, _, inp, dinp = world
+    base = run_engine(inp, "d-claim", 200, keep_flows=True)
+    mc = load_constants()["decision"]["msmed_claim"]
+    for rate in (None, 0.30):  # company default, then an owner rate
+        d = replace(dinp, tax_rate=rate)
+        claims = [a for a in candidate_actions(inp, d, base, 90, []) if a.kind == "msmed_interest"]
+        assert claims
+        tax = Fraction(2517, 10000) if rate is None else Fraction(3, 10)
+        for a in claims:
+            x = a.detail
+            want = (Fraction(Decimal(str(x["p_unpaid_by_claim_day"]))) * Fraction(Decimal(str(mc["recovery_share"]["value"])))
+                    * x["interest_paise"] * (1 - tax))
+            assert x["value_paise"] == math.floor(want + Fraction(1, 2))
+            assert a.cost_paise == x["penalty_paise"] - x["value_paise"]
+    with pytest.raises(ValueError, match="taxable"):
+        candidate_actions(inp, replace(dinp, entity_type="proprietor", suppliers=[]), base, 90, [])
 
 
 def test_tax_rate_is_an_owner_input_by_entity():
@@ -259,7 +295,7 @@ def test_stretch_needs_a_tax_rate_unless_the_tenant_is_a_company(world):
     _, _, inp, dinp = world
     base = run_engine(inp, "d-tax", 100, keep_flows=True)
     with pytest.raises(ValueError, match="income-tax rate"):
-        candidate_actions(inp, replace(dinp, entity_type="proprietor"), base, 90, [])
+        candidate_actions(inp, replace(dinp, entity_type="proprietor", tenant_msme_class="medium"), base, 90, [])
     acts = candidate_actions(inp, replace(dinp, entity_type="proprietor", tax_rate=0.3), base, 90, [])
     assert any(a.kind == "supplier_stretch" and a.supplier == "S1" for a in acts)
     # cost of funds defaults to the overdraft rate

@@ -8,8 +8,8 @@ constants file; the ones without a source are marked status verify there.
   MSMED interest     I = P x (prod_k (1 + 3 r_k / 12) - 1), one factor per monthly rest, r_k the
                      RBI bank rate in force on that rest date; an incomplete last month accrues
                      pro rata by days at the rate in force on the end date
-  43B(h) deferral    tax x A x cost_of_funds x years, years = FY the deduction moves to minus the
-                     FY it had (0 when a late payment stays in the same FY)
+  43B(h) deferral    tax x A / (1 + GST) x cost_of_funds x years, years = FY the deduction moves to
+                     minus the FY it had (0 when a late payment stays in the same FY)
 """
 
 import math
@@ -30,7 +30,7 @@ def constants() -> dict:
 
 def frac(x) -> Fraction:
     """Exact Fraction of a config number (0.0575 means 575/10000, not its binary float)."""
-    return Fraction(Decimal(str(x)))
+    return x if isinstance(x, Fraction) else Fraction(Decimal(str(x)))
 
 
 def to_paise(x: Fraction) -> int:
@@ -116,7 +116,7 @@ def income_tax_rate(entity_type: str | None, owner_rate=None) -> Fraction | None
 
 def deduction_deferral_cost(amount_years_paise, tax_rate: Fraction, cost_of_funds) -> int:
     """Cost of a 43B(h) / 37(2)(g) deduction moved to a later FY: the tax saving arrives later by
-    that many years, valued at the cost of funds. amount_years_paise = sum of amount x years."""
+    that many years, valued at the cost of funds. amount_years_paise = sum of amount (net of GST) x years."""
     return to_paise(frac(amount_years_paise) * tax_rate * frac(cost_of_funds))
 
 

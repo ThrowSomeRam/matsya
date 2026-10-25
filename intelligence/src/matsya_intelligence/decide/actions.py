@@ -45,6 +45,13 @@ class Supplier:
     terms_days: int = 30
     penalty_paise: int | None = None  # owner-set; None = constants default
     tightened: bool = False  # owner says this supplier tightened terms: never stretch it
+    terms_in_writing: bool = True  # s.15: written terms set the deadline; otherwise 15 days
+
+    @property
+    def msmed_deadline_days(self) -> int:
+        """s.15 deadline in days from acceptance: the written terms capped at 45, else 15.
+        # VERIFY: s.15 wording (agreed date in writing, at most 45 days; else the appointed day)."""
+        return min(self.terms_days, 45) if self.terms_in_writing else 15
 
 
 @dataclass
@@ -143,7 +150,10 @@ def candidate_actions(inp: EngineInputs, dinp: DecisionInputs, base: EngineResul
                            _transforms=[RateMultiplier(target="buyer", ids=[b], factor=ch["factor"]["value"],
                                                        weeks=ch["weeks"]["value"])]))
 
-    # MSMED claim: micro/small tenant, invoice past its s.15 deadline.
+    tax = C.income_tax_rate(dinp.entity_type, dinp.tax_rate)
+
+    # MSMED claim: micro/small tenant, invoice past its s.15 deadline. The recovered interest is
+    # taxable income, so its value is net of tax at the owner's rate.
     if dinp.tenant_msme_class in C.MSMED_SUPPLIERS:
         mc = k["msmed_claim"]
         claim_day = mc["cash_lag_days"]["value"]
@@ -151,13 +161,17 @@ def candidate_actions(inp: EngineInputs, dinp: DecisionInputs, base: EngineResul
         for i, row in enumerate(owed_interest(inp, dinp, hist).iter_rows(named=True)):
             if row["interest_to_as_of_paise"] is None:
                 continue
+            if tax is None:
+                raise ValueError("MSMED claims are open and their interest is taxable: give the income-tax rate "
+                                 "(tax_rate) or entity_type='company'")
             principal = row["principal_paise"]
             appointed = row["appointed_day"]
             interest = C.msmed_interest(principal, appointed, as_of + timedelta(days=claim_day), hist)
             idx = inp.open_invoice_ids.index(row["invoice_id"])
             unpaid = float(((pay[:, idx] < 0) | (pay[:, idx] > claim_day)).mean())
             penalty = C.to_paise(principal * C.frac(mc["relationship_penalty_share"]["value"]))
-            value = C.to_paise(C.frac(unpaid) * C.frac(mc["recovery_share"]["value"]) * interest)
+            # VERIFY: interest recovered under s.16 is taxable income of the supplier.
+            value = C.to_paise(C.frac(unpaid) * C.frac(mc["recovery_share"]["value"]) * interest * (1 - tax))
             acts.append(Action("msmed_interest", row["invoice_id"], penalty - value, invoice=idx,
                                detail={"principal_paise": principal, "interest_paise": interest, "value_paise": value,
                                        "penalty_paise": penalty, "p_unpaid_by_claim_day": unpaid,
@@ -185,48 +199,50 @@ def candidate_actions(inp: EngineInputs, dinp: DecisionInputs, base: EngineResul
     if not any(t.type == "terms_change" and t.party == "supplier" for t in active_transforms):
         st = k["stretch"]
         purch = -base.flows["purchases"][:, 1:].astype(float) if "purchases" in base.flows else None
-        tax = C.income_tax_rate(dinp.entity_type, dinp.tax_rate)
         cof = dinp.cost_of_funds if dinp.cost_of_funds is not None else od_rate
         for s in dinp.suppliers:
             if s.tightened or purch is None:
                 continue
-            if tax is None and s.msme_class in C.MSMED_SUPPLIERS and s.terms_days + max(st["days"]["value"]) > 45:
-                raise ValueError(f"supplier {s.supplier_id} can be stretched past 45 days, which can defer the "
-                                 "43B(h) deduction: give the income-tax rate (tax_rate) or entity_type='company'")
+            if tax is None and s.msme_class in C.MSMED_SUPPLIERS:
+                raise ValueError(f"supplier {s.supplier_id} is micro/small: a stretch past its s.15 deadline can defer "
+                                 "the 43B(h) deduction, so give the income-tax rate (tax_rate) or entity_type='company'")
             for n in st["days"]["value"]:
-                cost, det = stretch_cost(s, n, purch, as_of, hist, tax, cof)
+                cost, det = stretch_cost(s, n, purch, as_of, hist, tax, cof, inp.gst_rate)
                 acts.append(Action("supplier_stretch", f"{s.supplier_id}:+{n}d", cost, supplier=s.supplier_id,
                                    detail={**det, "days": n, "share": s.share},
                                    _transforms=[DateShift(target="supplier_payments", days=n, share=s.share)]))
     return acts
 
 
-def stretch_cost(s: Supplier, n: int, purch: np.ndarray, as_of: date, hist, tax_rate=None,
-                 cost_of_funds=None) -> tuple[int, dict]:
-    """Owner penalty, plus for a micro/small supplier paid past 45 days:
+def stretch_cost(s: Supplier, n: int, purch: np.ndarray, as_of: date, hist, tax_rate, cost_of_funds,
+                 gst_rate: float) -> tuple[int, dict]:
+    """Owner penalty, plus for a micro/small supplier paid past its s.15 deadline (written terms
+    capped at 45 days, else 15; Supplier.msmed_deadline_days):
 
-    - MSMED s.16 interest on the expected stretched amount for the days past 45, at full cost:
-      s.23 makes it non-deductible, so no tax saving is netted off it;
+    - MSMED s.16 interest on the expected stretched amount for the late days the stretch adds, at
+      full cost: s.23 makes it non-deductible, so no tax saving is netted off it;
     - the delay in the s.43B(h) / 37(2)(g) deduction. Paid late, the purchase is deductible in
       the FY of payment instead of the FY of acceptance. That is a deferral, not a loss: a late
       payment in the same FY costs nothing, one moved across 31 Mar costs
-      tax_rate x amount x cost_of_funds x (FYs the deduction moves).
+      tax_rate x amount net of GST x cost_of_funds x (FYs the deduction moves).
 
-    purch: (paths, H) supplier payments by day (positive), the baseline's. Payment day t is
-    accepted t - terms days earlier (issue date stands in for acceptance).
+    purch: (paths, H) supplier payments by day (positive, GST included), the baseline's. Payment
+    day t is accepted t - terms days earlier (issue date stands in for acceptance).
     """
     k = C.constants()["stretch"]
     penalty = s.penalty_paise if s.penalty_paise is not None else k["penalty_paise"]["value"]
     by_day = s.share * purch.mean(axis=0)  # expected stretched amount per day 1..H
     amount = C.to_paise(C.frac(float(by_day.sum())))
+    deadline = s.msmed_deadline_days
+    late_before = max(s.terms_days - deadline, 0)
+    late_after = max(s.terms_days + n - deadline, 0)
     interest = deferral = 0
-    late_days = 0
     amount_years = 0.0
-    if s.msme_class in C.MSMED_SUPPLIERS and s.terms_days + n > 45:
-        late_days = s.terms_days + n - max(45, s.terms_days)
-        interest = C.msmed_interest(amount, as_of + timedelta(days=1), as_of + timedelta(days=1 + late_days), hist)
-        # VERIFY: s.43B(h) (37(2)(g) from 1 Apr 2026) scope; the s.15 limit is taken as 45 days here.
-        late_before = s.terms_days > 45
+    if s.msme_class in C.MSMED_SUPPLIERS and late_after > 0:
+        start = as_of + timedelta(days=1)
+        interest = (C.msmed_interest(amount, start, start + timedelta(days=late_after), hist)
+                    - C.msmed_interest(amount, start, start + timedelta(days=late_before), hist))
+        # VERIFY: s.43B(h) (37(2)(g) from 1 Apr 2026) scope and its reading of the s.15 limit.
         for t in range(1, len(by_day) + 1):
             pay_old = as_of + timedelta(days=t)
             accepted = pay_old - timedelta(days=s.terms_days)
@@ -236,11 +252,13 @@ def stretch_cost(s: Supplier, n: int, purch: np.ndarray, as_of: date, hist, tax_
         if amount_years > 0:
             if tax_rate is None or cost_of_funds is None:
                 raise ValueError("the 43B(h) deferral needs an income-tax rate and a cost of funds")
-            deferral = C.deduction_deferral_cost(amount_years, tax_rate, cost_of_funds)
+            deferral = C.deduction_deferral_cost(C.frac(amount_years) / (1 + C.frac(gst_rate)), tax_rate,
+                                                 cost_of_funds)
     return penalty + interest + deferral, {"amount_paise": amount, "penalty_paise": penalty,
                                            "msmed_interest_paise": interest, "deferral_paise": deferral,
                                            "deferred_amount_years_paise": C.to_paise(C.frac(amount_years)),
-                                           "late_days": late_days}
+                                           "deadline_days": deadline, "late_days_before": late_before,
+                                           "late_days": late_after}
 
 
 def owed_interest(inp: EngineInputs, dinp: DecisionInputs, hist=None) -> pl.DataFrame:
