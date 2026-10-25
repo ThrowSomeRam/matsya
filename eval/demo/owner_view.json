@@ -944,7 +944,7 @@
    "text": "Rs 10 lakh"
   },
   "calibrated_through_day": 30,
-  "note": "Days 1 to 30 are checked against what actually happened and adjusted; later days are the model's own range."
+  "note": "Days 1 to 30 are calibrated: their range is checked against what actually happens and adjusted as your history builds up. Later days are the model's own range."
  },
  "risk_by_day": [
   {

@@ -1,0 +1,20 @@
+{
+  "name": "matsya-owner-view",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "demo-data": "node scripts/copy-demo.mjs",
+    "dev": "npm run demo-data && vite",
+    "build": "npm run demo-data && tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@observablehq/plot": "0.6.17"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vite": "6.3.5"
+  }
+}

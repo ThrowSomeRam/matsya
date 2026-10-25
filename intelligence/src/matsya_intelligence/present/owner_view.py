@@ -547,8 +547,8 @@ def build_owner_view(tenant_run: TenantRun) -> OwnerView:
         runway_text=_runway_text(runway, tr.as_of), drivers_sentence=_drivers_sentence(drivers))
     fan = Fan(days=calibrated_fan(base, tr.as_of, tr.calibrator), threshold=money(tr.inputs.threshold_paise),
               calibrated_through_day=CALIBRATED_DAYS,
-              note=f"Days 1 to {CALIBRATED_DAYS} are checked against what actually happened and adjusted; "
-                   "later days are the model's own range.")
+              note=f"Days 1 to {CALIBRATED_DAYS} are calibrated: their range is checked against what actually happens and "
+                   "adjusted as your history builds up. Later days are the model's own range.")
     risk = [RiskDay(day=d, date=_date(tr.as_of, d), before=float(p[d - 1]),
                     after=None if after is None else float(after[d - 1])) for d in range(1, len(p) + 1)]
     mv = {k: str(v) for k, v in sorted(base.run["model_versions"].items())}
