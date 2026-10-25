@@ -289,8 +289,9 @@ show, such as data volume one process cannot hold or more than one writer.
   (`infra/compose.base.yml`) does not exist; `infra/` holds only Track B's
   `compose.intelligence.yml`, so there is no Postgres container to reuse. Parquet keeps the
   Polars frames as they are (no type mapping), and DuckDB queries them in process. Layout
-  `tables/<schema>/<name>/<tenant_id>/part-*.parquet`; partitioning by tenant makes erasure a
-  directory removal. Contract tables are validated on every write, on every row; outputs
+  `tables/<schema>/<name>/<partition>/part-<seq>.<k>.enc`; partitioning by tenant makes
+  erasure a directory removal. Every part is encrypted (see "Derived tables are encrypted"
+  below). Contract tables are validated on every write, on every row; outputs
   with no contract table go to `aux.*` with the producing `run_id`
   (`platform/src/matsya_platform/store/`). `build()` and `match()` stay pure:
   `store/persist.py` takes their results and writes them.
@@ -310,6 +311,95 @@ show, such as data volume one process cannot hold or more than one writer.
 - **A2 fetch is a stub.** There is no AA sandbox. `fetch/adapter.py` reads a local folder of
   rendered payloads; a real AA client replaces that one adapter. Retries with backoff, and
   idempotency by payload sha256, are in the runner.
+
+- **The loop goes through consent, fetch and the raw store.** Each run opens an active
+  consent; each rendered delivery is fetched through A2 (`LocalFolderAdapter`, one delivery
+  at a time) into the encrypted raw store, and the ledger is built from the payload read back
+  and decrypted from there. A path revokes the consent during a fetch: that payload is
+  discarded, nothing after it is fetched, and the erasure runs.
+- **The `duplicate_payload` fault changed.** A repeat delivery is byte-identical to its
+  original, so the raw store's payload-hash check drops it at fetch: it is never stored and
+  never built. Its expected outcome was "built, no new rows, one new bank_reported balance
+  version (the repeat's fetch stamp)"; it is now "deduplicated, nothing built, no new
+  bank_reported version", and the expected balances no longer carry that version. For loss
+  accounting a dropped repeat inherits its original's flags (it is the same bytes).
+- **Persistence is on the real path.** The eval loop persists every build as it runs, the
+  ingested invoices, the reference tables and the matcher's output, then scores what it reads
+  back from the store, not in-memory frames. On a real world the stored transactions,
+  balances and coverage equal the in-memory ones exactly. Row lineage (which payload and row
+  each ledger row came from) is scoring-only and stays in memory: it is no contract table.
+- **Export for Track B.** `store/export.py` writes every Track A table, empty ones included,
+  as `<namespace>.<table>.parquet` in one directory, the layout Track B's `contract` source
+  reads; the loop writes it to `<out>/contract/`. Checked against a line-for-line copy of
+  `read_contract_dir`, not Track B's function itself (its module needs `yaml`, which the
+  platform environment does not have).
+
+**Derived tables are encrypted under the tenant key (2026-10-25).** Until this change the
+table store wrote plain Parquet, so destroying a tenant key made the raw payloads noise and
+left every ledger row, invoice, match and label readable: the erasure claim held for half the
+data. Now every table part is AES-256-GCM under the partition's tenant key, with table and
+partition as associated data, so key destruction covers raw payloads and derived tables
+alike. Two exceptions use the platform key (`keys.PLATFORM`, wrapped under the master key,
+never destroyed by a tenant's erasure):
+- `ref.buyers` and `ref.buyer_disclosures`, which have no tenant. They are public reference
+  facts, but encrypting them costs nothing and keeps the rule "no plaintext Parquet under the
+  store" without exceptions. A `local` (no PAN) buyer row is tenant-derived and survives the
+  tenant's erasure this way; see the open question in the task report.
+- The consent record (`ops.consents`) and lifecycle events (`consent_changed`,
+  `fetch_failed`, `erasure_completed`) in `ops.events`: the proof that consent existed and
+  was ended must outlive the erasure. Every other event is under the tenant key.
+
+Reads decrypt to memory. DuckDB cannot read encrypted Parquet and, without pyarrow, cannot
+be handed in-memory frames, so `query()` decrypts only the tables the SQL names into a
+temporary directory in `/dev/shm` (RAM-backed), runs the query and removes the directory.
+The erasure proof destroys a tenant's key, then from a fresh process (nothing cached) tries
+every stored object of that tenant, raw and derived, with a regenerated key, the other
+tenant's key and the platform key: every one fails a real AES-GCM decrypt; the other tenant
+reads back unchanged; and no plaintext Parquet is left anywhere under the store. All three
+stores in a process must share one `KeyStore` (enforced), because a second instance's key
+cache would keep decrypting a destroyed tenant.
+
+The export for Track B (`<out>/contract/`) is plaintext by necessity, since Track B's reader
+opens plain Parquet. It is a hand-off outside the store: erasure does not reach it, and
+whoever holds that directory must re-export or delete after an erasure.
+
+**Trino is cut.** DuckDB reads Iceberg directly, the handbook's own fallback if Trino is cut,
+and the A8 privacy gate can be DuckDB views. Trino would add a container, a catalog
+configuration and a second copy of the S3 credentials, and change nothing in the output.
+
+**Iceberg (Step A), corrected.** pyiceberg 0.12.0 with pyarrow 26.0.0 (163 MB on its own; 429
+MB for the whole environment) and SQLAlchemy was tried in a scratch environment and not added.
+Observed: after a delete, time travel to an older snapshot returns the deleted rows;
+`expire_snapshots` works but deletes no files; the data file and every earlier
+`metadata.json` stay on disk and read back the deleted rows; there is no orphan-file removal.
+
+The earlier conclusion, that this makes Iceberg's snapshot-erasure test impossible to pass,
+was wrong in its framing. That problem exists only because the derived tables were
+plaintext. With per-tenant encryption of table files, old snapshots, expired metadata and
+orphan files of an erased tenant are all ciphertext under a destroyed key, so they are noise
+and the problem goes away. That is why the handbook pairs crypto-shredding with Iceberg
+rather than treating them as alternatives. (Iceberg's own data files would need encrypting
+the same way, which pyiceberg does not do for us; Parquet modular encryption or our own
+envelope would be needed.)
+
+Iceberg stays cut on cost, not on correctness: the pyarrow weight; a catalog to run and keep
+consistent; and expiry plus orphan cleanup are still needed for deletes that are not
+key-based, such as erasing one consent's data while the tenant stays active, where the
+tenant key must survive. pyiceberg 0.12.0 provides expiry only, so that cleanup would be
+ours to write.
+
+**Final storage decision.** Local files: Parquet, queried in process with DuckDB, with
+per-tenant envelope encryption (AES-256-GCM data keys, RFC 3394 wrapped under a master key
+from the environment) covering both raw payloads and derived tables, so destroying a tenant
+key is erasure of everything the store holds for that tenant. Not taken:
+- **MinIO.** Same bytes behind an S3 API. Encryption is ours either way, so it adds nothing
+  to erasure, and nothing a viewer sees changes. Worth it only for a cloud deployment or more
+  than one writer machine.
+- **Iceberg.** Cost, as above: pyarrow weight, a catalog, and non-key-based deletes still
+  need expiry and orphan cleanup we would write ourselves. Time travel is the one real
+  capability it adds, and the demo does not replay old snapshots.
+- **Trino.** A container and a configuration for SQL DuckDB already runs in process; the
+  privacy gate can be DuckDB views.
 
 Limitations:
 - A revoke while another consent of the tenant is live deletes that consent's raw payloads

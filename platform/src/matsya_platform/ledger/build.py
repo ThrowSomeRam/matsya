@@ -1,5 +1,5 @@
 """A4 ledger builder. Pure: (payloads, current ledger state) -> (txns, balances, quarantine,
-events) plus coverage and the next state. No I/O; the Iceberg writer comes later.
+events) plus coverage and the next state. No I/O; store/persist.py writes the results.
 
 Order: parse -> quarantine -> key -> exact dedup -> fuzzy dedup -> continuity -> balances
 -> coverage. An unaccepted continuity break raises ContinuityError and nothing is produced.

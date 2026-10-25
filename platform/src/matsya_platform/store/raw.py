@@ -14,11 +14,7 @@ from pathlib import Path
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from matsya_platform.store.keys import KeyStore
-
-
-class Unreadable(RuntimeError):
-    pass
+from matsya_platform.store.keys import KeyStore, Unreadable  # noqa: F401 (re-exported)
 
 
 def _aad(tenant_id: str, payload_id: str) -> bytes:
@@ -44,6 +40,15 @@ class RawStore:
         tmp.write_bytes(blob)
         tmp.replace(p)
         return p.as_uri(), hashlib.sha256(data).hexdigest()
+
+    def delete(self, tenant_id: str, payload_id: str) -> bool:
+        """Remove one stored object. Returns whether it existed. This removes the ciphertext
+        only; copies elsewhere stay unreadable through the tenant key, not through this."""
+        p = self.path(tenant_id, payload_id)
+        if not p.exists():
+            return False
+        p.unlink()
+        return True
 
     def get(self, tenant_id: str, payload_id: str) -> bytes:
         blob = self.path(tenant_id, payload_id).read_bytes()

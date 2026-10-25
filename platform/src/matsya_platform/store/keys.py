@@ -18,6 +18,10 @@ from pathlib import Path
 from cryptography.hazmat.primitives.keywrap import InvalidUnwrap, aes_key_unwrap, aes_key_wrap
 
 MASTER_KEY_ENV = "MATSYA_MASTER_KEY"
+# The platform's own data key, for what must outlive any one tenant: the shared reference
+# tables, and the record that a tenant's consent existed and was ended. Never destroyed by a
+# tenant's erasure. Tenant ids are UUIDs, so this name cannot collide with one.
+PLATFORM = "_platform"
 
 
 class KeyError_(RuntimeError):
@@ -26,6 +30,11 @@ class KeyError_(RuntimeError):
 
 class KeyDestroyed(KeyError_):
     pass
+
+
+class Unreadable(RuntimeError):
+    """A stored object (raw payload or table part) that cannot be decrypted: its key is gone,
+    or the object was altered or moved."""
 
 
 def master_key_from_env() -> bytes:

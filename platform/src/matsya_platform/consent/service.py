@@ -10,10 +10,10 @@ States are the contract's ConsentStatus. Allowed transitions:
 Every change rewrites the tenant's ops.consents partition and appends a consent_changed
 event. Entering a terminal state triggers erasure:
 - the consent's raw objects and their raw.aa_payloads rows are removed;
-- when no other consent of the tenant is still live, the tenant's key is destroyed (every
-  raw object it ever wrote becomes unreadable, wherever a copy sits) and the tenant's
-  derived rows are removed from the table store. ops.consents and ops.events are kept: they
-  hold the record that consent existed and was ended, not financial data;
+- when no other consent of the tenant is still live, the tenant's key is destroyed. Every raw
+  object and every table part under it becomes unreadable, wherever a copy sits, and the
+  noise is then removed from both stores. Only the platform-key parts of ops.consents and
+  ops.events stay: the record that consent existed and was ended, not financial data;
 - an erasure_completed event records how many keys were destroyed.
 
 In-flight fetches: begin_fetch() hands out a ticket carrying the consent's generation, which
@@ -47,6 +47,7 @@ TRANSITIONS: dict[S, frozenset[S]] = {
     S.EXPIRED: frozenset(),
 }
 TERMINAL = frozenset(s for s, nxt in TRANSITIONS.items() if not nxt)
+LIFECYCLE = frozenset({EventKind.CONSENT_CHANGED, EventKind.FETCH_FAILED, EventKind.ERASURE_COMPLETED})
 
 
 class TransitionError(ValueError):
@@ -82,6 +83,10 @@ class CommitResult:
 
 class ConsentService:
     def __init__(self, tables: TableStore, keys: KeyStore, raw: RawStore):
+        # One KeyStore for all three: each caches unwrapped keys, so a second instance would
+        # keep decrypting a tenant whose key this one destroyed.
+        if tables.keys is not keys or raw.keys is not keys:
+            raise ValueError("tables, raw store and consent service must share one KeyStore")
         self.tables, self.keys, self.raw = tables, keys, raw
         self._lock = threading.RLock()
         self._generation: dict[tuple[str, str], int] = {}
@@ -100,14 +105,17 @@ class ConsentService:
     def _save(self, c: Consent) -> None:
         others = [Consent.model_validate(r) for r in self.consents(c.tenant_id).iter_rows(named=True)
                   if r["consent_id"] != c.consent_id]
+        # The consent record outlives the tenant's erasure, so it is under the platform key.
         self.tables.replace("ops.consents", frame(Consent, sorted(others + [c], key=lambda x: x.consent_id)),
-                            c.tenant_id)
+                            c.tenant_id, platform_key=True)
 
     def _event(self, tenant_id: str, kind: EventKind, payload: E.Payload, at: datetime) -> None:
         body = payload.model_dump_json()
         ev = Event(tenant_id=tenant_id, event_id=hash32(tenant_id, kind.value, body, at.isoformat()), kind=kind,
                    payload_json=body, at=at)
-        self.tables.append("ops.events", frame(Event, [ev]), tenant_id)
+        # Lifecycle events (consent changes, failed fetches, the erasure itself) are the record
+        # that must survive erasure: platform key. Anything about the tenant's data: tenant key.
+        self.tables.append("ops.events", frame(Event, [ev]), tenant_id, platform_key=kind in LIFECYCLE)
 
     def create(self, *, tenant_id: str, consent_id: str, fip_id: str, purpose: str, range_from: date,
                range_to: date, frequency: str, expires_at: datetime, at: datetime) -> Consent:
@@ -161,7 +169,7 @@ class ConsentService:
         payloads = self.tables.read("raw.aa_payloads", c.tenant_id)
         mine = payloads.filter(pl.col("consent_id") == c.consent_id)
         for pid in mine["payload_id"]:
-            self.raw.path(c.tenant_id, pid).unlink(missing_ok=True)
+            self.raw.delete(c.tenant_id, pid)
         rest = payloads.filter(pl.col("consent_id") != c.consent_id)
         self.tables.replace("raw.aa_payloads", rest, c.tenant_id)
         live = self.consents(c.tenant_id).filter(~pl.col("status").is_in([s.value for s in TERMINAL]))

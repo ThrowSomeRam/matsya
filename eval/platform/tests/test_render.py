@@ -344,3 +344,50 @@ def test_e_invoices_only_for_buyers_with_a_gstin(world, tmp_path):
                  invoice_mix={"gst_einvoice": 1.0})
     assert not (out / "invoices" / "einvoices.json").exists()
     assert set(pl.read_parquet(out / "invoices" / "row_map.parquet")["format"]) == {"csv_generic"}
+
+
+def test_loop_fetches_under_an_active_consent_into_the_encrypted_raw_store(world, tmp_path):
+    out = render(world, tmp_path / "out", *cfgs())
+    report = score(out)
+    assert report["pass"], json.dumps(report["checks"])
+    from render.score import LOOP_CONSENT, services
+
+    svc = services(out / "store")
+    tenant = json.loads((out / "manifest.json").read_text())["deliveries"][0]["tenant_id"]
+    assert svc.get(tenant, LOOP_CONSENT).status == "active"
+    stored = svc.tables.read("raw.aa_payloads", tenant)
+    deliveries = json.loads((out / "manifest.json").read_text())["deliveries"]
+    originals = [d for d in deliveries if not d["duplicate_of"]]
+    assert stored.height == len(originals) and set(stored["consent_id"]) == {LOOP_CONSENT}
+    for d in originals:  # the ledger was built from these bytes, decrypted from the raw store
+        assert svc.raw.get(tenant, d["payload_id"]) == (out / d["file"]).read_bytes()
+        assert not svc.raw.path(tenant, d["payload_id"]).read_bytes().startswith(b"{")
+
+
+def test_repeat_delivery_is_dropped_at_fetch(world, tmp_path):
+    report = score(render(world, tmp_path / "out", *cfgs(duplicate_payload=1.0, partial_window=False)))
+    dups = [f for f in report["faults"] if f["kind"] == "duplicate_payload"]
+    assert dups and all(f["pass"] and f["observed"]["deduplicated"] and f["observed"]["new_bank_reported"] == 0
+                        for f in dups)
+    assert report["stress"]["verdict"] == "exact"
+
+
+def test_revoke_mid_run_discards_the_in_flight_payload_and_erases(world, tmp_path):
+    from render.score import LOOP_CONSENT, open_consent, run_a4, services
+
+    out = render(world, tmp_path / "out", *cfgs(duplicate_payload=False, partial_window=False))
+    manifest = json.loads((out / "manifest.json").read_text())
+    meta = json.loads((out / "expected" / "meta.json").read_text())
+    svc = services(out / "store")
+    open_consent(svc, manifest, datetime.fromisoformat(meta["cut"]))
+    k = 3
+    _, log = run_a4(out, manifest, json.loads((out / "fault_log.json").read_text())["faults"], svc, revoke_at=k)
+    assert all("new_txns" in e for e in log[:k])  # built before the revoke
+    assert log[k].get("discarded") is True  # the payload in hand when the owner revoked
+    assert all(e.get("not_fetched") for e in log[k + 1:])  # nothing fetched after
+    tenant = manifest["deliveries"][0]["tenant_id"]
+    assert svc.get(tenant, LOOP_CONSENT).status == "revoked"
+    assert svc.raw.objects() == [] and manifest["deliveries"][k]["payload_id"] not in {
+        pid for _, pid in svc.raw.objects()}
+    assert svc.tables.read("ledger.transactions", tenant).is_empty()  # erased with the key
+    assert tenant not in svc.keys.tenants()

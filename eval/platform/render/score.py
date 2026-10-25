@@ -26,14 +26,16 @@ unverified (no currentBalance, no Summary) is a flag: rows missing from it are l
 """
 
 import json
+import shutil
 from collections import Counter
 from collections import Counter
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
 
+from matsya_contracts.enums import ConsentStatus
 from matsya_contracts.events import AcceptGap
 from matsya_platform.ledger.build import LedgerState, build, validate_outputs
 from matsya_platform.ledger.continuity import ContinuityError
@@ -43,6 +45,17 @@ from matsya_platform.ledger.rebit import Payload
 from matsya_platform.match.buyers import CreditBuyerResolver
 from matsya_platform.match.config import MatchConfig
 from matsya_platform.match.engine import match as a6_match
+from matsya_platform.store.export import export_contract_dir
+from matsya_platform.store.persist import (latest_coverage, persist_build, persist_invoices, persist_match,
+                                           persist_refs, read_build, read_match)
+from matsya_platform.consent.service import ConsentService
+from matsya_platform.fetch.adapter import LocalFolderAdapter
+from matsya_platform.fetch.runner import fetch, stored_payload
+from matsya_platform.store.keys import KeyStore
+from matsya_platform.store.raw import RawStore
+from matsya_platform.store.tables import TableStore
+
+LOOP_CONSENT = "C-loop"
 
 INVOICE_FIELDS = ("irn", "buyer_id", "issue_date", "due_date", "terms_days", "terms_source", "gross_paise",
                   "gst_paise", "expected_tds_paise", "status", "known_at")
@@ -66,11 +79,68 @@ def _accept_from_log(fault_log: list[dict], payload_id: str) -> tuple[AcceptGap,
     return tuple(out)
 
 
-def run_a4(out: Path, manifest: dict, fault_log: list[dict]) -> tuple[LedgerState, list[dict]]:
+def services(store_dir: Path) -> ConsentService:
+    """Consent service, encrypted raw store and encrypted table store over one folder, sharing
+    one KeyStore (the master key comes from MATSYA_MASTER_KEY; unset, this fails loudly)."""
+    keys = KeyStore(store_dir)
+    return ConsentService(TableStore(store_dir, keys), keys, RawStore(store_dir, keys))
+
+
+def open_consent(svc: ConsentService, manifest: dict, cut: datetime) -> str:
+    """The run's consent, active from just before the first fetch until well after the cut."""
+    ds = manifest["deliveries"]
+    tenant, first = ds[0]["tenant_id"], min(datetime.fromisoformat(d["fetched_at"]) for d in ds)
+    svc.create(tenant_id=tenant, consent_id=LOOP_CONSENT, fip_id="FIP-STUB", purpose="cash-flow forecast",
+               range_from=min(date.fromisoformat(d["start"]) for d in ds),
+               range_to=max(date.fromisoformat(d["end"]) for d in ds), frequency="weekly",
+               expires_at=cut + timedelta(days=365), at=first - timedelta(minutes=1))
+    svc.transition(tenant, LOOP_CONSENT, ConsentStatus.ACTIVE, first - timedelta(minutes=1))
+    return LOOP_CONSENT
+
+
+class _RevokesDuringFetch(LocalFolderAdapter):
+    """The owner revokes while this fetch is in flight: the payload is in hand, then revoked."""
+
+    def __init__(self, folder, svc: ConsentService, only: set[str], at: datetime):
+        super().__init__(folder, only=only)
+        self.svc, self.at = svc, at
+
+    def fetch(self, consent, attempt):
+        got = super().fetch(consent, attempt)
+        self.svc.transition(consent.tenant_id, consent.consent_id, ConsentStatus.REVOKED, self.at)
+        return got
+
+
+def run_a4(out: Path, manifest: dict, fault_log: list[dict], svc: ConsentService | None = None,
+           revoke_at: int | None = None) -> tuple[LedgerState, list[dict]]:
+    """Every delivery, in order. With a consent service (the loop's path), each delivery is
+    fetched through A2 under the run's active consent into the encrypted raw store, read back
+    from there, built, and the build's outputs persisted (run_id = sequence and payload id).
+    A repeat delivery is dropped at fetch by its payload hash. revoke_at revokes the consent
+    during that delivery's fetch: its payload is discarded and nothing after it is fetched.
+    Without a service, payloads are read straight from the folder (no persistence)."""
     state, log = LedgerState(), []
-    for d in manifest["deliveries"]:
-        p = _payload(out, d)
+    for seq, d in enumerate(manifest["deliveries"]):
         entry = {"payload_id": d["payload_id"], "expect": d["expect"], "raised": None, "accepted_gap": None}
+        if svc is None:
+            p = _payload(out, d)
+        else:
+            tenant = d["tenant_id"]
+            if svc.get(tenant, LOOP_CONSENT).status != ConsentStatus.ACTIVE:
+                log.append({**entry, "not_fetched": "consent not active"})
+                continue
+            at = datetime.fromisoformat(d["fetched_at"])
+            adapter = (_RevokesDuringFetch(out, svc, {d["payload_id"]}, at) if seq == revoke_at
+                       else LocalFolderAdapter(out, only={d["payload_id"]}))
+            commit = fetch(svc, adapter, tenant, LOOP_CONSENT, sleep=lambda s: None, now=lambda: at).commit
+            if commit.discarded:
+                log.append({**entry, "discarded": True})
+                continue
+            if commit.duplicates:
+                log.append({**entry, "deduplicated": True, "duplicate_of": d.get("duplicate_of"), "new_txns": 0, "new_events": 0, "quarantined": 0,
+                            "unverified": False, "new_bank_reported": 0, "new_reconstructed": 0})
+                continue
+            p = stored_payload(svc, tenant, d["payload_id"])
         try:
             r = build([p], state)
         except ContinuityError as e:
@@ -89,6 +159,8 @@ def run_a4(out: Path, manifest: dict, fault_log: list[dict]) -> tuple[LedgerStat
                 log.append(entry)
                 continue
         validate_outputs(r, sample=None)
+        if svc is not None:
+            persist_build(svc.tables, r, d["tenant_id"], f"{seq:05d}:{d['payload_id']}")
         entry.update(new_txns=r.txns.height, new_events=r.events.height, quarantined=r.quarantine.height,
                      unverified=r.unverified.height > 0,
                      new_bank_reported=r.balances.filter(pl.col("balance_source") == "bank_reported").height,
@@ -236,10 +308,11 @@ def _invoice_faults(fault_log: list[dict], result: InvoiceIngest) -> list[dict]:
     return out
 
 
-def _faults(fault_log: list[dict], run_log: list[dict], state: LedgerState, manifest: dict) -> list[dict]:
+def _faults(fault_log: list[dict], run_log: list[dict], state: LedgerState, manifest: dict,
+            ledger: pl.DataFrame) -> list[dict]:
+    """ledger: ledger.transactions as read back from the store; state only for row lineage."""
     by_pid = {e["payload_id"]: e for e in run_log}
     fetched = {d["payload_id"]: datetime.fromisoformat(d["fetched_at"]) for d in manifest["deliveries"]}
-    ledger = state.transactions_frame()
     uids = set(ledger["txn_uid"])
     path_of = {r.txn_uid: r.key_path for r in state.rows}
     out = []
@@ -249,8 +322,8 @@ def _faults(fault_log: list[dict], run_log: list[dict], state: LedgerState, mani
             continue
         if f["kind"] == "duplicate_payload":
             e = by_pid[f["target"]["duplicate_payload_id"]]
-            got = {k: e.get(k) for k in ("raised", "new_txns", "new_events", "new_bank_reported", "new_reconstructed")}
-            ok = e["raised"] is None and all(got[k] == x[k] for k in x)
+            got = {k: e.get(k) for k in x}
+            ok = e["raised"] is None and got == x
         elif f["kind"] in ("drop_txn_id", "drop_all_ids", "drop_balances", "identical_rows", "coincidental_credit"):
             want, truth = f["target"]["expected_txn_uid"], f["target"]["truth_txn_uid"]
             got = {"expected_uid_in_ledger": want in uids, "truth_uid_in_ledger": truth in uids,
@@ -284,7 +357,8 @@ def _faults(fault_log: list[dict], run_log: list[dict], state: LedgerState, mani
     return out
 
 
-def _stress(state: LedgerState, run_log: list[dict], row_map: pl.DataFrame, reference: pl.DataFrame, meta: dict,
+def _stress(state: LedgerState, bal: pl.DataFrame, run_log: list[dict], row_map: pl.DataFrame, reference: pl.DataFrame,
+            meta: dict,
             inv: dict | None, inv_silent: int) -> dict:
     keys = pl.DataFrame([{"payload_id": r.payload_id, "row_index": r.index, "txn_uid": r.txn_uid,
                           "value_date_a": r.value_date, "amount_a": r.amount_paise,
@@ -310,6 +384,8 @@ def _stress(state: LedgerState, run_log: list[dict], row_map: pl.DataFrame, refe
     raised = {e["payload_id"] for e in run_log if e["raised"]}
     unverified = {e["payload_id"] for e in run_log if e.get("unverified")}
     flagged_payloads = failed | unverified
+    # A delivery dropped at fetch as a repeat is the same bytes as its original: same flags.
+    flagged_payloads |= {e["payload_id"] for e in run_log if e.get("deduplicated") and e.get("duplicate_of") in flagged_payloads}
     carried = dict(row_map.group_by("truth_txn_uid").agg(pl.col("payload_id").unique()).iter_rows())
     held_ids = set(held["truth_txn_uid"].drop_nulls())
     missing_loud = missing_silent = 0
@@ -333,7 +409,6 @@ def _stress(state: LedgerState, run_log: list[dict], row_map: pl.DataFrame, refe
            .with_columns(pl.col("flow").fill_null(0), pl.col("ka").cum_max().over("account_id")))
     own = own.with_columns((pl.col("account_id").replace_strict(meta["opening"], return_dtype=pl.Int64)
                             + pl.col("flow").cum_sum().over("account_id")).alias("ref"))
-    bal = state.balances_frame()
     rec = bal.filter(pl.col("balance_source") == "reconstructed").sort("known_at").group_by(
         "account_id", "date", maintain_order=True).last()
     bank = bal.filter(pl.col("balance_source") == "bank_reported").select("account_id", "date", "known_at")
@@ -547,27 +622,32 @@ def _categories(truth_dir: Path, to_truth: dict, tenant_id: str) -> pl.DataFrame
 
 
 def _matching(out: Path, manifest: dict, state: LedgerState, row_map: pl.DataFrame, inv_result, meta: dict,
-              match_overrides: dict | None = None) -> dict | None:
-    """Run A6 on what A4 and the invoice ingest produced, and score it against Track B's truth."""
+              store: TableStore, match_overrides: dict | None = None) -> dict | None:
+    """Run A6 on what A4 and the invoice ingest stored, persist its output, and score what is
+    read back against Track B's truth. state supplies only row lineage for the truth mapping."""
     truth_dir = out / "truth"
     if not (truth_dir / "payments.parquet").exists() or inv_result is None:
         return None
     m = manifest["invoices"]
     cut = datetime.fromisoformat(meta["cut"])
-    ref = {n: pl.read_parquet(out / "ref" / f"{n}.parquet") for n in ("ref.buyers", "ref.tenant_buyers")
-           if (out / "ref" / f"{n}.parquet").exists()}
-    cov = state.coverage_frame()
+    tenant = m["tenant_id"]
+    ref = {"ref.buyers": store.read("ref.buyers"), "ref.tenant_buyers": store.read("ref.tenant_buyers", tenant)}
+    cov = latest_coverage(store.read("aux.coverage", tenant))
     through = cov["complete_through"].min() if cov.height else cut.date()
-    tx = state.transactions_frame()
+    tx = store.read("ledger.transactions", tenant)
+    invoices = store.read("ledger.invoices", tenant)
     cfg = MatchConfig(**(match_overrides or {}))
     to_truth = _truth_uid_of(state, row_map)
     cats = _categories(truth_dir, to_truth, m["tenant_id"]) if cfg.category_gate else None
-    r = a6_match(tx, inv_result.invoices, ref["ref.buyers"], ref.get("ref.tenant_buyers"), tenant_id=m["tenant_id"],
+    r = a6_match(tx, invoices, ref["ref.buyers"], ref.get("ref.tenant_buyers"), tenant_id=m["tenant_id"],
                  supplier_gstin=m["supplier_gstin"], as_of=cut, complete_through=through, config=cfg,
                  txn_category=cats)
+    persist_match(store, r, tenant, "match-0")
+    stored = read_match(store, tenant)
+    links = stored["links"].drop("run_id", "tenant_id")
 
     held = {v for v in to_truth.values() if v}
-    ingested = set(inv_result.invoices["invoice_id"])
+    ingested = set(invoices["invoice_id"])
     pays = pl.read_parquet(truth_dir / "payments.parquet")
     tinv = pl.read_parquet(truth_dir / "invoices.parquet")
     tb = pl.read_parquet(truth_dir / "buyers.parquet")
@@ -589,14 +669,14 @@ def _matching(out: Path, manifest: dict, state: LedgerState, row_map: pl.DataFra
     excluded = r.excluded_invoices
     truth = {"to_truth": to_truth, "links": gold, "rate": dict(zip(tb["buyer_id"], tb["tds_rate"])),
              "paid": paid_truth, "treds_invoices": treds, "cut": cut.date(),
-             "kind_pred": dict(zip(r.outcomes["invoice_id"], r.outcomes["settlement_kind"]))}
+             "kind_pred": dict(zip(stored["outcomes"]["invoice_id"], stored["outcomes"]["settlement_kind"]))}
     paid_pred = {o["invoice_id"]: (None if o["settlement_kind"] == "treds_discount" else o["paid_date"])
-                 for o in r.outcomes.iter_rows(named=True)}
+                 for o in stored["outcomes"].iter_rows(named=True)}
     considered = r.stats["credits_considered"]
-    a6 = _metrics(r.links, paid_pred, truth, _m(len(r.review) / considered if considered else 0.0, considered),
+    a6 = _metrics(links, paid_pred, truth, _m(len(r.review) / considered if considered else 0.0, considered),
                   _m(r.stats["unexplained_credit_paise"] / 100, considered), excluded)
 
-    base = _baseline(tx, inv_result.invoices, ref["ref.buyers"], ref.get("ref.tenant_buyers"), m["tenant_id"], cut, cfg)
+    base = _baseline(tx, invoices, ref["ref.buyers"], ref.get("ref.tenant_buyers"), m["tenant_id"], cut, cfg)
     base_paid = {}
     for row in base.iter_rows(named=True):
         base_paid[row["invoice_id"]] = row["value_date"]
@@ -628,16 +708,34 @@ def score(out_dir: str | Path, match_overrides: dict | None = None) -> dict:
     exp = {n: pl.read_parquet(out / "expected" / f"{n}.parquet")
            for n in ("ledger.transactions", "ledger.balances", "ledger.coverage", "reference_rows")}
 
-    state, run_log = run_a4(out, manifest, fault_log)
+    # Everything scored below is what the store holds after the run, not in-memory frames.
+    store_dir = out / "store"
+    if store_dir.exists():
+        shutil.rmtree(store_dir)
+    svc = services(store_dir)
+    store = svc.tables
+    if manifest["deliveries"]:
+        open_consent(svc, manifest, datetime.fromisoformat(meta["cut"]))
+    state, run_log = run_a4(out, manifest, fault_log, svc)
+    tenant = manifest["deliveries"][0]["tenant_id"] if manifest["deliveries"] else None
+    stored = read_build(store, tenant)
+    stored_txns = stored["txns"].sort("txn_uid")
     unexpected = [e for e in run_log if e["raised"] and e["expect"] == "ok"]
-    txns = _compare_txns(state.transactions_frame(), exp["ledger.transactions"], row_map)
-    bal = _compare_balances(state.balances_frame(), exp["ledger.balances"])
-    cov_a = state.coverage_frame().select("account_id", "complete_through")
+    txns = _compare_txns(stored_txns, exp["ledger.transactions"], row_map)
+    bal = _compare_balances(stored["balances"], exp["ledger.balances"])
+    cov_a = latest_coverage(stored["coverage"]).select("account_id", "complete_through")
     cov_e = exp["ledger.coverage"].select("account_id", "complete_through")
-    faults = _faults(fault_log, run_log, state, manifest)
+    faults = _faults(fault_log, run_log, state, manifest, stored_txns)
     inv, inv_silent, result = None, 0, None
     if "invoices" in manifest:
         result = _ingest_invoices(out, manifest)
+        mi = manifest["invoices"]
+        persist_refs(store, pl.read_parquet(out / "ref" / "ref.buyers.parquet"),
+                     pl.read_parquet(out / "ref" / "ref.tenant_buyers.parquet")
+                     if (out / "ref" / "ref.tenant_buyers.parquet").exists() else None, mi["tenant_id"])
+        persist_invoices(store, result.invoices, mi["tenant_id"])
+        # Compared and matched from here on: the invoices as stored, not the ingest's frame.
+        result = replace(result, invoices=store.read("ledger.invoices", mi["tenant_id"]))
         exp_inv = pl.read_parquet(out / "expected" / "ledger.invoices.parquet")
         inv_rmap = pl.read_parquet(out / "invoices" / "row_map.parquet")
         inv = _compare_invoices(result, exp_inv, inv_rmap)
@@ -666,7 +764,7 @@ def score(out_dir: str | Path, match_overrides: dict | None = None) -> dict:
     if meta.get("cut_inferred", True):
         warnings.append(f"cut inferred from the latest known_at in the world ({meta['cut']}); "
                         "the export does not record as_of yet")
-    stress = _stress(state, run_log, row_map, exp["reference_rows"], meta, inv, inv_silent)
+    stress = _stress(state, stored["balances"], run_log, row_map, exp["reference_rows"], meta, inv, inv_silent)
     passed = all(checks.values())
     truth_ok = stress["silent_total"] == 0 and stress["loud_total"] == 0 and txns["rupees"]["expected_net_paise"] \
         == txns["rupees"]["actual_net_paise"]
@@ -692,7 +790,8 @@ def score(out_dir: str | Path, match_overrides: dict | None = None) -> dict:
             "invoice_ingest_lag": meta["invoice_ingest_lag"], "treds": meta["treds"],
         },
     }
-    report["matching"] = _matching(out, manifest, state, row_map, result, meta, match_overrides)
+    report["matching"] = _matching(out, manifest, state, row_map, result, meta, store, match_overrides)
+    report["export"] = export_contract_dir(store, out / "contract")
     if inv is not None:
         report["tables"]["ledger.invoices"] = inv
         report["named_mismatches"]["invoices"] = {k: v for k, v in meta["invoices"].items() if k != "invoice_ingest_lag"}

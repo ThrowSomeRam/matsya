@@ -154,7 +154,10 @@ def expected_tables(world: World, rows: pl.DataFrame, deliveries: list[Delivery]
     bank = frame(T.Balance, [T.Balance(
         tenant_id=world.tables["ledger.transactions"]["tenant_id"][0], account_id=d.window.account_id,
         date=ist_date(d.window.end_ts), closing_paise=d.summary_paise, continuity_ok=None,
-        balance_source="bank_reported", known_at=d.fetched_at) for d in ok if d.summary_paise is not None])
+        balance_source="bank_reported", known_at=d.fetched_at)
+        # A duplicate delivery is byte-identical to its original: the raw store's payload-hash
+        # check drops it before build() sees it, so it adds no bank_reported version.
+        for d in ok if d.summary_paise is not None and d.duplicate_of is None])
     validate(bank, T.Balance)
     daily = (tx.group_by("tenant_id", "account_id", "value_date")
              .agg(pl.col("amount_paise").sum().alias("flow"), pl.col("known_at").max().alias("ka"))

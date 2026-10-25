@@ -8,6 +8,9 @@
                                [--faults all|name,name] [--modes batch_fails,accept_gap]
                                [--out-dir eval/platform/outputs]
 
+score, loop and sweep keep the run in an encrypted store and need MATSYA_MASTER_KEY set (see
+.env.example); without it they stop with an error.
+
 Output folder (render):
     manifest.json            render config and deliveries in delivery order
     payloads/<id>.json       ReBIT AA payloads
@@ -20,6 +23,8 @@ Output folder (render):
     row_map.parquet          (payload_id, row_index) -> expected txn_uid, key path -> fault_id
     expected/*.parquet       expected contract tables under our rules; meta.json
     score.json               written by score
+    store/                   written by score: encrypted raw payloads, tables, wrapped keys
+    contract/                written by score: plaintext <namespace>.<table>.parquet for Track B
 """
 
 import argparse
@@ -277,8 +282,10 @@ def _fault_log(deliveries, rmap: pl.DataFrame, row_faults: dict[str, str], expec
         if d.duplicate_of:
             log.append({"fault_id": d.payload_fault_id, "kind": "duplicate_payload",
                         "target": {"payload_id": d.duplicate_of, "duplicate_payload_id": d.payload_id},
-                        "expected": {"raised": None, "new_txns": 0, "new_events": 0, "new_bank_reported": 1,
-                                     "new_reconstructed": 0}})
+                        # Byte-identical to the original, so the raw store's payload-hash check
+                        # drops it at fetch: never stored, never built.
+                        "expected": {"raised": None, "deduplicated": True, "new_txns": 0, "new_events": 0,
+                                     "new_bank_reported": 0, "new_reconstructed": 0}})
     ok_pids = {d.payload_id for d in deliveries if d.counts}
     delivered = rmap.filter(pl.col("payload_id").is_in(list(ok_pids)))
     first = delivered.group_by("truth_txn_uid", maintain_order=True).first()

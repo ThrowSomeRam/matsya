@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from matsya_contracts import ids
 from matsya_contracts import tables as T
 from matsya_contracts.enums import ConsentStatus as S, EventKind
-from matsya_contracts.validate import frame
+from matsya_contracts.validate import frame, validate
 from matsya_platform.consent.service import TRANSITIONS, ConsentService, TransitionError
 from matsya_platform.fetch.adapter import LocalFolderAdapter
 from matsya_platform.fetch.runner import FetchGaveUp, fetch, stored_payloads
@@ -53,8 +53,8 @@ def folder(tmp_path):
 
 
 def services(root):
-    tables, keys = TableStore(root), KeyStore(root)
-    return ConsentService(tables, keys, RawStore(root, keys))
+    keys = KeyStore(root)
+    return ConsentService(TableStore(root, keys), keys, RawStore(root, keys))
 
 
 def consent(svc, tenant, cid="C1", status=S.ACTIVE, expires=T0 + timedelta(days=365)):
@@ -227,7 +227,7 @@ def test_revoke_with_another_live_consent_keeps_the_key(master, tmp_path, folder
     fetch(svc, LocalFolderAdapter(folder), A, "C1")
     svc.transition(A, "C1", S.REVOKED, T0)
     assert svc.raw.objects() == [] and svc.tables.read("raw.aa_payloads", A).is_empty()
-    assert svc.keys.tenants() == [A]
+    assert A in svc.keys.tenants()
     assert events(svc, A, EventKind.ERASURE_COMPLETED) == [{"consent_id": "C1", "keys_destroyed": 0}]
 
 
@@ -373,3 +373,155 @@ def test_contract_tables_are_validated_on_write(master, tmp_path):
         store.append("ledger.transactions", pl.DataFrame({"tenant_id": [A], "txn_uid": ["x"]}), A)
     with pytest.raises(ValueError, match="other than"):
         store.append("aux.coverage", pl.DataFrame({"tenant_id": [B]}), A)
+
+
+# ---------------------------------------------------------------- blockers: delete, shared tables, export
+
+
+class _RecordingRaw(RawStore):
+    def __init__(self, *a):
+        super().__init__(*a)
+        self.deleted = []
+
+    def delete(self, tenant_id, payload_id):
+        self.deleted.append((tenant_id, payload_id))
+        return super().delete(tenant_id, payload_id)
+
+
+def test_erasure_deletes_raw_objects_through_the_store(master, tmp_path, folder):
+    keys = KeyStore(tmp_path)
+    tables, raw = TableStore(tmp_path, keys), _RecordingRaw(tmp_path, keys)
+    svc = ConsentService(tables, keys, raw)
+    consent(svc, A)
+    fetch(svc, LocalFolderAdapter(folder), A, "C1")
+    svc.transition(A, "C1", S.REVOKED, T0)
+    assert sorted(raw.deleted) == [(A, "PL-a-april"), (A, "PL-a-may")] and raw.objects() == []
+    assert raw.delete(A, "PL-a-april") is False
+
+
+def test_shared_reference_table_survives_a_tenant_erasure(master, tmp_path):
+    store = TableStore(tmp_path)
+    pan = "ABCCA1234F"
+    b = frame(T.Buyer, [T.Buyer(buyer_id=ids.buyer_id(pan), id_basis="pan", pan=pan, gstin=None, name="ACME",
+                                type="listed", sector="textiles", sector_source="exchange", treds_mandated=None)])
+    store.replace("ref.buyers", b)
+    assert store.read("ref.buyers").equals(b) and store.read("ref.buyers", A).equals(b)
+    store.append("aux.coverage", pl.DataFrame({"tenant_id": [A], "x": [1]}), A)
+    store.erase_tenant(A)
+    assert store.read("ref.buyers").equals(b) and store.read("aux.coverage", A).is_empty()
+    with pytest.raises(ValueError, match="per tenant"):
+        store.append("ledger.transactions", store.read("ledger.transactions"))
+
+
+def test_export_is_the_flat_layout_track_b_reads(master, tmp_path, folder):
+    from matsya_platform.store.export import EXPORTED, export_contract_dir
+
+    svc = services(tmp_path / "store")
+    for t in (A, B):
+        consent(svc, t)
+        fetch(svc, LocalFolderAdapter(folder), t, "C1")
+        persist_build(svc.tables, build(stored_payloads(svc, t)), t, "run-1")
+    written = export_contract_dir(svc.tables, tmp_path / "contract")
+    files = sorted(p.name for p in (tmp_path / "contract").iterdir())
+    assert files == sorted(f"{t}.parquet" for t in EXPORTED)  # every A table, empty ones too
+    # Track B's reader (intelligence io.source.read_contract_dir): read_parquet + validate per table.
+    for t in ("ledger.transactions", "ledger.balances", "ledger.invoices", "ledger.matches", "labels.invoice_outcomes",
+              "labels.txn_corrections", "ref.buyers", "ref.tenant_buyers"):
+        df = pl.read_parquet(tmp_path / "contract" / f"{t}.parquet")
+        validate(df, t, sample=None)
+        assert df.height == written[t]
+    tx = pl.read_parquet(tmp_path / "contract" / "ledger.transactions.parquet")
+    assert set(tx["tenant_id"]) == {A, B} and tx.height == written["ledger.transactions"] > 0
+
+
+
+# ---------------------------------------------------------------- erasure proof: raw and derived
+
+
+def _all_tenant_files(root, tenant):
+    """Every stored object of the tenant on disk: raw payloads and table parts."""
+    return sorted([*(root / "raw" / tenant).glob("*.bin"), *(root / "tables").glob(f"*/*/{tenant}/part-*.enc")])
+
+
+def test_erasure_proof_covers_raw_and_derived_tables(master, tmp_path, folder):
+    """Both tenants hold raw payloads and derived tables (ledger rows, balances, events).
+    Destroy A's key; from a fresh process, every A object, raw or derived, fails a real
+    decrypt under a regenerated A key, B's key and the platform key; B reads back unchanged;
+    and no plaintext Parquet is left anywhere under the store."""
+    root = tmp_path / "store"
+    svc = services(root)
+    for t in (A, B):
+        consent(svc, t)
+        fetch(svc, LocalFolderAdapter(folder), t, "C1")
+        persist_build(svc.tables, build(stored_payloads(svc, t)), t, "run-1")
+    svc.tables.query("select count(*) from ledger.transactions")  # its temporary plaintext must not remain
+    every = _all_tenant_files(root, A)
+    # The platform-key parts are A's consent record and lifecycle events, kept on purpose and
+    # checked below; every other A object is under A's key and must become noise.
+    audit = [p for p in every if p.name.endswith(".p.enc")]
+    a_files = [p for p in every if p not in audit]
+    assert {p.parts[-4] for p in a_files if p.suffix == ".enc"} >= {"ledger", "ops", "raw", "aux"}
+    stray = {p: p.read_bytes() for p in a_files}  # copies taken before erasure
+    b_before = {t: svc.tables.read(t, B) for t in ("ledger.transactions", "ledger.balances", "raw.aa_payloads")}
+
+    assert svc.keys.destroy(A) is True
+
+    keys = KeyStore(root)  # a fresh process: nothing cached
+    tables, raw = TableStore(root, keys), RawStore(root, keys)
+    for t in ("ledger.transactions", "ledger.balances", "raw.aa_payloads", "aux.coverage"):
+        with pytest.raises(Unreadable):
+            tables.read(t, A)
+    for _, pid in [o for o in raw.objects() if o[0] == A]:
+        with pytest.raises(Unreadable):
+            raw.get(A, pid)
+    with pytest.raises(Unreadable):
+        tables.query("select count(*) from ledger.transactions")  # A's parts poison a cross-tenant query
+    candidates = [keys.tenant_key(A, create=True), keys.tenant_key(B), keys.tenant_key("_platform")]
+    for p, blob in stray.items():
+        table = ".".join(p.parts[-4:-2]) if p.suffix == ".enc" else None
+        aads = ([f"{table}|{A}".encode(), f"{table}|{B}".encode()] if table
+                else [f"{A}|{p.stem}".encode(), f"{B}|{p.stem}".encode()])
+        for k in candidates:
+            for aad in aads:
+                with pytest.raises(InvalidTag):
+                    AESGCM(k).decrypt(blob[:12], blob[12:], aad)
+    for t, df in b_before.items():
+        assert tables.read(t, B).equals(df), t
+    assert {".".join(p.parts[-4:-2]) for p in audit} == {"ops.consents", "ops.events"}
+    assert set(tables.read("ops.consents", A)["consent_id"]) == {"C1"}
+    with pytest.raises(Unreadable):  # A's events table mixes both keys: its data events are noise
+        tables.read("ops.events", A)
+    for p in root.rglob("*"):
+        if p.is_file():
+            assert not p.read_bytes().startswith(b"PAR1"), f"plaintext Parquet at {p}"
+
+
+def test_a_consent_record_survives_the_erasure_it_triggers(master, tmp_path, folder):
+    root = tmp_path / "store"
+    svc = services(root)
+    consent(svc, A)
+    fetch(svc, LocalFolderAdapter(folder), A, "C1")
+    persist_build(svc.tables, build(stored_payloads(svc, A)), A, "run-1")
+    svc.transition(A, "C1", S.REVOKED, T0)
+    keys = KeyStore(root)
+    tables = TableStore(root, keys)
+    assert tables.read("ops.consents", A)["status"].to_list() == ["revoked"]
+    kinds = set(tables.read("ops.events", A)["kind"])
+    assert kinds == {"consent_changed", "erasure_completed"}  # payload_fetched went with the tenant key
+    assert _all_tenant_files(root, A) == sorted((root / "tables").glob(f"*/*/{A}/part-*.p.enc"))
+
+
+def test_service_refuses_stores_with_their_own_key_caches(master, tmp_path):
+    keys = KeyStore(tmp_path)
+    with pytest.raises(ValueError, match="share one KeyStore"):
+        ConsentService(TableStore(tmp_path), keys, RawStore(tmp_path, keys))
+
+
+def test_reference_buyers_are_under_the_platform_key(master, tmp_path):
+    store = TableStore(tmp_path)
+    pan = "ABCCA1234F"
+    store.replace("ref.buyers", frame(T.Buyer, [T.Buyer(
+        buyer_id=ids.buyer_id(pan), id_basis="pan", pan=pan, gstin=None, name="ACME", type="listed",
+        sector="textiles", sector_source="exchange", treds_mandated=None)]))
+    (p,) = store.files("ref.buyers")
+    assert p.name.endswith(".p.enc") and not p.read_bytes().startswith(b"PAR1")

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable
 
+import polars as pl
 
 from matsya_platform.consent.service import CommitResult, ConsentService
 from matsya_platform.fetch.adapter import AaAdapter, TransientFetchError
@@ -45,6 +46,15 @@ def fetch(service: ConsentService, adapter: AaAdapter, tenant_id: str, consent_i
         report.commit = service.commit_fetch(ticket, payloads)
         return report
     raise FetchGaveUp(f"consent {consent_id}: {retries} attempts failed: {report.failures[-1]}")
+
+
+def stored_payload(service: ConsentService, tenant_id: str, payload_id: str) -> Payload:
+    """One stored payload, decrypted and parsed, for build()."""
+    row = service.tables.read("raw.aa_payloads", tenant_id).filter(pl.col("payload_id") == payload_id)
+    if row.is_empty():
+        raise KeyError(f"payload {payload_id} is not stored for tenant {tenant_id}")
+    return Payload(tenant_id=tenant_id, payload_id=payload_id, fetched_at=row["fetched_at"][0],
+                   doc=json.loads(service.raw.get(tenant_id, payload_id)))
 
 
 def stored_payloads(service: ConsentService, tenant_id: str) -> list[Payload]:

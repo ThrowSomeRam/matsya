@@ -65,6 +65,28 @@ def persist_match(store: TableStore, result: MatchResult, tenant_id: str, run_id
     return {t: df.height for t, df in frames.items()}
 
 
+def persist_invoices(store: TableStore, invoices: pl.DataFrame, tenant_id: str) -> int:
+    """New ledger.invoices rows from ingest."""
+    store.append("ledger.invoices", invoices, tenant_id)
+    return invoices.height
+
+
+def persist_refs(store: TableStore, buyers: pl.DataFrame, tenant_buyers: pl.DataFrame | None,
+                 tenant_id: str) -> None:
+    """The reference tables Track A holds. ref.buyers is shared; ref.tenant_buyers per tenant."""
+    store.replace("ref.buyers", buyers)
+    if tenant_buyers is not None:
+        store.replace("ref.tenant_buyers", tenant_buyers.filter(pl.col("tenant_id") == tenant_id), tenant_id)
+
+
+def latest_coverage(coverage: pl.DataFrame) -> pl.DataFrame:
+    """aux.coverage holds one snapshot per build; the current one is the last build's, by run_id."""
+    if coverage.is_empty():
+        return coverage
+    last = coverage["run_id"].max()
+    return coverage.filter(pl.col("run_id") == last).drop("run_id")
+
+
 def read_build(store: TableStore, tenant_id: str) -> dict[str, pl.DataFrame]:
     return {attr: store.read(table, tenant_id) for attr, table in BUILD_TABLES.items()}
 
