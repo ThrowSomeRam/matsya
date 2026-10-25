@@ -66,3 +66,17 @@ export interface Evidence {
     demo_dead_bills: number; demo_dead_paise: number;
   };
 }
+
+// Obligations payload (dashboard/owner/precompute/obligations.py, schema obligations-v1): the obligations
+// detector's next 90 days, with how tight each due date is in the owner view's own runs.
+export interface ObligationItem {
+  kind: string; due_date: string; day: number; confidence: number; amount_owner: string;
+  amount_paise: number | null; amount_lo_paise: number | null; amount_hi_paise: number | null;
+  p_below_cushion_that_day: number; median_balance_that_day_paise: number;
+}
+
+export interface ObligationsPayload {
+  schema_version: string; tenant_id: string; run_id: string; as_of: string; n_paths: number; cushion_paise: number;
+  items: ObligationItem[];
+  supplier_payments_30d: { days: number; median_paise: number; lo_paise: number; hi_paise: number } | null;
+}

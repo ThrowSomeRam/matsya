@@ -1,7 +1,7 @@
 # Benchmark datasets
 
 Foreign datasets used **only to benchmark methods**. Nothing fitted on them may set a
-parameter used on Indian businesses (handbook: open data only; CLAUDE.md). Raw files live in
+parameter used on Indian businesses (handbook: open data only). Raw files live in
 `eval/data/raw/` (gitignored, never committed or redistributed). Fetch with
 `uv run --project intelligence --extra bench python eval/data/download.py`; every file is
 checked against a pinned sha256 in that script.

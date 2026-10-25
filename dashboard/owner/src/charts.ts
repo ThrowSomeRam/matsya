@@ -12,7 +12,7 @@ const GRID = "#F2F2F2";
 const BAND90 = "#EDEDED";
 const BAND50 = "#D4D4D4";
 
-const style = { background: "transparent", color: MID, fontFamily: "inherit", fontSize: "12px", overflow: "visible" };
+const style = { background: "transparent", color: MID, fontFamily: "inherit", fontSize: "14px", overflow: "visible" };
 const tip = { fill: "white", stroke: "white", fontSize: 13, textPadding: 8 } as const;
 
 const d = (iso: string) => new Date(iso + "T00:00:00");
@@ -28,17 +28,14 @@ function spread<T extends { y: number }>(labels: T[], gap: number): T[] {
   return s;
 }
 
-/** The owner page's balance chart: middle estimate, the band half of the estimates fall in, the cushion.
- *  Days after the first 30 are faded (the view-model splits them into `far`). No 90% band. */
-export function balanceChart(c: BalanceChart, width: number): SVGSVGElement | HTMLElement {
+/** The owner page's balance chart: middle estimate, the band half of the estimates fall in, the cushion. */
+export function balanceChart(c: BalanceChart, width: number, marker?: ChartPoint): SVGSVGElement | HTMLElement {
   const all = [...c.near, ...c.far];
   const x = (p: ChartPoint) => d(p.date);
-  const lo = Math.min(...all.map((p) => p.lo), c.cushionPaise ?? Infinity);
-  const hi = Math.max(...all.map((p) => p.hi));
   const marks: Plot.Markish[] = [
-    Plot.gridY({ stroke: GRID, strokeOpacity: 1, ticks: 5 }),
+    Plot.gridY({ stroke: GRID, strokeOpacity: 1, ticks: 4 }),
     Plot.areaY(c.near, { x, y1: "lo", y2: "hi", fill: BAND50, curve: "monotone-x" }),
-    Plot.lineY(c.near, { x, y: "median", stroke: INK, strokeWidth: 1.75, curve: "monotone-x" }),
+    Plot.lineY(c.near, { x, y: "median", stroke: INK, strokeWidth: 2, curve: "monotone-x" }),
   ];
   if (c.far.length) {
     marks.push(
@@ -46,25 +43,25 @@ export function balanceChart(c: BalanceChart, width: number): SVGSVGElement | HT
       Plot.lineY(c.far, { x, y: "median", stroke: INK, strokeOpacity: 0.35, strokeWidth: 1.75, curve: "monotone-x" }),
     );
   }
-  if (c.cushionPaise !== null) {
-    marks.push(Plot.ruleY([c.cushionPaise], { stroke: RISK, strokeWidth: 1 }));
-    if (c.cushionLabel) {
-      marks.push(Plot.text([c.cushionPaise], {
-        x: d(all[0].date), y: (v: number) => v, text: () => c.cushionLabel, fill: RISK, textAnchor: "start", dy: -8, fontSize: 12,
-      }));
-    }
+  if (c.reference) {
+    marks.push(Plot.lineY(c.reference, { x, y: "median", stroke: MID, strokeWidth: 1.25, strokeDasharray: "4,4", curve: "monotone-x" }));
   }
-  if (!narrow(width)) {
-    const gap = (hi - lo) * 0.06;
-    marks.push(Plot.text(spread(c.labels.map((l) => ({ ...l, y: l.paise })), gap), {
-      x: (l: ChartLabel) => d(l.date), y: "y", text: "text", fill: MID, textAnchor: "start", dx: 8, fontSize: 12,
-    }));
+  if (c.cushionPaise !== null) marks.push(Plot.ruleY([c.cushionPaise], { stroke: RISK, strokeWidth: 1.5 }));
+  if (c.events.length) {
+    marks.push(Plot.dot(c.events, { x: (l: ChartLabel) => d(l.date), y: "paise", dy: -10, r: 5, symbol: "triangle", rotate: 180, fill: MID }));
+  }
+  if (marker) {
+    marks.push(
+      Plot.ruleX([d(marker.date)], { stroke: INK, strokeOpacity: 0.25, strokeWidth: 1 }),
+      Plot.ruleX([marker], { x, y1: "lo", y2: "hi", stroke: INK, strokeWidth: 3, strokeLinecap: "round" }),
+      Plot.dot([marker], { x, y: "median", r: 6, fill: INK, stroke: "white", strokeWidth: 2 }),
+    );
   }
   marks.push(Plot.tip(all, Plot.pointerX({ x, y: "median", ...tip, title: (p: ChartPoint) => p.tip })));
   return Plot.plot({
-    width, height: narrow(width) ? 240 : 300, marginLeft: 64, marginRight: narrow(width) ? 8 : 120, marginTop: 16, marginBottom: 32, style,
-    x: { type: "time", label: null, ticks: narrow(width) ? 3 : 6, tickFormat: (v: Date) => v.toLocaleDateString("en-IN", { day: "numeric", month: "short" }), tickSize: 0 },
-    y: { label: null, tickFormat: rsTick, ticks: 5, tickSize: 0 },
+    width, height: narrow(width) ? 240 : 300, marginLeft: 64, marginRight: 12, marginTop: 16, marginBottom: 32, style,
+    x: { type: "time", label: null, ticks: narrow(width) ? 3 : 4, tickFormat: (v: Date) => v.toLocaleDateString("en-IN", { day: "numeric", month: "short" }), tickSize: 0 },
+    y: { label: null, tickFormat: rsTick, ticks: 4, tickSize: 0 },
     marks,
   });
 }

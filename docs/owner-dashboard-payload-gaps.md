@@ -117,6 +117,38 @@ can be deleted once the field exists.
   Please add a per-buyer block: `buyer_id`, name, open total, overdue total, usual days late, and
   each open bill's never-paid chance.
 
+## 10. What-ifs at more than one size, and sample futures
+
+- **Missing:** each what-if runs at one size: buyers' weekly chance halved, one Rs 2 lakh bill,
+  suppliers at 15 days. The breaking-point search evaluates a grid of sizes, then discards it. The
+  payload carries daily summaries (5 percentiles), but not a single simulated future.
+- **Why:** the dashboard now has a simulation explorer: pick a what-if, then drag or play through the
+  90 days. Owners will want to drag the size of the what-if too ("what if they pay 20% slower, not
+  twice as slow?"). The engine does not run in the browser, so every size shown has to be computed in
+  advance. A few dozen sample futures would let the chart play outcomes one by one, which helps
+  people grasp uncertainty better than a band (hypothetical outcome plots).
+- **Now:** the slider moves through days only, and a what-if can be switched on or off but not
+  resized. Please keep the breaking-point grid in the payload (risk by day and a fan for each size),
+  and add about 50 sample balance paths for the baseline.
+
+## 11. Obligations in the payload
+
+- **Missing:** the obligations detector's output (`features.obligations`: salary, rent, EMI, fees, TDS, PF,
+  ESI, GST dates and amounts) never reaches the owner view. Neither does the engine's GST per run, or its
+  supplier payments.
+- **Why:** the dashboard's "Your obligations" and "What you can do" panels need them. They show each
+  payment due in the next 90 days, whether it can move (law, salaries, or can ask), and how tight its day
+  is. "How tight" means the share of runs whose balance ends that day below the cushion.
+- **Now:** `dashboard/owner/precompute/obligations.py` rebuilds the demo tenant's inputs through Track B's
+  public functions and reruns the owner view's own baseline (same seed, so the figures match). It writes
+  `eval/demo/obligations.json` (schema `obligations-v1`). The dashboard uses that file only when its tenant,
+  run and as-of match the owner view. The API has no route for it yet, so the page reads the bundled copy.
+  Please add an `obligations` block to the OwnerView, built in `compute_tenant_run` from the same run.
+  Then delete the script. Track A: please add `GET /tenants/{id}/obligations`, or serve it inside the owner
+  view.
+- **Not covered:** no late-payment rate for GST, TDS, PF or ESI is in the constants file as verified, so the
+  page says "interest and late fees" without a figure.
+
 ## Correction to an earlier note
 
 Earlier notes said the per-step plan figures come from the 1,000-path solve sample. They do not.
