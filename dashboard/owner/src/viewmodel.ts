@@ -273,7 +273,7 @@ export interface BuyerRow {
   amount: string;
   overdue: string | null;
   habit: string | null;
-  slower: boolean;
+  slower: string | null;
   lost: string[];
   stakePaise: number;
 }
@@ -335,7 +335,7 @@ export function buyerRows(v: OwnerView): BuyerRow[] {
       amount: a.open !== null ? `${rs(a.open)} open` : overdue > 0 ? `${rs(overdue)} overdue` : `${rs(known)} open`,
       overdue: a.open !== null && overdue > 0 ? `${rs(Math.min(overdue, a.open))} of it overdue` : null,
       habit: habitText(a.usual),
-      slower: a.slower,
+      slower: a.slower ? "Pays more slowly than similar customers." : null,
       lost: [...(left.length ? [lostText(left, true)] : []), ...(partly.length ? [lostText(partly, false)] : [])],
       stakePaise: stake,
     });
@@ -468,8 +468,17 @@ export interface StatusView {
   estimateNote: string;
 }
 
+export const SECTIONS = {
+  todo: "This week's to-dos",
+  owes: "Who owes you",
+  owesNote: "Customers with money outstanding, biggest amounts first.",
+  outlook: "Your balance over the next 90 days",
+  ready: "Be ready for",
+};
+
 export interface OwnerScreen {
   title: string;
+  sections: typeof SECTIONS;
   status: StatusView | null;
   plan: PlanView;
   owes: OwesView;
@@ -526,6 +535,7 @@ export function buildOwnerScreen(v: OwnerView, source: "api" | "demo file" = "ap
   });
   return {
     title: "Your cash outlook",
+    sections: SECTIONS,
     status: statusView(v, s),
     plan: planView(v, target, s),
     owes: owesView(v),

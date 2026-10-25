@@ -1,4 +1,5 @@
-/* Owner view. White page, typography first, whitespace between sections, no boxes. */
+/* Owner view. White page, typography first, whitespace between sections, no boxes.
+   --risk is the one accent: a serious status, a serious catch, the cushion line. Nothing else is red. */
 :root {
   --ink: #111111;
   --mid: #6b6b6b;
@@ -38,13 +39,12 @@ p { margin: 0; }
 .muted { color: var(--mid); }
 .small { font-size: 14px; }
 
-.balance { font-size: 40px; font-weight: 600; line-height: 1.2; margin-top: 8px; letter-spacing: -0.02em; }
-.risks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 32px; margin-top: 28px; }
-.risk-num { font-size: 32px; font-weight: 600; line-height: 1.2; color: var(--risk); letter-spacing: -0.02em; }
-.headline-text { font-size: 22px; line-height: 1.45; margin-top: 28px; max-width: 40em; }
+.status-label { font-size: 30px; font-weight: 600; line-height: 1.2; margin-top: 10px; letter-spacing: -0.02em; }
+.status-label[data-serious="true"] { color: var(--risk); }
+.headline-text { font-size: 21px; line-height: 1.45; margin-top: 14px; max-width: 38em; }
+.balance { font-size: 18px; font-weight: 500; margin-top: 18px; }
 .after-h1 { margin-top: 8px; }
 .evidence-text { font-size: 18px; line-height: 1.55; margin-top: 20px; max-width: 40em; }
-.runway { margin-top: 20px; font-size: 18px; }
 
 .chart { margin-top: 20px; width: 100%; }
 .chart svg { display: block; overflow: visible; }
@@ -55,34 +55,30 @@ ol.plain li, ul.plain li { padding: 14px 0; border-top: 1px solid var(--hair); }
 ol.plain li:first-child, ul.plain li:first-child { border-top: none; }
 .row { display: flex; justify-content: space-between; gap: 24px; align-items: baseline; }
 .row .right { text-align: right; white-space: nowrap; color: var(--mid); font-size: 14px; }
-.step-num { color: var(--mid); margin-right: 10px; font-variant-numeric: tabular-nums; }
 .totals { margin-top: 20px; font-size: 18px; }
-.caveat { margin-top: 12px; font-size: 14px; color: var(--mid); }
 
-button.whatif {
-  all: unset;
-  cursor: pointer;
-  display: block;
-  width: 100%;
-  padding: 2px 0;
-}
-button.whatif:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
-button.whatif .name { font-weight: 500; }
-button.whatif[aria-pressed="true"] .name { text-decoration: underline; text-underline-offset: 4px; }
-button.whatif[aria-pressed="true"] .name::before { content: "Showing: "; color: var(--risk); font-weight: 500; }
-.breaking { margin-top: 6px; color: var(--risk); }
+.task-title { font-weight: 500; }
+.catch { margin-top: 4px; color: var(--mid); }
+.catch[data-serious="true"] { color: var(--risk); font-weight: 500; }
+.row .name { font-weight: 500; }
+
+details.optional { margin-top: 8px; }
+details.optional summary { cursor: pointer; color: var(--mid); padding: 10px 0; }
+details.optional summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+
+ul.bullets { margin: 12px 0 0; padding-left: 1.2em; }
+ul.bullets li { margin-top: 8px; }
 
 .nums { font-variant-numeric: tabular-nums; }
 .foot { margin-top: 96px; font-size: 13px; color: var(--mid); }
+.foot p + p { margin-top: 4px; }
 a { color: var(--ink); text-underline-offset: 3px; }
 
 @media (max-width: 560px) {
   main { padding: 28px 16px 72px; }
   section { margin-top: 56px; }
-  .balance { font-size: 32px; }
-  .risk-num { font-size: 26px; }
+  .status-label { font-size: 26px; }
   .headline-text { font-size: 19px; }
-  .risks { grid-template-columns: 1fr; }
   .row { flex-direction: column; gap: 2px; }
   .row .right { text-align: left; }
 }

@@ -14,34 +14,24 @@ const out = path.resolve(process.argv[3] ?? "../../eval/demo/screenshots");
     const api = [];
     page.on("response", (r) => { if (r.url().includes("/api/")) api.push(`${r.status()} ${r.url()}`); });
     await page.goto(`${base}/`, { waitUntil: "networkidle" });
-    await page.waitForSelector("#drivers svg");
+    await page.waitForSelector("#outlook svg");
     const got = await page.evaluate(() => ({
-      balance: document.querySelector(".balance")?.textContent,
-      risks: [...document.querySelectorAll(".risk-num")].map((e) => e.textContent),
-      runway: document.querySelector(".runway")?.textContent,
-      drivers_sentence: document.querySelector(".headline-text")?.textContent,
-      fan_paths: document.querySelectorAll("#outlook svg path").length,
-      risk_paths: document.querySelectorAll("#risk svg path").length,
-      driver_bars: document.querySelectorAll("#drivers svg rect").length,
-      plan_steps: document.querySelectorAll("#plan li").length,
-      what_ifs: document.querySelectorAll("#what-ifs button").length,
-      owed_rows: document.querySelectorAll("#owed li").length,
-      source: document.querySelector(".foot")?.textContent,
+      status: document.querySelector(".status-label")?.textContent,
+      headline: document.querySelector(".headline-text")?.textContent,
+      tasks: document.querySelectorAll("#todo > ol li").length,
+      optional: document.querySelectorAll("#todo details li").length,
+      buyers: document.querySelectorAll("#owes > ul > li").length,
+      more_buyers: document.querySelectorAll("#owes details li").length,
+      chart_paths: document.querySelectorAll("#outlook svg path").length,
+      ready: [...document.querySelectorAll("#ready li")].map((e) => e.textContent),
+      foot: document.querySelector(".foot")?.textContent,
     }));
     checks.push({ name, api, ...got });
     await page.screenshot({ path: `${out}/owner-${name}.png`, fullPage: true });
     if (name === "laptop") {
-      await page.click("#what-ifs button >> nth=0");
-      await page.waitForTimeout(300);
-      const overlay = await page.evaluate(() => ({
-        breaking: document.querySelector(".breaking")?.textContent,
-        fan_paths: document.querySelectorAll("#outlook svg path").length,
-      }));
-      checks.push({ name: "what-if selected", ...overlay });
-      await page.screenshot({ path: `${out}/owner-${name}-what-if.png`, fullPage: true });
-      await page.click("#what-ifs button >> nth=0");
-      await page.waitForTimeout(300);
-      checks.push({ name: "what-if cleared", fan_paths: await page.evaluate(() => document.querySelectorAll("#outlook svg path").length) });
+      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: `${out}/owner-${name}-expanded.png`, fullPage: true });
     }
     await page.goto(`${base}/evidence/`, { waitUntil: "networkidle" });
     await page.waitForSelector(".chart svg");

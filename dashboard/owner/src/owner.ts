@@ -1,127 +1,117 @@
 import "./style.css";
-import { driversChart, fanChart, riskChart, type Overlay } from "./charts";
+import { balanceChart } from "./charts";
 import { loadOwnerView } from "./data";
 import { el } from "./format";
-import type { OwnerView, WhatIf } from "./types";
+import { buildOwnerScreen, type BalanceChart, type BuyerRow, type OwnerScreen, type Task } from "./viewmodel";
+
+// Layout only: every figure and sentence comes from the view-model (viewmodel.ts).
 
 const app = document.getElementById("app")!;
-let view: OwnerView;
-let selected: string | null = null;
-let source = "";
+let redraw: (() => void) | null = null;
 
 function width(node: HTMLElement): number {
   return Math.max(280, Math.floor(node.clientWidth || app.clientWidth - 48));
 }
 
-function headline(v: OwnerView): HTMLElement {
-  const h = v.headline;
-  return el("section", { id: "headline" },
-    el("h1", {}, "Your cash outlook"),
-    el("p", { cls: "balance nums" }, `${h.balance_today.text} in the bank today`),
-    el("div", { cls: "risks" },
-      ...h.risk.map((r) => el("div", {},
-        el("div", { cls: "risk-num nums" }, r.chance.text),
-        el("div", { cls: "muted small" }, `chance of running short within ${r.day} days`)))),
-    el("p", { cls: "runway" },
-      h.runway_day == null ? "Runway: beyond 90 days, on current odds." : `Runway: ${h.runway_text}, when running short becomes more likely than not.`),
-    el("p", { cls: "headline-text" }, h.drivers_sentence));
+function status(s: OwnerScreen): HTMLElement | null {
+  const st = s.status;
+  if (!st) return null;
+  const label = el("p", { cls: "status-label" }, st.label);
+  label.dataset.serious = String(st.serious);
+  return el("section", { id: "status" },
+    el("h1", {}, s.title),
+    label,
+    el("p", { cls: "headline-text" }, st.headline),
+    st.balance ? el("p", { cls: "balance nums" }, st.balance) : null,
+    st.range30 ? el("p", { cls: "nums" }, st.range30) : null,
+    el("p", { cls: "note" }, st.estimateNote));
 }
 
-function overlay(): Overlay | undefined {
-  const w = view.what_ifs.find((x) => x.preset === selected);
-  return w ? { name: w.name, fan: w.fan ?? [], risk: w.risk_by_day ?? [] } : undefined;
+function taskItem(t: Task): HTMLElement {
+  return el("li", {},
+    el("p", { cls: "task-title" }, t.title),
+    t.cost ? el("p", { cls: "muted small nums" }, t.cost) : null,
+    ...t.catches.map((c) => {
+      const p = el("p", { cls: "catch small" }, c.text);
+      p.dataset.serious = String(c.serious);
+      return p;
+    }));
 }
 
-function chartSection(id: string, title: string, sub: string | null, draw: (w: number) => Node, note?: string): HTMLElement {
+function todo(s: OwnerScreen): HTMLElement {
+  const p = s.plan;
+  return el("section", { id: "todo" },
+    el("h2", {}, s.sections.todo),
+    p.empty ? el("p", { cls: "muted" }, p.empty) : null,
+    p.tasks.length ? el("ol", { cls: "plain tasks" }, ...p.tasks.map(taskItem)) : null,
+    p.optional.length && p.optionalLabel
+      ? el("details", { cls: "optional" }, el("summary", {}, p.optionalLabel), el("ol", { cls: "plain tasks" }, ...p.optional.map(taskItem)))
+      : null,
+    p.totals ? el("p", { cls: "totals" }, p.totals) : null,
+    p.change ? el("p", {}, p.change) : null,
+    p.statusChange ? el("p", { cls: "muted" }, p.statusChange) : null,
+    p.caveat ? el("p", { cls: "note" }, p.caveat) : null);
+}
+
+function buyerItem(r: BuyerRow): HTMLElement {
+  return el("li", {},
+    el("div", { cls: "row" }, el("span", { cls: "name" }, r.buyer), el("span", { cls: "right nums" }, r.amount)),
+    r.overdue ? el("p", { cls: "muted small nums" }, r.overdue) : null,
+    r.habit ? el("p", { cls: "muted small" }, r.habit) : null,
+    r.slower ? el("p", { cls: "muted small" }, r.slower) : null,
+    ...r.lost.map((l) => el("p", { cls: "small nums" }, l)));
+}
+
+function owes(s: OwnerScreen): HTMLElement {
+  const o = s.owes;
+  return el("section", { id: "owes" },
+    el("h2", {}, s.sections.owes),
+    o.empty ? el("p", { cls: "muted" }, o.empty) : el("p", { cls: "muted" }, s.sections.owesNote),
+    o.rows.length ? el("ul", { cls: "plain" }, ...o.rows.map(buyerItem)) : null,
+    o.more.length && o.moreLabel
+      ? el("details", { cls: "optional" }, el("summary", {}, o.moreLabel), el("ul", { cls: "plain" }, ...o.more.map(buyerItem)))
+      : null);
+}
+
+function outlook(s: OwnerScreen, chart: BalanceChart): HTMLElement {
   const holder = el("div", { cls: "chart" });
-  const s = el("section", { id }, el("h2", {}, title), sub ? el("p", { cls: "muted" }, sub) : null, holder,
-    note ? el("p", { cls: "note" }, note) : null);
-  requestAnimationFrame(() => holder.replaceChildren(draw(width(holder))));
-  (s as HTMLElement & { redraw?: () => void }).redraw = () => holder.replaceChildren(draw(width(holder)));
-  return s;
+  redraw = () => holder.replaceChildren(balanceChart(chart, width(holder)));
+  requestAnimationFrame(redraw);
+  return el("section", { id: "outlook" }, el("h2", {}, s.sections.outlook), holder, el("p", { cls: "note" }, chart.caption));
 }
 
-function plan(v: OwnerView): HTMLElement {
-  const p = v.plan;
-  return el("section", { id: "plan" },
-    el("h2", {}, "The plan"),
-    el("p", { cls: "muted" }, p.summary),
-    el("ol", { cls: "plain" }, ...p.actions.map((a) => el("li", {},
-      el("div", { cls: "row" },
-        el("span", {}, el("span", { cls: "step-num" }, `${a.rank}.`), a.description),
-        el("span", { cls: "right nums" }, `${a.cost.text}, then ${a.risk_after?.text} chance`))))),
-    el("p", { cls: "totals" }, `Total cost ${p.total_cost.text}. Chance of running short within 90 days: ${p.risk_before.text} now, ${p.risk_after.text} with the plan.`),
-    p.caveat ? el("p", { cls: "caveat" }, p.caveat) : null);
+function ready(s: OwnerScreen): HTMLElement | null {
+  const r = s.ready;
+  if (!r) return null;
+  return el("section", { id: "ready" },
+    el("h2", {}, s.sections.ready),
+    el("p", {}, r.lead),
+    el("ul", { cls: "bullets" }, ...r.items.map((i) => el("li", {}, i))));
 }
 
-function whatIfs(v: OwnerView): HTMLElement {
-  const list = el("ul", { cls: "plain" });
-  const render = () => list.replaceChildren(...v.what_ifs.map((w: WhatIf) => {
-    const on = w.preset === selected;
-    const b = el("button", { cls: "whatif", type: "button" },
-      el("div", { cls: "row" },
-        el("span", { cls: "name" }, w.name),
-        el("span", { cls: "right nums" }, `${w.risk_90.text} chance within 90 days`)),
-      el("p", { cls: "small" }, w.description),
-      el("p", { cls: "muted small" }, `${w.change_text} ${w.runway_text}`));
-    b.setAttribute("aria-pressed", String(on));
-    b.addEventListener("click", () => {
-      selected = on ? null : w.preset;
-      render();
-      redrawCharts();
-    });
-    return el("li", {}, b, on ? el("p", { cls: "breaking" }, w.breaking_point) : null);
-  }));
-  render();
-  return el("section", { id: "what-ifs" },
-    el("h2", {}, "What if"),
-    el("p", { cls: "muted" }, "Pick one to see it on the first two charts. Pick it again to go back."),
-    list);
+function footer(s: OwnerScreen): HTMLElement {
+  const f = s.footer;
+  return el("footer", { cls: "foot" },
+    ...[f.freshness, f.asOf, f.source].filter((x): x is string => !!x).map((x) => el("p", {}, x)),
+    el("p", {}, el("a", { href: f.evidenceHref }, f.evidenceText)));
 }
 
-function owed(v: OwnerView): HTMLElement {
-  const o = v.owed;
-  return el("section", { id: "owed" },
-    el("h2", {}, "Money you're owed"),
-    o.items.length === 0
-      ? el("p", { cls: "muted" }, "No buyer owes you late-payment interest today.")
-      : el("ul", { cls: "plain" }, ...o.items.map((i) => el("li", {},
-        el("div", { cls: "row" },
-          el("span", {}, `${i.buyer}, ${i.amount.text}`),
-          el("span", { cls: "right nums" }, `${i.days_late} days late, interest ${i.interest.text}`))))),
-    o.items.length ? el("p", { cls: "totals" }, `Interest owed in total: ${o.total_interest.text}.`) : null,
-    el("p", { cls: "note" }, o.note));
-}
-
-let sections: (HTMLElement & { redraw?: () => void })[] = [];
-
-function redrawCharts() {
-  for (const s of sections) s.redraw?.();
-}
-
-function render(v: OwnerView) {
-  const dates = v.risk_by_day.map((r) => r.date);
-  const fan = chartSection("outlook", "Balance outlook", "Your bank balance over the next 90 days, across the futures we simulate.",
-    (w) => fanChart(v.fan.days, v.fan.threshold?.paise ?? 0, w, overlay()), v.fan.note);
-  const risk = chartSection("risk", "Chance of running short, by date", "Doing nothing, and with the plan below.",
-    (w) => riskChart(dates, v.risk_by_day.map((r) => r.before), v.risk_by_day.map((r) => r.after), w, overlay()));
-  const drivers = chartSection("drivers", "What's driving the risk",
-    "How much the chance of running short within 90 days would drop if each one were paid on time.",
-    (w) => driversChart(v.drivers, w));
-  sections = [fan, risk, drivers];
-  app.replaceChildren(headline(v), fan, risk, drivers, plan(v), whatIfs(v), owed(v),
-    el("p", { cls: "foot" }, `${v.meta.data_freshness} Figures as of ${v.meta.as_of}. Data from the ${source}. `,
-      el("a", { href: "/evidence/" }, "How this forecast compares")));
+function render(s: OwnerScreen) {
+  app.replaceChildren(...[
+    status(s) ?? el("h1", {}, s.title),
+    todo(s),
+    owes(s),
+    s.chart ? outlook(s, s.chart) : null,
+    ready(s),
+    footer(s),
+  ].filter((x): x is HTMLElement => x !== null));
 }
 
 let resizeTimer = 0;
 addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = window.setTimeout(redrawCharts, 120);
+  resizeTimer = window.setTimeout(() => redraw?.(), 120);
 });
 
-loadOwnerView().then(({ data, source: s }) => {
-  view = data;
-  source = s === "api" ? "live service" : "saved demo file";
-  render(view);
-}).catch((e: Error) => app.replaceChildren(el("p", {}, `Could not load your cash outlook. ${e.message}`)));
+loadOwnerView().then(({ data, source }) => render(buildOwnerScreen(data, source)))
+  .catch((e: Error) => app.replaceChildren(el("p", {}, `Could not load your cash outlook. ${e.message}`)));
